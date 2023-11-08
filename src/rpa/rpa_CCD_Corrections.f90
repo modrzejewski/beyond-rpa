@@ -3,7 +3,8 @@ module rpa_CCD_Corrections
       use real_linalg
       use rpa_definitions
       use rpa_MeanField
-      use clock      
+      use rpa_CCD_Corrections_Experimental
+      use clock
       
       implicit none
       
@@ -35,6 +36,15 @@ contains
             type(TClock) :: timer_total, timer
             integer, parameter :: BlockDim = 300
 
+            if (CumulantApprox == RPA_CUMULANT_LEVEL_5_HALF_THC) then
+                  !
+                  ! Experimental code
+                  !
+                  call rpa_CCD_corrections_FullSet(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
+                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
+                  return
+            end if
+            
             call msg("CCD corrections to RPA correlation energy")
             call clock_start(timer_total)
             call clock_start(timer)
@@ -42,7 +52,6 @@ contains
             Compute_2bcd = .false.
             if (CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) Compute_1b2g = .true.
             if (CumulantApprox >= RPA_CUMULANT_LEVEL_3_HALF_THC) Compute_2bcd = .true.
-
             if (Compute_1b2g) then
                   call clock_start(timer)
                   call rpa_CCD_corrections_1b_2g_HalfTHC(Energy, Zgh, Zgk, Xgi, Yga, Uaim, &
@@ -170,6 +179,9 @@ contains
             call msg("[YXU]         " // str(t_YXU,d=1))
             call msg("Z*[YXU]*[YXU] " // str(t_Z_YXU_YXU,d=1))
             call msg("[ZYXU]        " // str(t_ZYXU,d=1))
+
+            print *, "Ec1b=", Ec1b
+            print *, "Ec2g=", Ec2g
 
       contains
 

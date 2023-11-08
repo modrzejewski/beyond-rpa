@@ -542,7 +542,8 @@ FileList += [("DFT", ["rpa/rpa_core.f90",
 FileList += [("DFT", ["rpa/rpa_CC_Singles.f90",
                       "rpa/rpa_CC_Doubles.f90",
                       "rpa/rpa_CC_Exchange.f90",
-                      "rpa/rpa_MeanField.f90"])]
+                      "rpa/rpa_MeanField.f90",
+                      "rpa/rpa_CCD_Corrections_Experimental.f90"])]
 FileList += [("DFT", ["rpa/rpa_CCD_Corrections.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC_1RDM.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC.f90"])]

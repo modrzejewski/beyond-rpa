@@ -181,16 +181,9 @@ contains
             ! the non-ring part of the expectation value of the hamiltonian
             ! ---------------------------------------------------------------------------------
             call clock_start(timer)
-            if ( &
-                  CumulantApprox == RPA_CUMULANT_LEVEL_1_HALF_THC .or. &
-                  CumulantApprox == RPA_CUMULANT_LEVEL_2_HALF_THC .or. &
-                  CumulantApprox == RPA_CUMULANT_LEVEL_3_HALF_THC .or. &
-                  CumulantApprox == RPA_CUMULANT_LEVEL_4_HALF_THC &
-                  ) then
-                  call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                        hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
-                        NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
-            end if                  
+            call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
+                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
             t_Cumulant = clock_readwall(timer)
             Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
             call blankline()

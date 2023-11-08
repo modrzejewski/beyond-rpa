@@ -3782,7 +3782,7 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
-            case ("CUMULANTAPPROX")                  
+            case ("CCD-CORRECTIONS", "CCDCORRECTIONS")                  
                   select case (uppercase(val))
                   case ("LEVEL-0")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_0
@@ -3799,6 +3799,10 @@ contains
                   case ("LEVEL-4-HALF-THC", "LEVEL-4-HALFTHC")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_4_HALF_THC
                   case ("LEVEL-5-HALF-THC", "LEVEL-5-HALFTHC")
+                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
+                  case ("DEFAULT")
+                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+                  case ("ALL")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
                   case default
                         call msg("Invalid label of the cumulant approximation", MSG_ERROR)
