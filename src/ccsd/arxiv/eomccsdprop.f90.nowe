@@ -1,0 +1,191 @@
+
+module eomccsdprop
+      use math_constants
+      use tmga
+      use tmxi
+
+      implicit none
+
+contains
+
+      function biortonorm(l, r, nocc, nvirt, nidx)
+            double precision :: biortonorm
+            double precision, dimension(:), intent(in) :: l, r
+            integer, intent(in)                        :: nocc, nvirt
+            integer, intent(in)                        :: nidx
+            
+            double precision :: dot
+            integer :: v
+            integer :: npair
+
+            npair = nocc * nvirt
+            !
+            ! NIDX = number of one electron indices +
+            !        number of two electron indices
+            !       (CC3 + number of three electron indices)
+            !
+            dot = ZERO
+            do v = 1, nidx
+                  dot = dot + l(v) * r(v)
+            end do
+            biortonorm = ONE / sqrt(dot)
+      end function biortonorm
+
+
+      subroutine motojac(a, movec, jacvec, nocc, nvirt, nidx)
+            double precision, intent(out)               :: a
+            double precision, dimension(:), intent(in)  :: jacvec, movec
+            integer, intent(in)                         :: nocc, nvirt
+            integer, intent(in)                         :: nidx
+
+            integer :: npair
+            integer :: offset
+            integer :: v
+
+            npair = nocc * nvirt
+            !
+            ! NIDX = number of one electron indices +
+            !        number of two electron indices
+            !        (CC3 + number of three electron indices)
+            !
+            a = ZERO
+            do v = 1, nidx
+                  a = a + jacvec(v) * movec(v)
+            end do
+      end subroutine motojac
+
+
+      subroutine tmccsd(tm, n, lvec, rvec, t2, t1, s2, s1,  &
+            nocc0, nocc1, nvirt0, nvirt1, xga, yxi, nocc, nvirt, nactive, eorb,  nidx)
+            ! ---------------------------------------------------------------------
+            ! TM      - Output, requested transition moments (ordering consistent
+            !           with TMIDX)
+            ! N       - Number of requested transition moments (first N indices
+            !           from TMIDX will be read)
+            ! LVEC    - Matrix of left eigenvectors
+            ! RVEC    - Matrix of right eigenvectors
+            ! T2      - CCSD T2 amplitudes
+            ! T1      - CCSD T1 amplitudes
+            ! NOCC0   - First occupied orbital
+            ! NOCC1   - Last occupied orbital
+            ! NVIRT0  - First virtual orbital
+            ! NVIRT1  - Last virtual orbital
+            ! XGA     - Matrix of the one electron operator
+            !           present in the gamma part
+            ! YXI     - Matrix of the one electron operator
+            !           present in the xi part
+            ! NIDX = number of one electron indices +
+            !        number of two electron indices
+            !        (CC3 + number of three electron indices)
+            !
+            double precision, dimension(:), intent(out)         :: tm
+            integer, intent(in)                                 :: n
+            double precision, dimension(:, :), intent(in)       :: lvec
+            double precision, dimension(:, :), intent(in)       :: rvec
+            double precision, dimension(:, :, :, :), intent(in) :: t2
+            double precision, dimension(:, :), intent(in)       :: t1
+            double precision, dimension(:, :, :, :), intent(in) :: s2
+            double precision, dimension(:, :), intent(in)       :: s1
+            integer, intent(in)                                 :: nocc0, nocc1
+            integer, intent(in)                                 :: nvirt0, nvirt1
+            integer, intent(in)                                 :: nocc, nvirt, nactive
+            double precision, dimension(:, :), intent(in)       :: xga
+            double precision, dimension(:, :), intent(in)       :: yxi
+            integer, intent(in)                                 :: nidx
+            double precision, dimension(:), intent(in)          :: eorb
+
+            double precision, dimension(n) :: bnorm
+            double precision :: ga, xi
+            double precision, dimension(:), allocatable :: ganu, xinu
+            integer :: i, a, j, b
+            integer :: v, w
+            integer ::  npair
+
+            npair = nocc * nvirt
+            !
+            ! Get normaliation factor in biorthonormal basis
+            !
+            do w = 1, n
+                  bnorm(w) = biortonorm(lvec(:, w), rvec(:, w), nocc, nvirt, nidx)
+            end do
+            !
+            ! NIDX = number of one electron indices +
+            !        number of two electron indices
+            !
+            allocate(ganu(nidx))
+            allocate(xinu(nidx))
+            ganu = ZERO
+            xinu = ZERO
+            !
+            ! Generate XI and GAMMA in MO basis
+            !
+            v = 1
+            do a = nvirt0, nvirt1
+                  do i = nocc0, nocc1
+                        ganu(v) = ganu1_ai(xga, t2, t1, s2, s1, nocc, nactive, eorb, a, i)
+                        xinu(v) = xinu1_ai(yxi, t2, t1, eorb,  nocc, nactive, a, i)
+                        v = v + 1
+                  end do
+            end do
+            do b = nvirt0, nvirt1
+                  do j = nocc0, nocc1
+                        !
+                        ! a == b, i == j
+                        !
+                        a = b
+                        i = j
+                        ganu(v) = ganu2_aiai(xga, t2, t1, s2, s1, nocc, nactive, eorb, a, i)
+                        xinu(v) = xinu2_aiai(yxi, t2, t1, eorb, nocc, nactive, a, i)
+                        v = v + 1
+                        !
+                        ! a == b, i > j
+                        !
+                        a = b
+                        do i = j + 1, nocc1
+                              ganu(v) = ganu2_aiaj(xga, t2, t1, s2, s1, nocc, nactive, eorb, a, i, j)
+                              xinu(v) = xinu2_aiaj(yxi, t2, t1, eorb, nocc, nactive, a, i, j)
+                              v = v + 1
+                        end do
+                        !
+                        ! a > b
+                        !
+                        do a = b + 1, nvirt1
+                              !
+                              ! a > b, i < j
+                              !
+                              do i = nocc0, j - 1
+                                    ganu(v) = ganu2_aibj(xga, t2, t1, s2, s1, nocc, nactive, eorb, a, i, b, j)
+                                    xinu(v) = xinu2_aibj(yxi, t2, t1, eorb, nocc, nactive, a, i, b, j)
+                                    v = v + 1
+                              end do
+                              !
+                              ! a > b, i == j
+                              !
+                              i = j
+                              ganu(v) = ganu2_aibi(xga, t2, t1,s2, s1,  nocc, nactive, eorb, a, i, b)
+                              xinu(v) = xinu2_aibi(yxi, t2, t1, eorb, nocc, nactive, a, i, b)
+                              v = v + 1
+                              !
+                              ! a > b, i > j
+                              !
+                              do i = j + 1, nocc1
+                                    ganu(v) = ganu2_aibj(xga, t2, t1, s2, s1, nocc, nactive, eorb, a, i, b, j)
+                                    xinu(v) = xinu2_aibj(yxi, t2, t1, eorb, nocc, nactive, a, i, b, j)
+                                    v = v + 1
+                              end do
+                        end do
+                  end do
+            end do
+            !
+            ! Transform XI and GAMMA to the basis of the Jacobian eigenvectors
+            !
+            do w = 1, n
+                  call motojac(ga, ganu, rvec(:, w), nocc, nvirt, nidx)
+                  call motojac(xi, xinu, lvec(:, w), nocc, nvirt, nidx)
+                  tm(w) = ga * xi * bnorm(w)**2
+            end do
+            
+            deallocate(ganu)
+            deallocate(xinu)
+      end subroutine tmccsd
+end module eomccsdprop

@@ -1,0 +1,1412 @@
+module real_scf
+      use arithmetic
+      use math_constants
+      use gparam
+      use h_xcfunc
+      use scf_definitions
+      use guess
+      use real_linalg
+      use uks_arh
+      use mbd
+      use fbuild
+      use fock2el
+      use scf
+      use ecpint
+      use spin_orbit_ecp
+      use grid
+      use scf_definitions
+      use basis_sets
+      use Fock
+      use KohnSham
+      !$ use omp_lib
+      
+      implicit none
+
+      integer, parameter :: SCFRuleWidth = 78
+      
+contains
+      
+      subroutine scf_SaveDensityFile(RhoAO, Mode, PathA, PathB)
+            real(F64), dimension(:, :, :), intent(in) :: RhoAO
+            integer, intent(in) :: Mode
+            character(*), intent(in) :: PathA
+            character(*), intent(in) :: PathB
+
+            character(:), allocatable :: Path
+            integer :: NSpin, s
+            
+            if (Mode .ne. FILEMODE_NONE) then
+                  call midrule()
+                  NSpin = size(RhoAO, dim=3)
+                  do s = 1, NSpin
+                        if (s == 1) then
+                              Path = PathA
+                        else
+                              Path = PathB
+                        end if
+                        select case (Mode)
+                        case (FILEMODE_TEXT)
+                              call io_text_write(RhoAO(:, :, s), Path)
+                        case (FILEMODE_BINARY)
+                              call io_binary_write(RhoAO(:, :, s), Path)
+                        end select
+                        if (NSpin == 1) then
+                              call msg("Saved total alpha+beta RhoAO:")
+                        else
+                              call msg("Saved spin component of RhoAO:")
+                        end if
+                        call msg(Path)
+                  end do
+                  call midrule()
+            end if
+      end subroutine scf_SaveDensityFile
+
+      
+      subroutine scf_AuxIntegrals(AUXInt_Type1, AUXInt_Type2, AUXOut, Rho_cao)
+            integer, intent(in)                    :: AUXInt_Type1, AUXInt_Type2
+            real(F64), dimension(:), intent(inout) :: AUXOut
+            real(F64), dimension(:, :, :), intent(in) :: Rho_cao
+
+            integer :: i
+            logical :: SpinUnres
+
+            if (size(Rho_cao, dim=3) > 1) then
+                  SpinUnres = .true.
+            else
+                  SpinUnres = .false.
+            end if
+            
+            select case (AUXInt_Type1)
+            case (AUX_HIRSHFELD_POPULATION)
+                  call hirshfeld_population_display(AUXOut)
+            case (AUX_HIRSHFELD_VOLUME)
+                  call hirshfeld_volume_ratios(AUXOut)
+                  call hirshfeld_volume_display(AUXOut)
+            case (AUX_HIRSHFELD_VOLUME_FREE)
+                  call hirshfeld_volume_free_display(AUXOut)
+            case (AUX_GDD_GRAC)
+                  call aux_gdd_grac_finalize(AUXOut, SpinUnres)
+            case (AUX_GDD_OMEGA)
+                  call aux_gdd_finalize(AUXOut, GDD_NOUT_ALPHA, GDD_MUMIN)
+            case (AUX_XHOLE_DIST_FUKUI)
+                  call aux_xhole_dist_fukui_finalize(AUXOut, SpinUnres)
+            case (AUX_REGULARIZED_VNUCL)
+                  call msg("Computed matrix of regularized electrons-nuclei potential")
+            case (AUX_MODRZEJ2012_C_HOLE)
+                  call modrzej2012_c_hole_finalize(AUXOut, SpinUnres)
+            case (AUX_BR_X_HOLE, AUX_PBE_X_HOLE, AUX_TPSS_X_HOLE)
+                  call modrzej2016_x_hole_finalize(AUXOut, SpinUnres)
+            case (AUX_MCSv1_VC_LAMBDA, AUX_MCSv2_VC_LAMBDA)
+                  call modrzej2016_vc_curve_display(AUXOut)
+            case (AUX_DENSITY_COMPARE)
+                  call density_compare_display(AUXOut)
+            case default
+                  call msg("Auxiliary numerical integrals", underline=.true.)
+                  do i = 1, size(AUXOut)
+                        call dmsg(str(i), AUXOut(i), fmt="F20.15")
+                  end do
+            end select
+
+            select case (AUXInt_Type2)
+            case (AUX_RHO_DIFF)
+                  call CompareRhoInteraction(Rho_cao)
+            case (AUX_RHO_SPHER)
+                  block
+                        integer, parameter :: SpherGrid = 17
+                        real(F64) :: x0, y0, z0
+                        integer :: p0, p1
+                        x0 = ATOMR(1, 1)
+                        y0 = ATOMR(2, 1)
+                        z0 = ATOMR(3, 1)
+                        call lebget(p0, SpherGrid)
+                        p1 = p0 + LEBNPT(SpherGrid) - 1
+                        call CompareRhoSpherical(Rho_cao, x0, y0, z0, GRD_LEBX(p0:p1), &
+                              GRD_LEBY(p0:p1), GRD_LEBZ(p0:p1), GRD_LEBW(p0:p1))
+                  end block
+            end select
+      end subroutine scf_AuxIntegrals
+
+      
+      subroutine scf_DispersionCorrection(Edisp, xcmodel, AUXOut)
+            real(F64), intent(out)              :: Edisp
+            type(txcdef), intent(in)            :: xcmodel
+            real(F64), dimension(:), intent(in) :: AUXOut
+            !
+            ! User-defined parameters for DFT-D3 dispersion correction
+            !
+            real(F64), dimension(5) :: dftd3_usrparam
+            real(F64), dimension(:, :), allocatable :: RealAtomCoords
+            integer, dimension(:), allocatable :: RealAtomZ
+            logical :: dftd3_usrdef
+            integer :: s, n, a0, a1
+            real(F64), allocatable :: EdispCorr[:]
+
+            Edisp = ZERO
+            if (JOBTYPE /= JOB_DFT_DISP_OPTIM) then
+                  allocate(EdispCorr[*])
+                  if (this_image() == 1) then
+                        select case (DFT_DISP)
+                        case (DISP_DFTD3)
+                              ! --------------------------------------------------------------------
+                              ! DFT-D3, damping function vanishes at Rab=0
+                              ! J. Chem. Phys. 132, 154104 (2010); doi: 10.1063/1.3382344
+                              ! --------------------------------------------------------------------
+                              if (NRealAtoms() > 1) then
+                                    dftd3_usrparam(DFTD3_IS6) = 1.0_F64
+                                    dftd3_usrparam(DFTD3_IR8) = 1.0_F64
+                                    dftd3_usrparam(DFTD3_IAL) = 14.0_F64
+                                    dftd3_usrdef = .false.
+                                    if (DFTD3_R6 > ZERO .and. DFTD3_S8 >= ZERO) then
+                                          dftd3_usrparam(DFTD3_IR6) = DFTD3_R6
+                                          dftd3_usrparam(DFTD3_IS8) = DFTD3_S8
+                                          dftd3_usrdef = .true.
+                                    else if (DFTD3_R6 > ZERO .or. DFTD3_S8 >= ZERO) then
+                                          call msg("One of DFT-D3 parameters (r6, s8) is undefined", MSG_ERROR)
+                                          stop
+                                    end if
+                                    if (dftd3_usrdef) then
+                                          call compdftd3(xcmodel, EdispCorr, DFTD3_3BODY, .false., dftd3_usrparam)
+                                    else
+                                          call compdftd3(xcmodel, EdispCorr, DFTD3_3BODY, .false.)
+                                    end if
+                              end if
+                        case (DISP_DFTD3_BJ)
+                              ! ---------------------------------------------------------------------
+                              ! DFT-D3, rational Becke-Johnson damping function
+                              ! Grimme, S., Ehrlich, S., Goerigk, L. J. Comp. Chem. 32, 1456 (2011);
+                              ! doi: 10.1002/jcc.21759
+                              ! ---------------------------------------------------------------------
+                              dftd3_usrparam(DFTD3_BJ_IS6) = 1.0_F64
+                              dftd3_usrdef = .false.
+                              if (DFTD3_BJ_A1 > ZERO .and. DFTD3_BJ_A2 > ZERO .and. DFTD3_BJ_S8 >= ZERO) then
+                                    dftd3_usrparam(DFTD3_BJ_IA1) = DFTD3_BJ_A1
+                                    dftd3_usrparam(DFTD3_BJ_IA2) = DFTD3_BJ_A2
+                                    dftd3_usrparam(DFTD3_BJ_IS8) = DFTD3_BJ_S8
+                                    dftd3_usrdef = .true.
+                              else if (DFTD3_BJ_A1 > ZERO .or. DFTD3_BJ_A2 > ZERO .or. DFTD3_BJ_S8 >= ZERO) then
+                                    call msg("One of DFT-D3(BJ) parameters (a1, a2, s8) is undefined", MSG_ERROR)
+                                    stop
+                              end if
+
+                              if (dftd3_usrdef) then
+                                    call compdftd3(xcmodel, EdispCorr, DFTD3_3BODY, .true., dftd3_usrparam)
+                              else
+                                    call compdftd3(xcmodel, EdispCorr, DFTD3_3BODY, .true.)
+                              end if
+                        case (DISP_MBD_RSSCS)
+                              ! --------------------------------------------------------------------
+                              ! MBD-rsSCS, J. Chem. Phys. 140, 18A508 (2014); doi: 10.1063/1.4865104
+                              ! --------------------------------------------------------------------
+                              allocate(RealAtomCoords(3, NRealAtoms()))
+                              allocate(RealAtomZ(NRealAtoms()))
+                              n = 0
+                              do s = 1, 2
+                                    a0 = REAL_ATOMS(1, s)
+                                    a1 = REAL_ATOMS(2, s)
+                                    RealAtomCoords(:, n+1:n+a1-a0+1) = ATOMR(:, a0:a1)
+                                    RealAtomZ(n+1:n+a1-a0+1) = INUCLZ(a0:a1)
+                                    n = n + a1 - a0 + 1
+                              end do
+                              call edisp_ardt2014(EdispCorr, RealAtomCoords, RealAtomZ, &
+                                    AUXOut, xcf_get_id(xcmodel), MBD_RSSCS_BETA)
+                        end select
+                        Edisp = EdispCorr
+                        sync images(*)
+                  else
+                        sync images(1)
+                        Edisp = EdispCorr[1]
+                  end if
+            end if
+      end subroutine scf_DispersionCorrection
+            
+
+      subroutine scf_RhoStart(Rho_cao, GuessType, PathA, PathB)
+            real(F64), dimension(:, :, :), intent(out) :: Rho_cao
+            integer, intent(in) :: GuessType
+            character(*), intent(in) :: PathA
+            character(*), intent(in) :: PathB
+
+            integer :: NAOCart, NSpin
+            integer :: ThisImage
+            real(F64), dimension(:, :, :), allocatable :: RhoGuess[:]
+
+            ThisImage = this_image()
+            NAOCart = size(Rho_cao, dim=1)
+            NSpin = size(Rho_cao, dim=3)
+            allocate(RhoGuess(NAOCart, NAOCart, NSpin)[*])
+            
+            if (ThisImage == 1) then
+                  select case (GuessType)
+                  case (SCF_GUESS_HBARE)
+                        call msg("SCF guess: bare nuclei Hamiltonian")
+                        RhoGuess = ZERO
+                  case (SCF_GUESS_ATOMIC)
+                        call msg("SCF guess: superposition of atomic densities")
+                        call guess_atomic(RhoGuess(:, :, 1))
+                        if (NSpin == 2) then
+                              RhoGuess(:, :, 1) = (ONE/TWO) * RhoGuess(:, :, 1)
+                              RhoGuess(:, :, 2) = RhoGuess(:, :, 1)
+                        end if
+                  case (SCF_GUESS_TEXT_FILE)
+                        if (NSpin == 2) then
+                              call msg("SCF guess: reading RhoA from " // PathA)
+                              call msg("SCF guess: reading RhoB from " // PathB)
+                              call io_text_read(RhoGuess(:, :, 1), PathA)
+                              call io_text_read(RhoGuess(:, :, 2), PathB)
+                        else
+                              call msg("SCF guess: reading RhoAB from " // PathA)
+                              call io_text_read(RhoGuess(:, :, 1), PathA)
+                        end if
+                  case (SCF_GUESS_BINARY_FILE)
+                        if (NSpin == 2) then
+                              call msg("SCF guess: reading RhoA from " // PathA)
+                              call msg("SCF guess: reading RhoB from " // PathB)
+                              call io_binary_read(RhoGuess(:, :, 1), PathA)
+                              call io_binary_read(RhoGuess(:, :, 2), PathB)
+                        else
+                              call msg("SCF guess: reading RhoAB from " // PathA)
+                              call io_binary_read(RhoGuess(:, :, 1), PathA)
+                        end if
+                  case default
+                        call msg("Unsupported type of SCF guess", MSG_ERROR)
+                        stop
+                  end select
+                  sync images(*)
+                  Rho_cao = RhoGuess
+            else
+                  sync images(1)
+                  Rho_cao = RhoGuess(:, :, :)[1]
+            end if
+      end subroutine scf_RhoStart
+      
+
+      subroutine scf_TableHeader()
+            character(:), allocatable :: line, f1, f2, f3, f4, f5, f6, f7, f8
+            
+            f1 = lfield("#", 5)
+            f2 = cfield("Energy", 21)
+            f3 = lfield("EDiff", 9) 
+            f4 = lfield("RhoDiff", 9)
+            f5 = lfield("OrbGrad", 9)
+            f6 = lfield("OrbShift", 9)
+            f7 = lfield("NStored", 8)
+            f8 = lfield("Time", 9)
+            line = f1 // f2 // f3 // f4 // f5 // f6 // f7 // f8
+            call midrule(width=SCFRuleWidth)
+            call msg(line)
+            call midrule(width=SCFRuleWidth)
+      end subroutine scf_TableHeader
+
+
+      subroutine scf_TableRow(iter, Etot, EDiff, RhoDiff, OrbGrad, OrbShift, NStored, TimeIter, MicroIter)
+            integer, intent(in)   :: iter
+            real(F64), intent(in) :: Etot
+            real(F64), intent(in) :: EDiff
+            real(F64), intent(in) :: RhoDiff
+            real(F64), intent(in) :: OrbGrad
+            real(F64), intent(in) :: OrbShift
+            integer, intent(in)   :: NStored
+            real(F64), intent(in) :: TimeIter
+            logical, intent(in)   :: MicroIter
+            
+            character(:), allocatable :: line, f1, f7, f8
+            character(9) :: f3, f4, f5, f6
+            character(21) :: f2
+
+            if (MicroIter) then
+                  f1 = lfield(str(iter)//"*", 5)
+            else
+                  f1 = lfield(str(iter), 5)
+            end if
+            write(f2, fmt="(F20.10,1X)") Etot
+            if (iter == 0) then
+                  f3 = ""
+                  f4 = ""
+                  f5 = ""
+                  f6 = ""
+            else if (iter == 1) then
+                  !
+                  ! Don't show the energy difference between iterations 0 and 1.
+                  ! The energy in the 0th iteration might have been unphysically
+                  ! low because of the guess rho violating the idempotency
+                  ! and/or trace conditions.
+                  !
+                  f3 = ""
+                  write(f4, fmt="(ES8.1,1X)") RhoDiff
+                  f5 = ""
+                  f6 = ""
+            else
+                  write(f3, fmt="(ES8.1,1X)") EDiff
+                  write(f4, fmt="(ES8.1,1X)") RhoDiff
+                  write(f5, fmt="(ES8.1,1X)") OrbGrad
+                  write(f6, fmt="(ES8.1,1X)") OrbShift
+            end if
+            f7 = cfield(str(NStored), 8)
+            f8 = lfield(str(TimeIter, 1), 9)
+            line = f1 // f2 // f3 // f4 // f5 // f6 // f7 // f8
+            call msg(line)
+      end subroutine scf_TableRow
+
+
+      subroutine scf_XCInfo(XCModel)
+            type(TXCDef), intent(in) :: XCModel
+            
+            character(:), allocatable :: x, c
+            character(:), allocatable :: MethodClass
+            logical :: rs_hybrid
+            logical :: global_hybrid
+            logical :: screened_hybrid
+            logical :: metaGGA
+
+            if (xcf_get_id(XCModel) .ne. XCF_HF) then
+                  rs_hybrid = xcf_get_flag(XCModel, XCF_RSHYB)
+                  screened_hybrid = xcf_get_flag(XCModel, XCF_SCREENED_HYBRID)
+                  global_hybrid = (.not. rs_hybrid) .and. (abs(xcf_get_exx(XCModel)) > ZERO)
+                  metaGGA = xcf_get_flag(XCModel, XCF_XC_MGGA)
+
+                  if (rs_hybrid) then
+                        if (screened_hybrid) then
+                              MethodClass = "Screened hybrid "
+                        else
+                              MethodClass = "Long-range corrected hybrid "
+                        end if
+                  elseif (global_hybrid) then
+                        MethodClass = "Global hybrid "
+                  else
+                        MethodClass = "Pure semilocal "
+                  end if
+
+                  if (metaGGA) then
+                        MethodClass = MethodClass // "meta-generalized gradient approximation"
+                  else
+                        MethodClass = MethodClass // "generalized gradient approximation"
+                  end if
+
+                  call msg("Method class: " // MethodClass)
+                  if (rs_hybrid) then
+                        call msg("Omega: " // str(xcf_get_omega(XCModel), 4))
+                        call msg("Short-range HF exchange fraction: " // str(xcf_get_srexx(XCModel), 4))
+                        if (screened_hybrid) then
+                              call msg("Long-range exchange at a fully semilocal level")
+                        end if
+                  end if
+
+                  if (global_hybrid) then
+                        call msg("HF exchange fraction: " // str(xcf_get_exx(XCModel), 4))
+                  end if
+
+                  call xcf_xcstring(XCModel, x, c)
+                  if (x == c) then
+                        call msg("Exchange-correlation: " // x)
+                  else
+                        call msg("Exchange: " // x)
+                        call msg("Correlation: " // c)
+                  end if
+            else
+                  MethodClass = "Hartree-Fock"
+                  call msg("Exchange-correlation: " // MethodClass)
+            end if
+      end subroutine scf_XCInfo
+
+      
+      subroutine scf_CPUInfo()
+            integer :: NThreads, NImages
+            
+            !$omp parallel default(shared)
+            !$omp master
+            NThreads = 1
+            !$ NThreads = omp_get_num_threads()
+            !$omp end master
+            !$omp end parallel
+            NImages = num_images()
+            call msg("Replicated-data parallel SCF", underline=.true.)
+            call imsg("Processes", NImages)
+            call imsg("Threads/process", NThreads)
+      end subroutine scf_CPUInfo
+
+
+      subroutine scf_GridDiagnostic(diag, lmgga)
+            type(TGridDiag), intent(in) :: diag
+            logical, intent(in)         :: lmgga
+
+            call msg("Grid quality indicators evaluated at RhoConv")
+            call dmsg("Rho", diag%nel, fmt="F10.6")
+            call dmsg("Div(Rho)", diag%div, fmt="ES10.3")
+            if (lmgga) then
+                  call dmsg("Lapl(Rho)", diag%lap, fmt="ES10.3")
+            end if
+            call midrule()
+      end subroutine scf_GridDiagnostic
+
+
+      subroutine scf_OAOBasis(MOBasisVecsCart, MOBasisVecsSpher, S_cao, AOBasis, LinDepThresh)
+            !
+            ! Build the matrix of linearly-independent molecular-orbital (MO) vectors
+            ! in Cartesian and spherical bases.
+            !
+            ! The matrix of MO vectors serves as the transformation matrix from
+            ! the atomic orbital basis (AO) to ortogonalized orbital basis (OAO):
+            ! 1. The resulting orbitals are linear combinations of real spherical harmonics
+            !    or Cartesian AOs
+            ! 2. The linear dependencies are removed, i.e., the eigenvectors of the overlap
+            !    matrix corresponding to sk <= LinDepThresh are removed from the final basis set.
+            !
+            ! The number of columns of MOBasisVecs is the number of linearly independent
+            ! vectors of the OAO basis.
+            !
+            ! This subroutine assumes that the vectors of the Cartesian Gaussian AO basis
+            ! are normalized to unity.
+            !
+            ! Definitions
+            ! ------------
+            ! V Coao = Cao
+            ! V = W U s**(-1/2)
+            ! W = rectangular matrix of the transformation from Cartesian Gaussians
+            !     to spherical Gaussians
+            ! U = eigenvectors of the overlap matrix S in the spherical Gaussian basis.
+            !     The columns are the eigenvectors uk for which sk > LinDepThresh.
+            ! s**(-1/2) = square matrix with sk**(-1/2) on the diagonal.
+            !
+            ! How to do AO <-> OAO transformations
+            ! ------------------------------------
+            ! Transformation of the Kohn-Sham matrix:
+            ! Foao = V**T Fao V
+            ! Transformation of the density matrix:
+            ! Dao = V Doao V**T
+            ! Coao and Doao can be computed by diagonalization of Foao.
+            !
+            ! 1. Lopata, K. and Govind, N. J. Chem. Theory Comput. 7, 1344 (2011);
+            !    doi: 10.1021/ct200137z
+            !
+            real(F64), dimension(:, :), allocatable               :: MOBasisVecsCart[:]
+            real(F64), dimension(:, :), allocatable               :: MOBasisVecsSpher
+            real(F64), dimension(:, :), contiguous, intent(inout) :: S_cao
+            type(TAOBasis), intent(in)                            :: AOBasis
+            real(F64), intent(in)                                 :: LinDepThresh
+
+            real(F64) :: NormInt, NormFact
+            integer :: u, v
+            integer :: ss, s, l, p, p0, p1, q, m
+            integer :: Nexcl
+            integer, allocatable :: Noao[:]
+            integer :: lx, ly, lz
+            real(F64), dimension(:, :), allocatable :: w
+            real(F64), dimension(:), allocatable :: c_spher
+            real(F64), dimension(:, :), allocatable :: work_transf
+            real(F64), dimension(:, :), allocatable :: st
+            real(F64), dimension(:), allocatable :: eig
+            integer :: ThisImage
+
+            ThisImage = this_image()
+            associate (SpherAO => AOBasis%SpherAO, &
+                  NAOCart => AOBasis%NAOCart, &
+                  NAOSpher => AOBasis%NAOSpher, &
+                  NShells => AOBasis%NShells, &
+                  LmaxGTO => AOBasis%LmaxGTO, &
+                  ShellParamsIdx => AOBasis%ShellParamsIdx, &
+                  ShellMomentum => AOBasis%ShellMomentum, &
+                  ShellLocCart => AOBasis%ShellLocCart, &
+                  ShellLocSpher => AOBasis%ShellLocSpher, &
+                  NAngFuncCart => AOBasis%NAngFuncCart, &
+                  CartPolyX => AOBasis%CartPolyX, &
+                  CartPolyY => AOBasis%CartPolyY, &
+                  CartPolyZ => AOBasis%CartPolyZ, &
+                  NormFactorsCart => AOBasis%NormFactorsCart, &
+                  NormFactorsSpher => AOBasis%NormFactorsSpher &
+                  )
+                  allocate(Noao[*])
+                  if (SpherAO) then
+                        if (ThisImage == 1) then
+                              allocate(w(NAOCart, NAOSpher))
+                              allocate(c_spher(numxyz(LmaxGTO)))
+                              w = ZERO
+                              q = 1
+                              do ss = 1, NShells
+                                    s = ShellParamsIdx(ss)
+                                    l = ShellMomentum(s)
+                                    p0 = ShellLocCart(ss)
+                                    p1 = ShellLocCart(ss) + NAngFuncCart(s) - 1
+                                    do m = -l, l
+                                          call rshu(c_spher, l, m)
+                                          do p = p0, p1
+                                                lx = CartPolyX(p - p0 + 1, l)
+                                                ly = CartPolyY(p - p0 + 1, l)
+                                                lz = CartPolyZ(p - p0 + 1, l)
+                                                !
+                                                ! Dividing by NormFactorsCart cancels out the LMN-dependent
+                                                ! normalization of the AO basis functions.
+                                                ! (The LMN dependence means that the normalization
+                                                ! factor of a Cartesian Gaussian function is different for every
+                                                ! angular function X**l Y**m Z**n.)
+                                                ! Then the transformation proceeds identically as for
+                                                ! uncontracted primitives without any LMN-dependent normalization.
+                                                !
+                                                w(p, q) = c_spher(lxlylzpos(lx, ly, lz)) / NormFactorsCart(p-p0+1, s)
+                                          end do
+                                          !
+                                          ! Compute the normalization integral to properly normalize solid harmonic
+                                          ! orbitals to unity. This is important becase the threshold for linear
+                                          ! dependencies implicitly assumes normalized orbitals.
+                                          !
+                                          NormInt = ZERO
+                                          do u = p0, p1
+                                                do v = p0, p1
+                                                      NormInt = NormInt + w(u, q) * S_cao(u, v) * w(v, q)
+                                                end do
+                                          end do
+                                          NormFact = ONE / Sqrt(NormInt)
+                                          w(p0:p1, q) = NormFact * w(p0:p1, q)
+                                          q = q + 1
+                                    end do
+                              end do
+                              !
+                              ! Transform the overlap matrix to the spherical basis
+                              ! and compute the eigenvalues and eigenvectors
+                              !
+                              allocate(work_transf(NAOSpher, NAOCart))
+                              allocate(st(NAOSpher, NAOSpher))
+                              call real_aTba(st, w, S_cao, work_transf)
+                              allocate(eig(NAOSpher))
+                              call symmetric_eigenproblem(eig, st, NAOSpher, .true.)
+                              !
+                              ! Find the number of eigenvectors corresponding to small eigenvalues
+                              ! of the overlap matrix. Note that the eigenvalues are arranged in
+                              ! increasing order.
+                              !
+                              Nexcl = 0
+                              do p = 1, NAOSpher
+                                    if (eig(p) <= LinDepThresh) then
+                                          Nexcl = Nexcl + 1
+                                    else
+                                          st(:, p) = st(:, p) / sqrt(eig(p))
+                                    end if
+                              end do
+                              Noao = NAOSpher - Nexcl
+                              sync images(*)
+                              call midrule()
+                              call msg("Spherical harmonic basis contains " // str(NAOSpher) // " vectors")
+                              call msg("Linear independence thresh: Eig(S) > " // str(LinDepThresh, d=1))
+                        else
+                              sync images(1)
+                              Noao = Noao[1]
+                        end if
+                        !
+                        ! MOBasisVecsCart <- W (U s**(-1/2))
+                        !
+                        allocate(MOBasisVecsCart(NAOCart, Noao)[*])
+                        if (ThisImage == 1) then
+                              call real_ab(MOBasisVecsCart, w, st(:, Nexcl+1:Nexcl+Noao))
+                              sync images(*)
+                        else
+                              sync images(1)
+                              MOBasisVecsCart(:, :) = MOBasisVecsCart(:, :)[1]
+                        end if
+                        allocate(MOBasisVecsSpher(NAOSpher, Noao))
+                        call SpherGTO_TransformVectors(MOBasisVecsSpher, MOBasisVecsCart, LmaxGTO, NormFactorsSpher, &
+                              NormFactorsCart, ShellLocSpher, ShellLocCart, ShellMomentum, ShellParamsIdx, &
+                              NAOSpher, NAOCart, NShells, Noao)
+                  else
+                        if (ThisImage == 1) then
+                              allocate(eig(NAOCart))
+                              call symmetric_eigenproblem(eig, S_cao, NAOCart, .true.)
+                              Nexcl = 0
+                              do p = 1, NAOCart
+                                    if (eig(p) <= LinDepThresh) then
+                                          Nexcl = Nexcl + 1
+                                    else
+                                          S_cao(:, p) = S_cao(:, p) / sqrt(eig(p))
+                                    end if
+                              end do
+                              Noao = NAOCart - Nexcl
+                              sync images(*)
+                        else
+                              sync images(1)
+                              Noao = Noao[1]
+                        end if
+                        allocate(MOBasisVecsCart(NAOCart, Noao)[*])
+                        allocate(MOBasisVecsSpher(1, 1))
+                        if (ThisImage == 1) then
+                              MOBasisVecsCart = S_cao(:, Nexcl+1:Nexcl+Noao)
+                              sync images(*)
+                        else
+                              sync images(1)
+                              MOBasisVecsCart = MOBasisVecsCart(:, :)[1]
+                        end if
+                        if (ThisImage == 1) then
+                              call midrule()
+                              call msg("Cartesian basis contains " // str(NAOCart) // " vectors")
+                        end if
+                  end if
+                  if (ThisImage == 1) then
+                        if (Nexcl > 0) then
+                              call msg("Removed " // str(Nexcl) // " vectors to make MOs non-redundant")
+                        end if
+                        call msg("Computations will be carried out in the space of " // str(Noao) // " MOs")
+                  end if
+            end associate
+      end subroutine scf_OAOBasis
+
+
+      subroutine scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
+            integer, intent(out)       :: DimTxc
+            integer, intent(out)       :: DimJK
+            integer, intent(out)       :: DimRho1D
+            integer, intent(out)       :: NThreads
+            type(TAOBasis), intent(in) :: AOBasis
+
+            !$omp parallel default(shared)
+            !$omp master
+            NThreads = 1
+            !$ NThreads = omp_get_num_threads()
+            !$omp end master
+            !$omp end parallel
+            call fock_BufferDim(DimJK, DimRho1D, AOBasis)
+            call ks_BufferDim(DimTxc, AOBasis)
+      end subroutine scf_BufferDim
+      
+      
+      subroutine scf_F_RealRho(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, K, J, Rho1D, &
+            QuartetFlags, QuartetLoc, xcmodel, Rho_cao, Rho_sao, Hbare_cao, AUXIn, AOBasis, ThreshFockJK)
+            real(F64), dimension(:, :, :), intent(out)             :: F_cao[*]
+            real(F64), dimension(:, :, :), intent(out)             :: F_sao
+            real(F64), intent(out)                                 :: Eel
+            real(F64), intent(out)                                 :: ExcDFT
+            type(TGridDiag), intent(out)                           :: diag
+            real(F64), dimension(:), intent(out)                   :: AUXOut
+            real(F64), dimension(:, :, :), intent(out)             :: Txc
+            real(F64), dimension(:), intent(out)                   :: K[*]
+            real(F64), dimension(:), intent(out)                   :: J[*]
+            real(F64), dimension(:), intent(out)                   :: Rho1D
+            integer, dimension(:, :), intent(out)                  :: QuartetFlags
+            integer, dimension(:, :), intent(out)                  :: QuartetLoc
+            type(txcdef), intent(in)                               :: xcmodel
+            real(F64), dimension(:, :, :), intent(in)              :: Rho_cao
+            real(F64), dimension(:, :, :), intent(in)              :: Rho_sao
+            real(F64), dimension(:, :), intent(in)                 :: Hbare_cao
+            real(F64), dimension(:, :), intent(in)                  :: AUXIn
+            type(TAOBasis), intent(in)                             :: AOBasis
+            real(F64), intent(in)                                  :: ThreshFockJK
+            
+            real(F64) :: Omega
+            real(F64) :: KFrac
+            integer :: NSpins, s
+            real(F64) :: EHbare, EHFTwoEl
+            logical :: LCExchange, BareH, SpinUnres, SHExchange
+            logical :: ExchContrib, CoulContrib, AntisymRho
+            integer :: ThisImage
+
+            ThisImage = this_image()
+            F_cao = ZERO
+            F_sao = ZERO
+            SHExchange = xcf_get_flag(xcmodel, XCF_SCREENED_HYBRID)
+            LCExchange = xcf_get_flag(xcmodel, XCF_RSHYB)
+            NSpins = size(Rho_cao, dim=3)
+            SpinUnres = (NSpins > 1)
+            if (LCExchange .or. SHExchange) then
+                  Omega = xcf_get_omega(xcmodel)
+                  if (Omega < ZERO) then
+                        call dmsg("Invalid value of the range-separation parameter", &
+                              xcf_get_omega(xcmodel), priority=MSG_ERROR)
+                        error stop
+                  end if
+                  KFrac = xcf_get_srexx(xcmodel)
+            else
+                  Omega = -ONE
+                  KFrac = xcf_get_exx(xcmodel)
+            end if
+            ExchContrib = (abs(KFrac) > ZERO .or. LCExchange .or. SHExchange)
+            AntisymRho = .false.
+            CoulContrib = xcf_get_flag(xcmodel, XCF_HARTREE)
+            BareH = xcf_get_flag(xcmodel, XCF_BAREH)
+            if (xcf_numint(xcmodel)) then
+                  call ks_Vxc(F_cao, ExcDFT, diag, AuxOut, Txc, Rho_cao, xcmodel, AUXIn, AOBasis)
+            else
+                  ExcDFT = ZERO
+            end if
+            !
+            ! Hartree-Fock exchange and Coulomb components of the Kohn-Sham hamiltonian
+            !
+            if (AOBasis%SpherAO) then
+                  call fock_JK(EHFTwoEl, F_sao, K, J, Rho1D, QuartetFlags, QuartetLoc, &
+                        Rho_sao, AOBasis, ExchContrib, KFrac, &
+                        AntisymRho, LCExchange, SHExchange, Omega, CoulContrib, ThreshFockJK)
+            else
+                  call fock_JK(EHFTwoEl, F_cao, K, J, Rho1D, QuartetFlags, QuartetLoc, &
+                        Rho_cao, AOBasis, ExchContrib, KFrac, &
+                        AntisymRho, LCExchange, SHExchange, Omega, CoulContrib, ThreshFockJK)
+            end if
+            if (BareH) then
+                  EHbare = ZERO
+                  do s = 1, NSpins
+                        EHbare = EHbare + fock_RhoTrace(Rho_cao(:, :, s), Hbare_cao)
+                        F_cao(:, :, s) = F_cao(:, :, s) + Hbare_cao
+                  end do
+            else
+                  EHbare = ZERO
+            end if
+            Eel = EHbare + EHFTwoEl + ExcDFT
+      end subroutine scf_F_RealRho
+
+
+      function scf_RhoDiff(RhoK, RhoN)
+            real(F64) :: scf_RhoDiff
+            real(F64), dimension(:, :, :), intent(in) :: RhoK
+            real(F64), dimension(:, :, :), intent(in) :: RhoN
+
+            integer :: m, n, p, q, NSpin, s
+            real(F64) :: t, w
+
+            m = size(RhoK, dim=1)
+            n = size(RhoK, dim=2)
+            NSpin = size(RhoK, dim=3)
+            t = ZERO
+            do s = 1, NSpin
+                  do q = 1, n
+                        do p = 1, m
+                              w = abs(RhoK(p, q, s) - RhoN(p, q, s))
+                              t = max(t, w)
+                        end do
+                  end do
+            end do
+            scf_RhoDiff = t
+      end function scf_RhoDiff
+
+
+      subroutine scf_TransformF(F_oao, F_cao, F_sao, BasisVecs_cao, BasisVecs_sao, &
+            Noao, NAOCart, NAOSpher, SpherAO, TransfWork)
+            !
+            ! Transform the Fock/Kohn-Sham matrix from the AO to the OAO basis
+            !
+            real(F64), dimension(:, :), intent(out)         :: F_oao
+            real(F64), dimension(:, :), intent(inout)       :: F_cao
+            real(F64), dimension(:, :), intent(inout)       :: F_sao
+            real(F64), dimension(:, :), intent(in)          :: BasisVecs_cao
+            real(F64), dimension(:, :), intent(in)          :: BasisVecs_sao
+            integer, intent(in)                             :: Noao
+            integer, intent(in)                             :: NAOCart
+            integer, intent(in)                             :: NAOSpher
+            logical, intent(in)                             :: SpherAO
+            real(F64), dimension(NAOCart*Noao), intent(out) :: TransfWork
+            
+            call smfill(F_cao)
+            call real_aTb_x_F64(TransfWork, Noao, BasisVecs_cao, NAOCart, F_cao, NAOCart, &
+                  Noao, NAOCart, NAOCart, ONE, ZERO)
+            call real_ab_x_F64(F_oao, Noao, TransfWork, Noao, BasisVecs_cao, NAOCart, &
+                  Noao, Noao, NAOCart, ONE, ZERO)
+            if (SpherAO) then
+                  call smfill(F_sao)
+                  call real_aTb_x_F64(TransfWork, Noao, BasisVecs_sao, NAOSpher, F_sao, NAOSpher, &
+                        Noao, NAOSpher, NAOSpher, ONE, ZERO)
+                  call real_ab_x_F64(F_oao, Noao, TransfWork, Noao, BasisVecs_sao, NAOSpher, &
+                        Noao, Noao, NAOSpher, ONE, ONE)
+            end if
+      end subroutine scf_TransformF
+
+
+      subroutine scf_Rho(D_oao, Rho_cao, Rho_sao, Cocc_oao, BasisVecs_cao, BasisVecs_sao, &
+            NOcc, Noao, NAOCart, NAOSpher, SpherAO, SpinUnres, OccNumber, TransfWork)
+            real(F64), dimension(:, :), intent(out)         :: D_oao
+            real(F64), dimension(:, :), intent(out)         :: Rho_cao
+            real(F64), dimension(:, :), intent(out)         :: Rho_sao
+            real(F64), dimension(:, :), intent(in)          :: Cocc_oao
+            real(F64), dimension(:, :), intent(in)          :: BasisVecs_cao
+            real(F64), dimension(:, :), intent(in)          :: BasisVecs_sao
+            integer, intent(in)                             :: NOcc
+            integer, intent(in)                             :: Noao
+            integer, intent(in)                             :: NAOCart
+            integer, intent(in)                             :: NAOSpher
+            logical, intent(in)                             :: SpherAO
+            logical, intent(in)                             :: SpinUnres
+            real(F64), intent(in)                           :: OccNumber
+            real(F64), dimension(NAOCart*NOcc), intent(out) :: TransfWork
+
+            if (this_image() == 1) then
+                  call real_abT_x_F64(D_oao, Noao, Cocc_oao, Noao, Cocc_oao, Noao, Noao, Noao, NOcc)
+            end if
+            call real_ab_x_F64(TransfWork, NAOCart, BasisVecs_cao, NAOCart, Cocc_oao, Noao, &
+                  NAOCart, NOcc, Noao)
+            call real_abT_x_F64(Rho_cao, NAOCart, TransfWork, NAOCart, TransfWork, NAOCart, &
+                  NAOCart, NAOCart, NOcc)
+            if (.not. SpinUnres) Rho_cao = OccNumber * Rho_cao
+            if (SpherAO) then
+                  call real_ab_x_F64(TransfWork, NAOSpher, BasisVecs_sao, NAOSpher, Cocc_oao, Noao, &
+                        NAOSpher, NOcc, Noao)
+                  call real_abT_x_F64(Rho_sao, NAOSpher, TransfWork, NAOSpher, TransfWork, NAOSpher, &
+                        NAOSpher, NAOSpher, NOcc)
+                  if (.not. SpinUnres) Rho_sao = OccNumber * Rho_sao
+            end if
+      end subroutine scf_Rho
+      
+      
+      subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
+            Noao, Ehomo, Elumo, Hbare_cao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
+            XCModel, NonSCF, NOcc, LinDepThresh, Enucl, MaxRhoDiff, MaxOrbGrad, MaxNIters, &
+            ThreshFockJK, AUXIn, AOBasis)
+            !
+            ! Main loop of the spin-unrestricted self-consistent field KS/DFT computations
+            !
+            real(F64), dimension(:, :, :), intent(inout)              :: Rho_cao
+            real(F64), dimension(:, :), allocatable, intent(out)      :: OrbEnergies
+            logical, intent(out)                                      :: Converged
+            real(F64), intent(out)                                    :: EtotDFT
+            real(F64), intent(out)                                    :: EelDFT
+            real(F64), intent(out)                                    :: ExcDFT
+            integer, intent(out)                                      :: Noao
+            real(F64), intent(out)                                    :: Ehomo
+            real(F64), intent(out)                                    :: Elumo
+            real(F64), dimension(:, :), allocatable, intent(out)      :: Hbare_cao
+            real(F64), dimension(:, :, :), allocatable, intent(out)   :: C_oao
+            real(F64), dimension(:, :), allocatable, intent(out)      :: MOBasisVecsCart
+            real(F64), dimension(:, :), allocatable, intent(out)      :: MOBasisVecsSpher
+            integer, dimension(2), intent(out)                        :: NVirt
+            real(F64), dimension(:), intent(out)                      :: AUXOut
+            type(txcdef), intent(in)                                  :: XCModel
+            type(txcdef), intent(in)                                  :: NonSCF
+            integer, dimension(2), intent(in)                         :: NOcc
+            real(F64), intent(in)                                     :: LinDepThresh
+            real(F64), intent(in)                                     :: Enucl
+            real(F64), intent(in)                                     :: MaxRhoDiff
+            real(F64), intent(in)                                     :: MaxOrbGrad
+            integer, intent(in)                                       :: MaxNIters
+            real(F64), intent(in)                                     :: ThreshFockJK
+            real(F64), dimension(:, :), intent(in)                    :: AUXIn
+            type(TAOBasis), intent(in)                                :: AOBasis
+
+            type(TGridDiag) :: gdiag
+            real(F64), dimension(:, :, :), allocatable :: RhoK_cao, Dn_oao, Ck_oao
+            real(F64), dimension(:, :), allocatable :: Eigenvals[:], BasisVecs_cao[:]
+            real(F64), dimension(:, :), allocatable :: BasisVecs_sao
+            real(F64), dimension(:, :, :), allocatable :: Fn_oao[:], Cn_oao[:]
+            real(F64), dimension(:, :, :), allocatable :: Fn_cao[:], RhoN_cao, Fn_sao, RhoN_sao
+            real(F64), dimension(:, :), allocatable :: S_cao, Ts_cao, Vne_cao
+            real(F64), dimension(:), allocatable :: TransfWork
+            integer :: NSpins, NVirtA, NVirtB
+            integer :: NOccA, NOccB
+            logical :: SpherAO
+            integer :: NAOCart, NAOSpher
+            real(F64) :: RhoDiff, EDiff, OrbGrad, OrbShift
+            real(F64) :: EtotN, EtotK, EelN, EelK, ExcN, ExcK
+            type(uarhdata) :: arh_data
+            integer :: NIters, NMicroIters, NStored, s
+            logical :: AcceptAllCn
+            logical, allocatable :: ConvConds[:], DoMicroIters[:], DoMacroIters[:]
+            type(tclock) :: t_iter, t_total
+            real(F64) :: TimeIter
+            integer, parameter :: MaxNMicroIters = 10
+            real(F64), parameter :: MinOrbGrad = SCF_DISABLE_ARH_SHIFT_UNPOLAR
+            real(F64) :: OccNumber
+            logical :: SpinUnres
+            integer, dimension(2) :: OccRangeA, OccRangeB, VirtRangeA, VirtRangeB
+            integer :: DimTxc, DimJK, DimRho1D
+            real(F64), dimension(:, :, :), allocatable :: BufferTxc
+            integer, dimension(:, :), allocatable :: BufferQuartetFlags
+            integer, dimension(:, :), allocatable :: BufferQuartetLoc
+            real(F64), dimension(:), allocatable :: BufferK[:], BufferJ[:]
+            real(F64), dimension(:), allocatable :: BufferRho1D
+            real(F64) :: memoryTxc, memoryJK, memoryRho1D, memoryQuartetIdx
+            integer :: ThisImage, NThreads
+
+            ThisImage = this_image()
+            SpherAO = AOBasis%SpherAO
+            NAOCart = AOBasis%NAOCart
+            NAOSpher = AOBasis%NAOSpher
+            NOccA = NOcc(1)
+            NOccB = NOcc(2)
+            if (NOccA == NOccB) then
+                  SpinUnres = .false.
+                  NSpins = 1
+                  OccNumber = TWO
+                  call msg("Starting self-consistent field iterations (spin-restricted singlet)")
+            else
+                  SpinUnres = .true.
+                  NSpins = 2
+                  OccNumber = ONE
+                  call msg("Starting self-consistent field iterations (spin-unrestricted)")
+                  call msg("Number of unpaired alpha spins: " // str(NOccA-NOccB))
+            end if
+            call scf_XCInfo(XCModel)
+            call midrule()
+            call scf_CPUInfo()
+            if (xcf_numint(XCModel)) call gridsummary(GRD_QUALITY_NORMAL, GRD_PRUNE_NORMAL)
+            call clock_start(t_total)
+            call clock_start(t_iter)
+            call scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
+            allocate(BufferK(DimJK)[*])
+            allocate(BufferJ(DimJK)[*])
+            allocate(BufferRho1D(DimRho1D))
+            allocate(BufferTxc(DimTxc, NSpins, NThreads))
+            allocate(BufferQuartetFlags(FOCK_MAX_BLOCK_DIM**4, NThreads))
+            allocate(BufferQuartetLoc(FOCK_MAX_BLOCK_DIM**4, NThreads))
+            memoryJK = real(storage_size(BufferK,kind=I64) * &
+                  (size(BufferK,kind=I64)+size(BufferJ,kind=I64)), kind=F64) &
+                  / real(8 * 1024 * 1024 * 1024, kind=F64)
+            memoryTxc = real(storage_size(BufferTxc,kind=I64) * &
+                  size(BufferTxc,kind=I64), kind=F64) &
+                  / real(8 * 1024 * 1024 * 1024, kind=F64)
+            memoryRho1D = real(storage_size(BufferRho1D,kind=I64) * &
+                  size(BufferRho1D,kind=I64),kind=F64) &
+                  / real(8 * 1024 * 1024 * 1024, kind=F64)
+            memoryQuartetIdx = real(storage_size(BufferQuartetFlags,kind=I64) * &
+                  (size(BufferQuartetFlags,kind=I64)+size(BufferQuartetLoc,kind=I64)),kind=F64) &
+                  / real(8 * 1024 * 1024 * 1024, kind=F64)
+            call msg("Allocated " // str(memoryJK+memoryTxc+memoryRho1D+memoryQuartetIdx, d=1) // " GiB of scratch space for the KS matrix build")
+            allocate(S_cao(NAOCart, NAOCart))
+            allocate(Ts_cao(NAOCart, NAOCart))
+            allocate(Vne_cao(NAOCart, NAOCart))
+            allocate(Hbare_cao(NAOCart, NAOCart))
+            !
+            ! One-electron integrals: overlap, kinetic,
+            ! and nuclei-electron attraction
+            !
+            call stv(S_cao, Ts_cao, Vne_cao)
+            !
+            ! Add effective core potential to
+            ! the nuclei-electrons potential
+            !
+            call pseudopot(Vne_cao)
+            Hbare_cao = Ts_cao + Vne_cao
+            !
+            ! Compute the orthogonal basis vectors.
+            ! Remove linear dependencies and transform vectors
+            ! to the solid harmonic basis.
+            !
+            call smfill(S_cao)
+            call scf_OAOBasis(BasisVecs_cao, BasisVecs_sao, S_cao, AOBasis, LinDepThresh)
+            call msg("Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > " // str(ThreshFockJK,d=1))
+            !
+            ! Dimension of the orthogonal linearly-independent basis.
+            ! Takes into account the transformation to the spherical
+            ! harmonics basis.
+            !
+            Noao = size(BasisVecs_cao, dim=2)
+            NVirtA = Noao - NOccA
+            NVirtB = Noao - NOccB
+            NVirt = [NVirtA, NVirtB]
+            allocate(DoMicroIters[*])
+            allocate(DoMacroIters[*])
+            allocate(ConvConds[*])
+            allocate(Eigenvals(Noao, NSpins)[*])
+            allocate(Fn_oao(Noao, Noao, NSpins)[*])
+            allocate(RhoN_cao(NAOCart, NAOCart, NSpins))
+            if (SpherAO) then
+                  allocate(RhoN_sao(NAOSpher, NAOSpher, NSpins))
+                  allocate(Fn_sao(NAOSpher, NAOSpher, NSpins))
+            else
+                  allocate(RhoN_sao(1, 1, 1))
+                  allocate(Fn_sao(1, 1, 1))
+            end if
+            allocate(Fn_cao(NAOCart, NAOCart, NSpins)[*])
+            allocate(Cn_oao(Noao, Noao, NSpins)[*])
+            allocate(RhoK_cao(NAOCart, NAOCart, NSpins))
+            if (SpherAO) then
+                  allocate(TransfWork(NAOSpher*NAOCart))
+            else
+                  allocate(TransfWork(Noao*NAOCart))
+            end if
+            if (ThisImage == 1) then
+                  allocate(Ck_oao(Noao, Noao, NSpins))
+                  allocate(Dn_oao(Noao, Noao, NSpins))
+            else
+                  allocate(Dn_oao(1, 1, 1))
+            end if
+            RhoK_cao = Rho_cao
+            if (SpherAO) then
+                  do s = 1, NSpins
+                        call SpherGTO_TransformMatrix(RhoN_sao(:, :, s), RhoK_cao(:, :, s), &
+                              AOBasis%LmaxGTO, &
+                              AOBasis%NormFactorsSpher, &
+                              AOBasis%NormFactorsCart, &
+                              AOBasis%ShellLocSpher, &
+                              AOBasis%ShellLocCart, &
+                              AOBasis%ShellMomentum, &
+                              AOBasis%ShellParamsIdx, &
+                              AOBasis%NAOSpher, &
+                              AOBasis%NAOCart, &
+                              AOBasis%NShells, TransfWork)
+                  end do
+            end if
+            ! --------------------------------------------------------------------
+            !    Compute the initial Kohn-Sham/Fock matrix Fk := F(RhoK)
+            !    from the guess AO density matrix. Diagonalize Fk to get the
+            !    initial set of MO vectors in the OAO basis (Cn_oao).
+            ! --------------------------------------------------------------------
+            call scf_F_RealRho(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, &
+                  BufferTxc, BufferK, BufferJ, BufferRho1D, BufferQuartetFlags, BufferQuartetLoc, &
+                  XCModel, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, ThreshFockJK)
+            EtotK = EelK + Enucl
+            do s = 1, NSpins
+                  if (ThisImage == 1) then
+                        call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
+                              BasisVecs_cao, BasisVecs_sao, Noao, NAOCart, NAOSpher, SpherAO, &
+                              TransfWork)
+                        Cn_oao(:, :, s) = Fn_oao(:, :, s)
+                        call symmetric_eigenproblem(Eigenvals(:, s), Cn_oao(:, :, s), Noao, .true.)
+                        sync images(*)
+                  else
+                        sync images(1)
+                        Cn_oao(:, 1:NOcc(s), s) = Cn_oao(:, 1:NOcc(s), s)[1]
+                  end if
+                  call scf_Rho(Dn_oao(:, :, s), RhoN_cao(:, :, s), RhoN_sao(:, :, s), &
+                        Cn_oao(:, 1:NOcc(s), s), BasisVecs_cao, BasisVecs_sao, &
+                        NOcc(s), Noao, NAOCart, NAOSpher, SpherAO, SpinUnres, OccNumber, &
+                        TransfWork)
+            end do
+            TimeIter = clock_readwall(t_iter)
+            call scf_TableHeader()
+            call scf_TableRow(0, EtotK, ZERO, ZERO, ZERO, ZERO, 0, TimeIter, .false.)
+            !
+            ! Initialize the data structure for the SCF algorithm.
+            !
+            if (ThisImage == 1) then
+                  OccRangeA = [1, NOccA]
+                  OccRangeB = [1, NOccB]
+                  VirtRangeA = [NOccA+1, NOccA+NVirtA]
+                  VirtRangeB = [NOccB+1, NOccB+NVirtB]
+                  call uarh_init(arh_data, OccNumber, OccRangeA, OccRangeB, VirtRangeA, &
+                        VirtRangeB, Noao, (SpinUnres.and.NOccB>0))
+            end if
+            ! --------------------------------------------------------------------
+            !     Build Fn := F(RhoN) to start the proper iterative process
+            ! --------------------------------------------------------------------
+            call clock_start(t_iter)
+            call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
+                  BufferTxc, BufferK, BufferJ, BufferRho1D, BufferQuartetFlags, BufferQuartetLoc, &
+                  XCModel, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, ThreshFockJK)
+            if (ThisImage == 1) then
+                  do s = 1, NSpins
+                        call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
+                              BasisVecs_cao, BasisVecs_sao, Noao, NAOCart, NAOSpher, SpherAO, &
+                              TransfWork)
+                  end do
+            end if
+            EtotN = EelN + Enucl
+            RhoDiff = scf_RhoDiff(RhoK_cao, RhoN_cao)
+            EDiff = EtotN - EtotK
+            TimeIter = clock_readwall(t_iter)
+            call scf_TableRow(1, EtotN, EDiff, RhoDiff, ZERO, ZERO, 0, TimeIter, .false.)
+            Ck_oao = Cn_oao
+            RhoK_cao = RhoN_cao
+            EtotK = EtotN
+            EelK = EelN
+            ExcK = ExcN
+            AcceptAllCn = .false.
+            ConvConds = .false.
+            DoMacroIters = .true.
+            NIters = 1
+            MacroIters: do while (DoMacroIters)
+                  NIters = NIters + 1
+                  NMicroIters = 0
+                  DoMicroIters = .true.
+                  MicroIters: do while (DoMicroIters)
+                        NMicroIters = NMicroIters + 1
+                        call clock_start(t_iter)
+                        !
+                        ! Compute updated molecular orbitals and density matrix
+                        !
+                        if (ThisImage == 1) then
+                              call uarh_NextIter(arh_data, Cn_oao, OrbGrad, OrbShift, NStored, Fn_oao, EelK, (NMicroiters>1))
+                              sync images(*)
+                        else
+                              sync images(1)
+                              do s = 1, NSpins
+                                    Cn_oao(:, 1:NOcc(s), s) = Cn_oao(:, 1:NOcc(s), s)[1]
+                              end do
+                        end if
+                        do s = 1, NSpins
+                              call scf_Rho(Dn_oao(:, :, s), RhoN_cao(:, :, s), RhoN_sao(:, :, s), &
+                                    Cn_oao(:, 1:NOcc(s), s), BasisVecs_cao, BasisVecs_sao, &
+                                    NOcc(s), Noao, NAOCart, NAOSpher, SpherAO, SpinUnres, OccNumber, &
+                                    TransfWork)
+                        end do
+                        !
+                        ! Use the new density matrix to compute the Kohn-Sham/Fock matrix
+                        !
+                        call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
+                              BufferTxc, BufferK, BufferJ, BufferRho1D, BufferQuartetFlags, BufferQuartetLoc, &
+                              XCModel, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, ThreshFockJK)
+                        EtotN = EelN + Enucl
+                        !
+                        ! Measures of convergence: max norm of the orbital gradient
+                        ! matrix, max difference between the old and new AO density
+                        ! matrices, and total energy difference
+                        !
+                        RhoDiff = scf_RhoDiff(RhoK_cao, RhoN_cao)
+                        EDiff = EtotN - EtotK
+                        if (ThisImage == 1) then
+                              if (OrbGrad >= MinOrbGrad) then
+                                    call uarh_TrustRadius(arh_data, EelN, EelK)
+                              else
+                                    !
+                                    ! During the final stages of the optimization
+                                    ! the trust radius isn't updated.
+                                    !
+                                    AcceptAllCn = .true.
+                                    call uarh_DisableShift(arh_data)
+                              end if
+                              if (EDiff < ZERO .or. NMicroIters > MaxNMicroIters .or. AcceptAllCn) then
+                                    DoMicroIters = .false.
+                              else
+                                    Cn_oao = Ck_oao
+                              end if
+                              sync images(*)
+                        else
+                              sync images(*)
+                              DoMicroIters = DoMicroIters[1]
+                        end if
+                        TimeIter = clock_readwall(t_iter)
+                        if (ThisImage == 1) then
+                              call scf_TableRow(NIters, EtotN, EDiff, RhoDiff, OrbGrad, &
+                                    abs(OrbShift), NStored, TimeIter, (NMicroIters>1))
+                        end if
+                  end do MicroIters
+                  if (ThisImage == 1) then
+                        do s = 1, NSpins
+                              call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
+                                    BasisVecs_cao, BasisVecs_sao, Noao, NAOCart, NAOSpher, SpherAO, &
+                                    TransfWork)
+                        end do
+                  end if
+                  EtotK = EtotN
+                  EelK = EelN
+                  ExcK = ExcN
+                  RhoK_cao = RhoN_cao
+                  if (ThisImage == 1) then
+                        Ck_oao = Cn_oao
+                        ConvConds = (RhoDiff < MaxRhoDiff .and. OrbGrad < MaxOrbGrad)
+                        if (ConvConds .or. NIters == MaxNIters) DoMacroIters = .false.
+                        sync images(*)
+                  else
+                        sync images(1)
+                        DoMacroIters = DoMacroIters[1]
+                  end if
+            end do MacroIters
+            if (ThisImage == 1) then
+                  Converged = ConvConds
+            else
+                  Converged = ConvConds[1]
+            end if
+            EtotDFT = EtotN
+            EelDFT = EelN
+            ExcDFT = ExcN
+            if (Converged) then
+                  call toprule(width=SCFRuleWidth)
+                  call msg("SCF converged")
+                  call dmsg("Converged energy", EtotDFT)
+                  call midrule(width=SCFRuleWidth)
+            else
+                  call toprule(width=SCFRuleWidth)
+                  call msg("SCF not converged")
+                  call dmsg("Energy (last iteration)", EtotDFT)
+                  call midrule(width=SCFRuleWidth)
+            end if
+            if (xcf_isgridxc(XCModel)) then
+                  call scf_GridDiagnostic(gdiag, xcf_ismgga(XCModel))
+            end if
+            !
+            ! Compute final set of orbitals, orbital energies,
+            ! and the density matrix
+            !
+            allocate(OrbEnergies(Noao, NSpins))
+            allocate(C_oao(Noao, Noao, NSpins))
+            allocate(MOBasisVecsCart(NAOCart, Noao))
+            Rho_cao = RhoN_cao
+            MOBasisVecsCart = BasisVecs_cao
+            call move_alloc(from=BasisVecs_sao, to=MOBasisVecsSpher)
+            if (ThisImage == 1) then
+                  do s = 1, NSpins
+                        call symmetric_eigenproblem(Eigenvals(:, s), Fn_oao(:, :, s), Noao, .true.)
+                  end do
+                  sync images(*)
+                  C_oao = Fn_oao
+                  OrbEnergies = Eigenvals
+            else
+                  sync images(1)
+                  C_oao = Fn_oao(:, :, :)[1]
+                  OrbEnergies = Eigenvals(:, :)[1]
+            end if
+            if (SpinUnres .and. NOccB > 0) then
+                  Elumo = min(OrbEnergies(NOccA+1, 1), OrbEnergies(NOccB+1, 2))
+                  Ehomo = max(OrbEnergies(NOccA, 1), OrbEnergies(NOccB, 2))
+            else
+                  Elumo = OrbEnergies(NOccA+1, 1)
+                  Ehomo = OrbEnergies(NOccA, 1)
+            end if
+            call dmsg("Ehomo [eV]", toev(Ehomo))
+            call dmsg("Elumo [eV]", toev(Elumo))
+            ! ----------------------------------------------------------------
+            ! Non-SCF exchange-correlation energy. Example:
+            ! semilocal DFT exchange-correlation energy computed with
+            ! a converged Hartree-Fock density
+            ! ----------------------------------------------------------------
+            if (xcf_get_id(NonSCF) /= XCF_XC_NONE) then
+                  call msg("Starting non-SCF DFT energy computation")
+                  call scf_XCInfo(NonSCF)
+                  call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
+                        BufferTxc, BufferK, BufferJ, BufferRho1D, BufferQuartetFlags, BufferQuartetLoc, &
+                        NonSCF, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, ThreshFockJK)
+                  EtotN = EelN + Enucl
+                  EtotDFT = EtotN
+                  EelDFT = EelN
+                  ExcDFT = ExcN
+                  call midrule(width=SCFRuleWidth)
+                  call scf_TableRow(0, EtotN, ZERO, ZERO, ZERO, ZERO, 0, TimeIter, .false.)
+                  call midrule(width=SCFRuleWidth)
+            end if
+            call uarh_free(arh_data)
+      end subroutine scf_ConvergeOrbitals
+
+
+      subroutine scf_driver_SpinUnres(SCFOutput, SCFParams, AOBasis)
+            !
+            ! Driver routine for spin-unrestricted SCF
+            !
+            type(TSCFOutput), intent(out) :: SCFOutput
+            type(TSCFParams), intent(in)  :: SCFParams
+            type(TAOBasis), intent(in)    :: AOBasis
+
+            type(txcdef) :: XCModel, NonSCF
+            real(F64) :: MaxRhoDiff, MaxOrbGrad, LinDepThresh
+            integer :: MaxNIters, NSpins
+            logical :: SpinUnres
+            integer :: ThisImage
+            character(:), allocatable :: GuessPathA, GuessPathB
+            character(:), allocatable :: SavePathA, SavePathB
+
+            ThisImage = this_image()
+            associate (AUXInt_Type1 => SCFParams%AUXInt_Type1, AUXInt_Type2 => SCFParams%AUXInt_Type2, &
+                  AUXIn => SCFParams%AUXIn, xcfunc => SCFParams%xcfunc, omega => SCFParams%omega, &
+                  srexx => SCFParams%srexx, non_scf_xcfunc => SCFParams%non_scf_xcfunc, &
+                  non_scf_omega => SCFParams%non_scf_omega, non_scf_srexx => SCFParams%non_scf_srexx, &
+                  guess_type => SCFParams%guess_type, save_rho_mode => SCFParams%save_rho_mode, &
+                  NOcc => SCFOutput%NOcc, NAOCart => AOBasis%NAOCart)
+                  !
+                  ! Number of alpha and beta occupied spin-orbitals
+                  !
+                  ! NOccA + NOccB = NE
+                  ! NOccA - NOccB = MULTIPLICITY - 1
+                  ! NOccA = (NE + MULTIPLICITY - 1) / 2
+                  ! NOccB = NE - NOccA
+                  !            
+                  NOcc(1) = (NE + MULTIPLICITY) / 2
+                  NOcc(2) = NE - NOcc(1)
+                  if (NOcc(1) == NOcc(2)) then
+                        NSpins = 1
+                        SpinUnres = .false.
+                  else
+                        NSpins = 2
+                        SpinUnres = .true.
+                  end if
+                  !
+                  ! Allocate space for auxiliary numerical integrals
+                  !
+                  allocate(SCFOutput%AUXOut(aux_arraydim(AUXInt_Type1, SpinUnres)))
+                  call xcf_define(XCModel, xcfunc, AUXInt_Type1, SpinUnres)
+                  call xcf_define(NonSCF, non_scf_xcfunc, AUX_NONE, SpinUnres)
+                  !
+                  ! Check if user defined non-default values for the range-separation
+                  ! parameter and/or fraction of the short-range HF exchange
+                  !
+                  if (.not. omega < ZERO) call xcf_set_omega(XCModel, omega)
+                  if (.not. srexx < ZERO) call xcf_set_srexx(XCModel, srexx)
+                  if (non_scf_xcfunc .ne. XCF_XC_NONE) then
+                        if (.not. non_scf_omega < ZERO) call xcf_set_omega(NonSCF, non_scf_omega)
+                        if (.not. non_scf_srexx < ZERO) call xcf_set_srexx(NonSCF, non_scf_srexx)
+                  end if
+                  !
+                  ! Convergence thresholds
+                  !
+                  if (SCF_THRESH_DENSITY < ZERO) then
+                        !
+                        ! There are different convergence thresholds for Hartree-Fock and DFT
+                        ! self-consistent field procedures because HF is often followed by
+                        ! a wave-function computation.
+                        !
+                        if (xcf_get_id(XCModel) == XCF_HF) then
+                              MaxRhoDiff = SCF_THRESH_DENSITY_DEFAULT_WF
+                        else
+                              MaxRhoDiff = SCF_THRESH_DENSITY_DEFAULT_DFT
+                        end if
+                  else
+                        MaxRhoDiff = SCF_THRESH_DENSITY
+                  end if
+                  if (SCF_THRESH_GRADIENT < ZERO) then
+                        MaxOrbGrad = SCF_THRESH_GRADIENT_DEFAULT
+                  else
+                        MaxOrbGrad = SCF_THRESH_GRADIENT
+                  end if
+                  LinDepThresh = LINDEP_THRESH
+                  MaxNIters = SCF_MAXIT
+                  SCFOutput%Enucl = nuclrep()
+                  GuessPathA = ""
+                  GuessPathB = ""
+                  if (allocated(SCFParams%guess_rhoa_path)) GuessPathA = SCFParams%guess_rhoa_path
+                  if (allocated(SCFParams%guess_rhob_path)) GuessPathB = SCFParams%guess_rhob_path
+                  allocate(SCFOutput%Rho_cao(NAOCart, NAOCart, NSpins))
+                  call scf_RhoStart(SCFOutput%Rho_cao, guess_type, GuessPathA, GuessPathB)
+                  ! ------------------------------------------------------------------------
+                  !                     MAIN SELF-CONSISTENT FIELD LOOP
+                  ! ------------------------------------------------------------------------
+                  call scf_ConvergeOrbitals( &
+                        SCFOutput%Rho_cao, &
+                        SCFOutput%OrbEnergies, &
+                        SCFOutput%Converged, &
+                        SCFOutput%EtotDFT, &
+                        SCFOutput%EelDFT, &
+                        SCFOutput%ExcDFT, &
+                        SCFOutput%Noao, &
+                        SCFOutput%Ehomo, &
+                        SCFOutput%Elumo, &
+                        SCFOutput%Hbare_cao, &
+                        SCFOutput%C_oao, &
+                        SCFOutput%MOBasisVecsCart, &
+                        SCFOutput%MOBasisVecsSpher, &
+                        SCFOutput%NVirt, &
+                        SCFOutput%AUXOut, &
+                        XCModel, NonSCF, &
+                        SCFOutput%NOcc, &
+                        LinDepThresh, &
+                        SCFOutput%Enucl, &
+                        MaxRhoDiff, MaxOrbGrad, MaxNIters, &
+                        SCFParams%ThreshFockJK, &
+                        AUXIn, AOBasis)
+                  SCFOutput%Nexcluded = NAOCart - SCFOutput%Noao
+                  ! ------------------------------------------------------------------------
+                  !                ADDITIONAL NUMERICAL INTEGRALS ON THE GRID
+                  ! ------------------------------------------------------------------------
+                  if ((AUXInt_Type1 .ne. AUX_NONE) .or. (AUXInt_Type2 .ne. AUX_NONE)) then
+                        if (ThisImage == 1) then
+                              call scf_AuxIntegrals(AUXInt_Type1, AUXInt_Type2, SCFOutput%AUXOut, &
+                                    SCFOutput%Rho_cao)
+                        end if
+                  end if
+                  if (DFT_DISP .ne. DISP_NONE) then
+                        ! ------------------------------------------------------------------------
+                        !                      POST-SCF DISPERSION CORRECTION
+                        ! ------------------------------------------------------------------------
+                        if (xcf_get_id(NonSCF) == XCF_XC_NONE) then
+                              call scf_DispersionCorrection(SCFOutput%EdispDFT, XCModel, SCFOutput%AUXOut)
+                        else
+                              call scf_DispersionCorrection(SCFOutput%EdispDFT, NonSCF, SCFOutput%AUXOut)
+                        end if
+                        SCFOutput%EtotDFT = SCFOutput%EtotDFT + SCFOutput%EdispDFT
+                        SCFOutput%EelDFT = SCFOutput%EtotDFT - SCFOutput%Enucl
+                        call midrule()
+                        call dmsg("Final energy (DFT+dispersion)", SCFOutput%EtotDFT)
+                  else
+                        SCFOutput%EdispDFT = ZERO
+                        call midrule()
+                        call dmsg("Final energy", SCFOutput%EtotDFT)
+                  end if
+                  ! -----------------------------------------------------------------------
+                  !                   SAVE CONVERGED DENSITY MATRIX
+                  ! -----------------------------------------------------------------------
+                  if (save_rho_mode .ne. FILEMODE_NONE) then
+                        SavePathA = ""
+                        SavePathB = ""
+                        if (allocated(SCFParams%save_rhoa_path)) SavePathA = SCFParams%save_rhoa_path
+                        if (allocated(SCFParams%save_rhob_path)) SavePathB = SCFParams%save_rhob_path
+                        call scf_SaveDensityFile(SCFOutput%Rho_cao, save_rho_mode, SavePathA, SavePathB)
+                  end if
+            end associate
+      end subroutine scf_driver_SpinUnres
+end module real_scf

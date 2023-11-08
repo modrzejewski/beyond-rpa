@@ -1,0 +1,1 @@
+ifort -qopenmp -O3 -no-prec-div -i8 -qmkl -coarray -warn all -I./obj/ -c 

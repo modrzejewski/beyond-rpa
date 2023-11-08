@@ -1,0 +1,58 @@
+module thc_definitions
+      use arithmetic
+
+      implicit none
+
+      type TCoulTHCGrid
+            !
+            ! Collocation matrix: X(g, p) = Phi_p(Xg, Yg, Zg)
+            ! where Phi_p is an AO orbital p evaluated at a grid point g.
+            !
+            ! g = 1, 2, ..., NGrid (number of grid points of the THC grid)
+            ! p = 1, 2, ..., NAO (number of atomic orbitals)
+            ! NGrid = size(Xgp, dim=1)
+            ! NAO = size(Xgp, dim=2)
+            !
+            ! The AO values stored in X correspond to spherically transformed
+            ! GTOs if a spherical basis is used.
+            !
+            real(F64), dimension(:, :), allocatable :: Xgp
+            !
+            ! 2-index renormalized Coulomb operator
+            ! -------------------------------------
+            ! Two-electron Coulomb integrals are reconstructed from
+            !
+            ! (pq|rs) = Sum(gh) X(g,p)*X(g,q)*Z(g,h)*X(h,r)*X(h,s)
+            ! g = 1, 2, ..., NGrid
+            ! h = 1, 2, ..., NGrid (number of grid points of the THC grid)            
+            !
+            ! The full matrix Z(g,h) is not stored. Instead, Z'(g,k) is
+            ! the factorized form with k corresponding to kth Cholesky
+            ! vector of the Coulomb matrix
+            !
+            ! Z(g,h) = Sum(k) Z'(g,k)*Z'(h,k)
+            ! k = 1, 2, ..., NCholesky
+            ! g = 1, 2, ..., NGrid
+            ! NCholesky = size(Zgk, dim=2)
+            ! NGrid = size(Zgk, dim=1)
+            !
+            ! In numerical tests NCholesky is several times smaller
+            ! than NGrid.
+            !
+            real(F64), dimension(:, :), allocatable :: Zgk
+            !
+            ! Transformed version of Z'(g,k) where the second
+            ! index is transformed to the basis in which the Pi(u)
+            ! matrix is represented in direct RPA (Eqs. 28 and 29 in Ref. 1)
+            ! 
+            ! ZPiU(g,k) = Z'(g,l)*G(l,k)
+            ! g = 1, 2, ..., NGrid
+            ! k = 1, 2, ..., NVecsPiU
+            !
+            ! 1. M. Modrzejewski, S. Yourdkhani, J. Klimes,
+            !    J. Chem. Theory Comput. 16, 427 (2020);
+            !    doi: 10.1021/acs.jctc.9b00979
+            !
+            real(F64), dimension(:, :), allocatable :: ZgkPiU
+      end type TCoulTHCGrid
+end module thc_definitions

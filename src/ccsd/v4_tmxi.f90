@@ -1,0 +1,87 @@
+module v4_tmxi
+
+    use cc3_intermediates
+    use s_gen
+    use basis
+    
+    implicit none
+    !
+    ! File generated automatcally on 2012-08-27 13:52:54
+    !
+    contains
+    
+    function v4_tmxi_aibjck(Obs, t2, nocc, nactive, a,i,b,j,c,k) 
+    double precision :: v4_tmxi_aibjck
+    double precision, dimension(:,:) :: Obs
+integer, intent(in) :: nocc, nactive
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    integer, intent(in) :: a,i,b,j,c,k 
+    integer :: s ,d,l 
+    double precision, dimension(0:23) :: term 
+    term = 0.d+0 
+    do d = nocc + 1, nactive 
+term(0) = term(0) + t3(nocc, nactive, a,b,d,i,j,k) * Obs(c, d)
+term(1) = term(1) + t3(nocc, nactive, a,c,d,i,k,j) * Obs(b, d)
+term(2) = term(2) + t3(nocc, nactive, a,b,d,j,k,i) * Obs(c, d)
+term(3) = term(3) + t3(nocc, nactive, a,c,d,j,i,k) * Obs(b, d)
+term(4) = term(4) + t3(nocc, nactive, b,c,d,j,k,i) * Obs(a, d)
+term(5) = term(5) + t3(nocc, nactive, b,c,d,k,i,j) * Obs(a, d)
+end do 
+
+term(2) = -term(2) 
+term(3) = -term(3) 
+term(5) = -term(5) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+term(6) = term(6) + t2(a,d,i,k) * t2(b,c,j,l) * Obs(d, l)
+term(7) = term(7) + t2(a,d,j,i) * t2(b,c,k,l) * Obs(d, l)
+term(8) = term(8) + t2(a,c,i,l) * t2(b,d,j,k) * Obs(d, l)
+term(9) = term(9) + t2(a,c,j,l) * t2(b,d,k,i) * Obs(d, l)
+term(10) = term(10) + t2(a,b,j,l) * t2(c,d,i,k) * Obs(d, l)
+term(11) = term(11) + t2(a,b,i,l) * t2(c,d,k,j) * Obs(d, l)
+end do 
+end do 
+
+term(6) = -term(6) 
+term(8) = -term(8) 
+term(11) = -term(11) 
+
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+term(12) = term(12) + t2(a,d,i,j) * t2(b,c,l,k) * Obs(d, l)
+term(13) = term(13) + t2(a,d,j,k) * t2(b,c,l,i) * Obs(d, l)
+term(14) = term(14) + t2(a,c,l,k) * t2(b,d,j,i) * Obs(d, l)
+term(15) = term(15) + t2(a,b,l,j) * t2(c,d,k,i) * Obs(d, l)
+term(16) = term(16) + t2(a,c,l,i) * t2(b,d,k,j) * Obs(d, l)
+term(17) = term(17) + t2(a,b,l,k) * t2(c,d,i,j) * Obs(d, l)
+end do 
+end do 
+
+term(12) = -term(12) 
+term(14) = -term(14) 
+term(15) = -term(15) 
+
+do l = 1, nocc 
+term(18) = term(18) + t3(nocc, nactive, a,b,c,i,j,l) * Obs(k, l)
+term(19) = term(19) + t3(nocc, nactive, a,b,c,i,l,k) * Obs(j, l)
+term(20) = term(20) + t3(nocc, nactive, a,b,c,j,k,l) * Obs(i, l)
+term(21) = term(21) + t3(nocc, nactive, a,b,c,j,l,i) * Obs(k, l)
+term(22) = term(22) + t3(nocc, nactive, a,b,c,l,j,k) * Obs(i, l)
+term(23) = term(23) + t3(nocc, nactive, a,b,c,l,k,i) * Obs(j, l)
+end do 
+
+term(18) = -term(18) 
+term(19) = -term(19) 
+term(22) = -term(22) 
+
+
+    v4_tmxi_aibjck = 0.d+0 
+    do s = 0, 23
+    v4_tmxi_aibjck = v4_tmxi_aibjck + term(s)
+    end do
+
+    end function v4_tmxi_aibjck
+    
+    end module v4_tmxi
+    

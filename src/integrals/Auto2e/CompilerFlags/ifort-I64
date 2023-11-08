@@ -1,0 +1,1 @@
+ifort -qopenmp -O3 -xHost -no-prec-div -i8 -mkl -warn all -c

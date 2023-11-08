@@ -1,0 +1,1 @@
+ifort -O3  -xHost -no-prec-div -i8 -qopenmp -qmkl -coarray -o

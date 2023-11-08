@@ -1,0 +1,1044 @@
+module tmga
+
+    use ccsd_transformed_integrals
+    use cc3_intermediates
+    use s_gen
+    use basis
+    
+    implicit none
+    !
+    ! File generated automatically on 2012-07-19 21:42:58
+    !
+    contains
+    
+    function ganu1_ai(Obs, t2, t1, s2, s1, nocc, nactive, eorb,  a,i) 
+    double precision :: ganu1_ai
+    double precision, dimension(:,:) :: Obs
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: t1 
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: s2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: s1 
+    integer, intent(in) :: nocc, nactive
+    double precision, dimension(:), intent(in)        :: eorb
+    integer, intent(in) :: a,i 
+    integer :: s ,l,k,c,e,d,m 
+    double precision, dimension(0:42) :: term 
+    term = 0.d+0 
+    do l = 1, nocc 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do e = nocc + 1, nactive 
+do d = nocc + 1, nactive 
+term(0) = term(0) + t2(c,e,l,k) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(e, d)
+term(1) = term(1) + t2(d,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(e, c)
+term(2) = term(2) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(e, d)
+term(3) = term(3) + t2(d,e,l,k) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(e, c)
+term(4) = term(4) + t2(d,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(c, e)
+term(5) = term(5) + t2(c,e,l,k) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(d, e)
+term(6) = term(6) + t2(d,e,l,k) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(c, e)
+term(7) = term(7) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(d, e)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(2) = term(2) * (-1.9999999999999998d+0) 
+term(3) = term(3) * (-1.9999999999999998d+0) 
+term(6) = term(6) * (-1.9999999999999998d+0) 
+term(7) = term(7) * (-1.9999999999999998d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do e = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(8) = term(8) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,d,e,i,l,k) * Obs(c, d)
+term(9) = term(9) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,d,e,i,l,k) * Obs(d, c)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(8) = term(8) * (-1.9999999999999998d+0) 
+term(9) = term(9) * (-1.9999999999999998d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do e = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(10) = term(10) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,d,e,i,k,l) * Obs(c, d)
+term(11) = term(11) + t2(c,e,k,l) * t3(t2, t1, nocc, nactive, eorb, a,d,e,i,k,l) * Obs(d, c)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(10) = term(10) * 3.9999999999999996d+0 
+term(11) = term(11) * 3.9999999999999996d+0 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do m = 1, nocc 
+do d = nocc + 1, nactive 
+term(12) = term(12) + t2(c,d,l,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(k, m)
+term(13) = term(13) + t2(c,d,k,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(l, m)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(12) = -term(12) 
+term(13) = term(13) * 4.0d+0 
+
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+do m = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+term(14) = term(14) + t2(c,d,k,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,i,m,l) * Obs(l, k)
+term(15) = term(15) + t2(c,d,k,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,i,k,l) * Obs(l, m)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(14) = term(14) * 1.9999999999999998d+0 
+term(15) = term(15) * (-3.9999999999999996d+0) 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do d = nocc + 1, nactive 
+do m = 1, nocc 
+term(16) = term(16) + t2(c,d,m,k) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(l, m)
+term(17) = term(17) + t2(c,d,m,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,l) * Obs(k, m)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(16) = term(16) * (-2.0d+0) 
+
+do m = 1, nocc 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+term(18) = term(18) + t2(c,d,m,l) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,m) * Obs(k, l)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(18) = -term(18) 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do m = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+term(19) = term(19) + t2(c,d,k,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,i,l,k) * Obs(l, m)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(19) = term(19) * 1.9999999999999998d+0 
+
+do m = 1, nocc 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+term(20) = term(20) + t2(c,d,l,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,k,i,m) * Obs(k, l)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(20) = term(20) * 3.0d+0 
+
+do m = 1, nocc 
+do c = nocc + 1, nactive 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do k = 1, nocc 
+term(21) = term(21) + t2(c,d,k,m) * t3(t2, t1, nocc, nactive, eorb, a,c,d,i,l,m) * Obs(l, k)
+end do 
+end do 
+end do 
+end do 
+end do 
+
+term(21) = term(21) * (-3.9999999999999996d+0) 
+
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(22) = term(22) + s2(a,c,k,i) * Obs(c, k)
+end do 
+end do 
+
+term(22) = term(22) * (-2.0d+0) 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(23) = term(23) + s2(a,c,i,k) * Obs(c, k)
+end do 
+end do 
+
+term(23) = term(23) * 4.0d+0 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(24) = term(24) + s2(a,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(25) = term(25) + s2(a,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(26) = term(26) + s2(c,d,i,l) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(24) = term(24) * 2.0d+0 
+term(25) = term(25) * 8.0d+0 
+term(26) = term(26) * 0.5d+0 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(27) = term(27) + s2(a,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(28) = term(28) + s2(a,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+end do 
+end do 
+end do 
+end do 
+
+term(27) = term(27) * (-4.0d+0) 
+term(28) = term(28) * (-4.0d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(29) = term(29) + s2(c,d,l,i) * t2(c,d,k,l) * Obs(a, k)
+term(30) = term(30) + s2(c,d,i,l) * t2(c,d,k,l) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(29) = term(29) * 1.5d+0 
+term(30) = term(30) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+term(31) = term(31) + s2(c,d,l,i) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(31) = term(31) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(32) = term(32) + s2(a,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(33) = term(33) + s2(a,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+end do 
+end do 
+end do 
+end do 
+
+term(32) = term(32) * (-4.0d+0) 
+term(33) = term(33) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+term(34) = term(34) + s1(c,i) * Obs(a, c)
+end do 
+
+term(34) = term(34) * 2.0d+0 
+
+do k = 1, nocc 
+term(35) = term(35) + s1(a,k) * Obs(i, k)
+end do 
+
+term(35) = term(35) * (-2.0d+0) 
+
+term(36) = term(36) + Obs(a, i)
+
+term(36) = term(36) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+term(37) = term(37) + s2(a,c,k,i) * t1(d,k) * Obs(d, c)
+end do 
+end do 
+end do 
+
+term(37) = term(37) * (-2.0d+0) 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do d = nocc + 1, nactive 
+term(38) = term(38) + s2(a,c,i,k) * t1(d,k) * Obs(d, c)
+term(39) = term(39) + s2(a,c,i,k) * t1(d,k) * Obs(c, d)
+end do 
+end do 
+end do 
+
+term(38) = term(38) * 2.0d+0 
+term(39) = term(39) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+do k = 1, nocc 
+term(40) = term(40) + s2(a,c,k,i) * t1(c,l) * Obs(l, k)
+end do 
+end do 
+end do 
+
+term(40) = term(40) * 2.0d+0 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(41) = term(41) + s2(a,c,i,k) * t1(c,l) * Obs(l, k)
+term(42) = term(42) + s2(a,c,i,k) * t1(c,l) * Obs(k, l)
+end do 
+end do 
+end do 
+
+term(41) = term(41) * (-2.0d+0) 
+term(42) = term(42) * (-2.0d+0) 
+
+
+    ganu1_ai = 0.d+0 
+    do s = 0, 42
+    ganu1_ai = ganu1_ai + term(s)
+    end do
+
+    end function ganu1_ai
+    
+    function ganu2_aibj(Obs, t2, t1, s2, s1, nocc, nactive, eorb,  a,i,b,j) 
+    double precision :: ganu2_aibj
+    double precision, dimension(:,:) :: Obs
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: t1 
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: s2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: s1 
+    integer, intent(in) :: nocc, nactive
+    double precision, dimension(:), intent(in)        :: eorb
+    integer, intent(in) :: a,i,b,j 
+    integer :: s ,c,k,l,d 
+    double precision, dimension(0:73) :: term 
+    term = 0.d+0 
+    term(0) = term(0) + s1(a,i) * Obs(b, j)
+term(1) = term(1) + s1(b,i) * Obs(a, j)
+term(2) = term(2) + s1(b,j) * Obs(a, i)
+term(3) = term(3) + s1(a,j) * Obs(b, i)
+
+term(0) = term(0) * 4.0d+0 
+term(1) = term(1) * (-2.0d+0) 
+term(2) = term(2) * 4.0d+0 
+term(3) = term(3) * (-2.0d+0) 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(4) = term(4) + s1(a,i) * s2(b,d,k,l) * t2(c,d,l,k) * Obs(j, c)
+term(5) = term(5) + s1(b,i) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(j, c)
+term(6) = term(6) + s1(b,j) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(7) = term(7) + s1(a,j) * s2(b,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(8) = term(8) + s1(a,i) * s2(b,c,j,k) * t2(c,d,k,l) * Obs(d, l)
+term(9) = term(9) + s1(b,i) * s2(a,c,j,k) * t2(c,d,k,l) * Obs(d, l)
+term(10) = term(10) + s1(b,j) * s2(a,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(11) = term(11) + s1(a,j) * s2(b,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(12) = term(12) + s1(a,i) * s2(c,d,j,l) * t2(c,d,l,k) * Obs(b, k)
+term(13) = term(13) + s1(b,i) * s2(c,d,j,l) * t2(c,d,l,k) * Obs(a, k)
+term(14) = term(14) + s1(b,j) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(a, k)
+term(15) = term(15) + s1(a,j) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(b, k)
+end do 
+end do 
+end do 
+end do 
+
+term(4) = term(4) * 4.0d+0 
+term(5) = term(5) * (-2.0d+0) 
+term(6) = term(6) * 4.0d+0 
+term(7) = term(7) * (-2.0d+0) 
+term(8) = term(8) * 16.0d+0 
+term(9) = term(9) * (-8.0d+0) 
+term(10) = term(10) * 16.0d+0 
+term(11) = term(11) * (-8.0d+0) 
+term(13) = term(13) * (-0.5d+0) 
+term(15) = term(15) * (-0.5d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(16) = term(16) + s1(a,i) * s2(b,c,k,j) * t2(c,d,k,l) * Obs(d, l)
+term(17) = term(17) + s1(b,i) * s2(a,c,k,j) * t2(c,d,k,l) * Obs(d, l)
+term(18) = term(18) + s1(b,j) * s2(a,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(19) = term(19) + s1(a,j) * s2(b,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(20) = term(20) + s1(a,i) * s2(b,d,k,l) * t2(c,d,k,l) * Obs(j, c)
+term(21) = term(21) + s1(b,i) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(j, c)
+term(22) = term(22) + s1(b,j) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+term(23) = term(23) + s1(a,j) * s2(b,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+end do 
+end do 
+end do 
+end do 
+
+term(16) = term(16) * (-8.0d+0) 
+term(17) = term(17) * 4.0d+0 
+term(18) = term(18) * (-8.0d+0) 
+term(19) = term(19) * 4.0d+0 
+term(20) = term(20) * (-8.0d+0) 
+term(21) = term(21) * 4.0d+0 
+term(22) = term(22) * (-8.0d+0) 
+term(23) = term(23) * 4.0d+0 
+
+do c = nocc + 1, nactive 
+term(24) = term(24) + s1(a,i) * s1(c,j) * Obs(b, c)
+term(25) = term(25) + s1(b,i) * s1(c,j) * Obs(a, c)
+term(26) = term(26) + s1(b,j) * s1(c,i) * Obs(a, c)
+term(27) = term(27) + s1(a,j) * s1(c,i) * Obs(b, c)
+term(28) = term(28) + s2(b,c,i,j) * Obs(a, c)
+term(29) = term(29) + s2(b,c,j,i) * Obs(a, c)
+term(30) = term(30) + s2(a,c,j,i) * Obs(b, c)
+term(31) = term(31) + s2(a,c,i,j) * Obs(b, c)
+end do 
+
+term(24) = term(24) * 4.0d+0 
+term(25) = term(25) * (-2.0d+0) 
+term(26) = term(26) * 4.0d+0 
+term(27) = term(27) * (-2.0d+0) 
+term(28) = term(28) * (-2.0d+0) 
+term(29) = term(29) * 4.0d+0 
+term(30) = term(30) * (-2.0d+0) 
+term(31) = term(31) * 4.0d+0 
+
+do k = 1, nocc 
+term(32) = term(32) + s1(a,i) * s1(b,k) * Obs(j, k)
+term(33) = term(33) + s1(a,k) * s1(b,i) * Obs(j, k)
+term(34) = term(34) + s1(a,k) * s1(b,j) * Obs(i, k)
+term(35) = term(35) + s1(a,j) * s1(b,k) * Obs(i, k)
+term(36) = term(36) + s2(a,b,k,i) * Obs(j, k)
+term(37) = term(37) + s2(a,b,k,j) * Obs(i, k)
+term(38) = term(38) + s2(a,b,j,k) * Obs(i, k)
+term(39) = term(39) + s2(a,b,i,k) * Obs(j, k)
+end do 
+
+term(32) = term(32) * (-4.0d+0) 
+term(33) = term(33) * 2.0d+0 
+term(34) = term(34) * (-4.0d+0) 
+term(35) = term(35) * 2.0d+0 
+term(36) = term(36) * 2.0d+0 
+term(37) = term(37) * (-4.0d+0) 
+term(38) = term(38) * 2.0d+0 
+term(39) = term(39) * (-4.0d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(40) = term(40) + s1(a,i) * s2(c,d,l,j) * t2(c,d,k,l) * Obs(b, k)
+term(41) = term(41) + s1(b,i) * s2(c,d,l,j) * t2(c,d,k,l) * Obs(a, k)
+term(42) = term(42) + s1(b,j) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(a, k)
+term(43) = term(43) + s1(a,j) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(b, k)
+term(44) = term(44) + s1(a,i) * s2(c,d,j,l) * t2(c,d,k,l) * Obs(b, k)
+term(45) = term(45) + s1(b,i) * s2(c,d,j,l) * t2(c,d,k,l) * Obs(a, k)
+term(46) = term(46) + s1(b,j) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(a, k)
+term(47) = term(47) + s1(a,j) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(b, k)
+end do 
+end do 
+end do 
+end do 
+
+term(40) = term(40) * 3.0d+0 
+term(41) = term(41) * (-1.5d+0) 
+term(42) = term(42) * 3.0d+0 
+term(43) = term(43) * (-1.5d+0) 
+term(44) = term(44) * (-4.0d+0) 
+term(45) = term(45) * 2.0d+0 
+term(46) = term(46) * (-4.0d+0) 
+term(47) = term(47) * 2.0d+0 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(48) = term(48) + t3(t2, t1, nocc, nactive, eorb, a,b,c,k,i,j) * Obs(c, k)
+term(49) = term(49) + t3(t2, t1, nocc, nactive, eorb, a,b,c,k,j,i) * Obs(c, k)
+term(50) = term(50) + t3(t2, t1, nocc, nactive, eorb, a,b,c,j,k,i) * Obs(c, k)
+term(51) = term(51) + t3(t2, t1, nocc, nactive, eorb, a,b,c,i,k,j) * Obs(c, k)
+term(52) = term(52) + t3(t2, t1, nocc, nactive, eorb, a,b,c,j,i,k) * Obs(c, k)
+term(53) = term(53) + t3(t2, t1, nocc, nactive, eorb, a,b,c,i,j,k) * Obs(c, k)
+term(54) = term(54) + s1(a,i) * s2(b,c,j,k) * Obs(c, k)
+term(55) = term(55) + s1(b,i) * s2(a,c,j,k) * Obs(c, k)
+term(56) = term(56) + s1(b,j) * s2(a,c,i,k) * Obs(c, k)
+term(57) = term(57) + s1(a,j) * s2(b,c,i,k) * Obs(c, k)
+end do 
+end do 
+
+term(48) = term(48) * 1.9999999999999998d+0 
+term(49) = term(49) * (-3.9999999999999996d+0) 
+term(50) = term(50) * 1.9999999999999998d+0 
+term(51) = term(51) * (-3.9999999999999996d+0) 
+term(52) = term(52) * (-3.9999999999999996d+0) 
+term(53) = term(53) * 7.999999999999999d+0 
+term(54) = term(54) * 8.0d+0 
+term(55) = term(55) * (-4.0d+0) 
+term(56) = term(56) * 8.0d+0 
+term(57) = term(57) * (-4.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+term(58) = term(58) + s1(a,i) * s2(c,d,l,j) * t2(c,d,l,k) * Obs(b, k)
+term(59) = term(59) + s1(b,i) * s2(c,d,l,j) * t2(c,d,l,k) * Obs(a, k)
+term(60) = term(60) + s1(b,j) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(a, k)
+term(61) = term(61) + s1(a,j) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(b, k)
+end do 
+end do 
+end do 
+end do 
+
+term(58) = term(58) * (-4.0d+0) 
+term(59) = term(59) * 2.0d+0 
+term(60) = term(60) * (-4.0d+0) 
+term(61) = term(61) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(62) = term(62) + s1(a,i) * s2(b,c,k,j) * Obs(c, k)
+term(63) = term(63) + s1(b,i) * s2(a,c,k,j) * Obs(c, k)
+term(64) = term(64) + s1(b,j) * s2(a,c,k,i) * Obs(c, k)
+term(65) = term(65) + s1(a,j) * s2(b,c,k,i) * Obs(c, k)
+end do 
+end do 
+
+term(62) = term(62) * (-4.0d+0) 
+term(63) = term(63) * 2.0d+0 
+term(64) = term(64) * (-4.0d+0) 
+term(65) = term(65) * 2.0d+0 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(66) = term(66) + s1(a,i) * s2(b,c,j,k) * t2(c,d,l,k) * Obs(d, l)
+term(67) = term(67) + s1(a,i) * s2(b,c,k,j) * t2(c,d,l,k) * Obs(d, l)
+term(68) = term(68) + s1(b,i) * s2(a,c,j,k) * t2(c,d,l,k) * Obs(d, l)
+term(69) = term(69) + s1(b,j) * s2(a,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(70) = term(70) + s1(b,i) * s2(a,c,k,j) * t2(c,d,l,k) * Obs(d, l)
+term(71) = term(71) + s1(b,j) * s2(a,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+term(72) = term(72) + s1(a,j) * s2(b,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(73) = term(73) + s1(a,j) * s2(b,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+end do 
+end do 
+end do 
+end do 
+
+term(66) = term(66) * (-8.0d+0) 
+term(67) = term(67) * 4.0d+0 
+term(68) = term(68) * 4.0d+0 
+term(69) = term(69) * (-8.0d+0) 
+term(70) = term(70) * (-2.0d+0) 
+term(71) = term(71) * 4.0d+0 
+term(72) = term(72) * 4.0d+0 
+term(73) = term(73) * (-2.0d+0) 
+
+
+    ganu2_aibj = 0.d+0 
+    do s = 0, 73
+    ganu2_aibj = ganu2_aibj + term(s)
+    end do
+
+    end function ganu2_aibj
+    
+    function ganu2_aibi(Obs, t2, t1, s2, s1, nocc, nactive, eorb,  a,i,b) 
+    double precision :: ganu2_aibi
+    double precision, dimension(:,:) :: Obs
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: t1 
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: s2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: s1 
+    integer, intent(in) :: nocc, nactive
+    double precision, dimension(:), intent(in)        :: eorb
+    integer, intent(in) :: a,i,b 
+    integer :: s ,l,k,d,c 
+    double precision, dimension(0:36) :: term 
+    term = 0.d+0 
+    do l = 1, nocc 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(0) = term(0) + s1(a,i) * s2(b,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(1) = term(1) + s1(b,i) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(2) = term(2) + s1(a,i) * s2(b,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(3) = term(3) + s1(b,i) * s2(a,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(4) = term(4) + s1(a,i) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(b, k)
+term(5) = term(5) + s1(b,i) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(0) = term(0) * 2.0d+0 
+term(1) = term(1) * 2.0d+0 
+term(2) = term(2) * 8.0d+0 
+term(3) = term(3) * 8.0d+0 
+term(4) = term(4) * 0.5d+0 
+term(5) = term(5) * 0.5d+0 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(6) = term(6) + s1(a,i) * s2(b,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(7) = term(7) + s1(b,i) * s2(a,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(8) = term(8) + s1(a,i) * s2(b,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+term(9) = term(9) + s1(b,i) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+end do 
+end do 
+end do 
+end do 
+
+term(6) = term(6) * (-4.0d+0) 
+term(7) = term(7) * (-4.0d+0) 
+term(8) = term(8) * (-4.0d+0) 
+term(9) = term(9) * (-4.0d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(10) = term(10) + s1(a,i) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(b, k)
+term(11) = term(11) + s1(b,i) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(a, k)
+term(12) = term(12) + s1(a,i) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(b, k)
+term(13) = term(13) + s1(b,i) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(10) = term(10) * 1.5d+0 
+term(11) = term(11) * 1.5d+0 
+term(12) = term(12) * (-2.0d+0) 
+term(13) = term(13) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+term(14) = term(14) + s1(a,i) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(b, k)
+term(15) = term(15) + s1(b,i) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(14) = term(14) * (-2.0d+0) 
+term(15) = term(15) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(16) = term(16) + s1(a,i) * s2(b,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(17) = term(17) + s1(a,i) * s2(b,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+term(18) = term(18) + s1(b,i) * s2(a,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(19) = term(19) + s1(b,i) * s2(a,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+end do 
+end do 
+end do 
+end do 
+
+term(16) = term(16) * (-4.0d+0) 
+term(17) = term(17) * 2.0d+0 
+term(18) = term(18) * (-4.0d+0) 
+term(19) = term(19) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+term(20) = term(20) + s2(b,c,i,i) * Obs(a, c)
+term(21) = term(21) + s2(a,c,i,i) * Obs(b, c)
+term(22) = term(22) + s1(a,i) * s1(c,i) * Obs(b, c)
+term(23) = term(23) + s1(b,i) * s1(c,i) * Obs(a, c)
+end do 
+
+term(20) = term(20) * 2.0d+0 
+term(21) = term(21) * 2.0d+0 
+term(22) = term(22) * 2.0d+0 
+term(23) = term(23) * 2.0d+0 
+
+do k = 1, nocc 
+term(24) = term(24) + s2(a,b,k,i) * Obs(i, k)
+term(25) = term(25) + s2(a,b,i,k) * Obs(i, k)
+term(26) = term(26) + s1(a,i) * s1(b,k) * Obs(i, k)
+term(27) = term(27) + s1(a,k) * s1(b,i) * Obs(i, k)
+end do 
+
+term(24) = term(24) * (-2.0d+0) 
+term(25) = term(25) * (-2.0d+0) 
+term(26) = term(26) * (-2.0d+0) 
+term(27) = term(27) * (-2.0d+0) 
+
+term(28) = term(28) + s1(a,i) * Obs(b, i)
+term(29) = term(29) + s1(b,i) * Obs(a, i)
+
+term(28) = term(28) * 2.0d+0 
+term(29) = term(29) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(30) = term(30) + s1(a,i) * s2(b,c,k,i) * Obs(c, k)
+term(31) = term(31) + s1(b,i) * s2(a,c,k,i) * Obs(c, k)
+end do 
+end do 
+
+term(30) = term(30) * (-2.0d+0) 
+term(31) = term(31) * (-2.0d+0) 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(32) = term(32) + s1(a,i) * s2(b,c,i,k) * Obs(c, k)
+term(33) = term(33) + s1(b,i) * s2(a,c,i,k) * Obs(c, k)
+term(34) = term(34) + t3(t2, t1, nocc, nactive, eorb, a,b,c,k,i,i) * Obs(c, k)
+term(35) = term(35) + t3(t2, t1, nocc, nactive, eorb, a,b,c,i,k,i) * Obs(c, k)
+term(36) = term(36) + t3(t2, t1, nocc, nactive, eorb, a,b,c,i,i,k) * Obs(c, k)
+end do 
+end do 
+
+term(32) = term(32) * 4.0d+0 
+term(33) = term(33) * 4.0d+0 
+term(34) = term(34) * (-1.9999999999999998d+0) 
+term(35) = term(35) * (-1.9999999999999998d+0) 
+term(36) = term(36) * 3.9999999999999996d+0 
+
+
+    ganu2_aibi = 0.d+0 
+    do s = 0, 36
+    ganu2_aibi = ganu2_aibi + term(s)
+    end do
+
+    end function ganu2_aibi
+    
+    function ganu2_aiaj(Obs, t2, t1, s2, s1, nocc, nactive, eorb,  a,i,j) 
+    double precision :: ganu2_aiaj
+    double precision, dimension(:,:) :: Obs
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: t1 
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: s2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: s1 
+    integer, intent(in) :: nocc, nactive
+    double precision, dimension(:), intent(in)        :: eorb
+    integer, intent(in) :: a,i,j 
+    integer :: s ,c,k,l,d 
+    double precision, dimension(0:36) :: term 
+    term = 0.d+0 
+    do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(0) = term(0) + s1(a,i) * s2(a,c,k,j) * Obs(c, k)
+term(1) = term(1) + s1(a,j) * s2(a,c,k,i) * Obs(c, k)
+end do 
+end do 
+
+term(0) = term(0) * (-2.0d+0) 
+term(1) = term(1) * (-2.0d+0) 
+
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(2) = term(2) + s1(a,i) * s2(a,c,j,k) * Obs(c, k)
+term(3) = term(3) + s1(a,j) * s2(a,c,i,k) * Obs(c, k)
+term(4) = term(4) + t3(t2, t1, nocc, nactive, eorb, a,a,c,i,k,j) * Obs(c, k)
+term(5) = term(5) + t3(t2, t1, nocc, nactive, eorb, a,a,c,j,k,i) * Obs(c, k)
+term(6) = term(6) + t3(t2, t1, nocc, nactive, eorb, a,a,c,i,j,k) * Obs(c, k)
+end do 
+end do 
+
+term(2) = term(2) * 4.0d+0 
+term(3) = term(3) * 4.0d+0 
+term(4) = term(4) * (-1.9999999999999998d+0) 
+term(5) = term(5) * (-1.9999999999999998d+0) 
+term(6) = term(6) * 3.9999999999999996d+0 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(7) = term(7) + s1(a,i) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(j, c)
+term(8) = term(8) + s1(a,j) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(9) = term(9) + s1(a,i) * s2(a,c,j,k) * t2(c,d,k,l) * Obs(d, l)
+term(10) = term(10) + s1(a,j) * s2(a,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(11) = term(11) + s1(a,i) * s2(c,d,j,l) * t2(c,d,l,k) * Obs(a, k)
+term(12) = term(12) + s1(a,j) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(7) = term(7) * 2.0d+0 
+term(8) = term(8) * 2.0d+0 
+term(9) = term(9) * 8.0d+0 
+term(10) = term(10) * 8.0d+0 
+term(11) = term(11) * 0.5d+0 
+term(12) = term(12) * 0.5d+0 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(13) = term(13) + s1(a,i) * s2(a,c,k,j) * t2(c,d,k,l) * Obs(d, l)
+term(14) = term(14) + s1(a,j) * s2(a,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(15) = term(15) + s1(a,i) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(j, c)
+term(16) = term(16) + s1(a,j) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+end do 
+end do 
+end do 
+end do 
+
+term(13) = term(13) * (-4.0d+0) 
+term(14) = term(14) * (-4.0d+0) 
+term(15) = term(15) * (-4.0d+0) 
+term(16) = term(16) * (-4.0d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(17) = term(17) + s1(a,i) * s2(c,d,l,j) * t2(c,d,k,l) * Obs(a, k)
+term(18) = term(18) + s1(a,j) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(a, k)
+term(19) = term(19) + s1(a,i) * s2(c,d,j,l) * t2(c,d,k,l) * Obs(a, k)
+term(20) = term(20) + s1(a,j) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(17) = term(17) * 1.5d+0 
+term(18) = term(18) * 1.5d+0 
+term(19) = term(19) * (-2.0d+0) 
+term(20) = term(20) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+term(21) = term(21) + s1(a,i) * s2(c,d,l,j) * t2(c,d,l,k) * Obs(a, k)
+term(22) = term(22) + s1(a,j) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(21) = term(21) * (-2.0d+0) 
+term(22) = term(22) * (-2.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(23) = term(23) + s1(a,i) * s2(a,c,j,k) * t2(c,d,l,k) * Obs(d, l)
+term(24) = term(24) + s1(a,i) * s2(a,c,k,j) * t2(c,d,l,k) * Obs(d, l)
+term(25) = term(25) + s1(a,j) * s2(a,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(26) = term(26) + s1(a,j) * s2(a,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+end do 
+end do 
+end do 
+end do 
+
+term(23) = term(23) * (-4.0d+0) 
+term(24) = term(24) * 2.0d+0 
+term(25) = term(25) * (-4.0d+0) 
+term(26) = term(26) * 2.0d+0 
+
+term(27) = term(27) + s1(a,i) * Obs(a, j)
+term(28) = term(28) + s1(a,j) * Obs(a, i)
+
+term(27) = term(27) * 2.0d+0 
+term(28) = term(28) * 2.0d+0 
+
+do c = nocc + 1, nactive 
+term(29) = term(29) + s2(a,c,i,j) * Obs(a, c)
+term(30) = term(30) + s2(a,c,j,i) * Obs(a, c)
+term(31) = term(31) + s1(a,i) * s1(c,j) * Obs(a, c)
+term(32) = term(32) + s1(a,j) * s1(c,i) * Obs(a, c)
+end do 
+
+term(29) = term(29) * 2.0d+0 
+term(30) = term(30) * 2.0d+0 
+term(31) = term(31) * 2.0d+0 
+term(32) = term(32) * 2.0d+0 
+
+do k = 1, nocc 
+term(33) = term(33) + s2(a,a,i,k) * Obs(j, k)
+term(34) = term(34) + s2(a,a,j,k) * Obs(i, k)
+term(35) = term(35) + s1(a,k) * s1(a,i) * Obs(j, k)
+term(36) = term(36) + s1(a,k) * s1(a,j) * Obs(i, k)
+end do 
+
+term(33) = term(33) * (-2.0d+0) 
+term(34) = term(34) * (-2.0d+0) 
+term(35) = term(35) * (-2.0d+0) 
+term(36) = term(36) * (-2.0d+0) 
+
+
+    ganu2_aiaj = 0.d+0 
+    do s = 0, 36
+    ganu2_aiaj = ganu2_aiaj + term(s)
+    end do
+
+    end function ganu2_aiaj
+    
+    function ganu2_aiai(Obs, t2, t1, s2, s1, nocc, nactive, eorb,  a,i) 
+    double precision :: ganu2_aiai
+    double precision, dimension(:,:) :: Obs
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: t2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: t1 
+    double precision, dimension(nocc+1:nactive,nocc+1:nactive,nocc,nocc), intent(in) :: s2 
+    double precision, dimension(nocc+1:nactive,nocc), intent(in)                  :: s1 
+    integer, intent(in) :: nocc, nactive
+    double precision, dimension(:), intent(in)        :: eorb
+    integer, intent(in) :: a,i 
+    integer :: s ,k,c,l,d 
+    double precision, dimension(0:18) :: term 
+    term = 0.d+0 
+    do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(0) = term(0) + t3(t2, t1, nocc, nactive, eorb, a,a,c,i,k,i) * Obs(c, k)
+term(1) = term(1) + t3(t2, t1, nocc, nactive, eorb, a,a,c,i,i,k) * Obs(c, k)
+term(2) = term(2) + s1(a,i) * s2(a,c,i,k) * Obs(c, k)
+end do 
+end do 
+
+term(0) = term(0) * (-3.9999999999999996d+0) 
+term(1) = term(1) * 3.9999999999999996d+0 
+term(2) = term(2) * 8.0d+0 
+
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(3) = term(3) + s1(a,i) * s2(a,c,k,i) * Obs(c, k)
+end do 
+end do 
+
+term(3) = term(3) * (-4.0d+0) 
+
+do c = nocc + 1, nactive 
+term(4) = term(4) + s1(a,i) * s1(c,i) * Obs(a, c)
+term(5) = term(5) + s2(a,c,i,i) * Obs(a, c)
+end do 
+
+term(4) = term(4) * 4.0d+0 
+term(5) = term(5) * 4.0d+0 
+
+do k = 1, nocc 
+term(6) = term(6) + s1(a,k) * s1(a,i) * Obs(i, k)
+term(7) = term(7) + s2(a,a,i,k) * Obs(i, k)
+end do 
+
+term(6) = term(6) * (-4.0d+0) 
+term(7) = term(7) * (-4.0d+0) 
+
+do l = 1, nocc 
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+term(8) = term(8) + s1(a,i) * s2(a,d,k,l) * t2(c,d,l,k) * Obs(i, c)
+term(9) = term(9) + s1(a,i) * s2(a,c,i,k) * t2(c,d,k,l) * Obs(d, l)
+term(10) = term(10) + s1(a,i) * s2(c,d,i,l) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(8) = term(8) * 4.0d+0 
+term(9) = term(9) * 16.0d+0 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do k = 1, nocc 
+term(11) = term(11) + s1(a,i) * s2(a,c,k,i) * t2(c,d,k,l) * Obs(d, l)
+term(12) = term(12) + s1(a,i) * s2(a,d,k,l) * t2(c,d,k,l) * Obs(i, c)
+end do 
+end do 
+end do 
+end do 
+
+term(11) = term(11) * (-8.0d+0) 
+term(12) = term(12) * (-8.0d+0) 
+
+do l = 1, nocc 
+do d = nocc + 1, nactive 
+do k = 1, nocc 
+do c = nocc + 1, nactive 
+term(13) = term(13) + s1(a,i) * s2(c,d,l,i) * t2(c,d,k,l) * Obs(a, k)
+term(14) = term(14) + s1(a,i) * s2(c,d,i,l) * t2(c,d,k,l) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(13) = term(13) * 3.0d+0 
+term(14) = term(14) * (-4.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do l = 1, nocc 
+do c = nocc + 1, nactive 
+term(15) = term(15) + s1(a,i) * s2(c,d,l,i) * t2(c,d,l,k) * Obs(a, k)
+end do 
+end do 
+end do 
+end do 
+
+term(15) = term(15) * (-4.0d+0) 
+
+do k = 1, nocc 
+do d = nocc + 1, nactive 
+do c = nocc + 1, nactive 
+do l = 1, nocc 
+term(16) = term(16) + s1(a,i) * s2(a,c,i,k) * t2(c,d,l,k) * Obs(d, l)
+term(17) = term(17) + s1(a,i) * s2(a,c,k,i) * t2(c,d,l,k) * Obs(d, l)
+end do 
+end do 
+end do 
+end do 
+
+term(16) = term(16) * (-8.0d+0) 
+term(17) = term(17) * 4.0d+0 
+
+term(18) = term(18) + s1(a,i) * Obs(a, i)
+
+term(18) = term(18) * 4.0d+0 
+
+
+    ganu2_aiai = 0.d+0 
+    do s = 0, 18
+    ganu2_aiai = ganu2_aiai + term(s)
+    end do
+
+    end function ganu2_aiai
+    
+    end module tmga
+    

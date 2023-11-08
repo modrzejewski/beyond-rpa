@@ -1,0 +1,1 @@
+gfortran -Wall -O3 -pg -fdefault-integer-8 -I/home/marcin/Documents/workspace/test/ -I/home/marcin/Documents/workspace/test/Auto2e/obj/ -c

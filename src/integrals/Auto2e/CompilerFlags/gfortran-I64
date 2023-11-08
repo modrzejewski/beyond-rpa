@@ -1,0 +1,1 @@
+gfortran -fopenmp -Wall -O3 -fdefault-integer-8 -I../../include -Iobj/ -c

@@ -1,0 +1,1 @@
+gfortran -fopenmp -fcoarray=single -Wall -O0 -ffpe-trap=invalid -g -fcheck=all -fdefault-integer-8 -ffree-line-length-0 -Iobj/ -c

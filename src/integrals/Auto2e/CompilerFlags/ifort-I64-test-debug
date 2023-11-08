@@ -1,0 +1,1 @@
+ifort -g -qopenmp -O0 -warn all -check all -traceback -xHost -no-prec-div -i8 -mkl -warn all -I/home/marcin/Documents/workspace/test/ -I/home/marcin/Documents/workspace/test/Auto2e/obj/ -c

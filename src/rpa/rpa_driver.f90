@@ -1,0 +1,990 @@
+module rpa_driver
+      use arithmetic
+      use math_constants
+      use display
+      use string
+      use real_scf
+      use scf_definitions
+      use rpa_definitions
+      use TensorHypercontraction
+      use thc_definitions
+      use OrbDiffHist
+      use rpa
+      use rpa_MeanField
+      use basis_sets
+      use fock
+      use sys_definitions
+      use ParallelCholesky
+      use PostSCF
+
+      implicit none
+
+contains
+
+      subroutine rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, System, CholeskyVecs, CholeskyBasis, THCGrid)
+            !
+            ! Driver subroutine for the post-SCF part of the RPA energy calculation. Includes
+            ! the singles correction of Klimes et al. Works for the single-point energies of molecules
+            ! as well as for interaction energies of complexes composed of two or three monomers.
+            !
+            ! 1. Klimes, J., Kaltak, M., Maggio, E., Kresse, G. J. Chem. Phys. 143, 102816 (2015);
+            !    doi: 10.1063/1.4929346
+            !
+            type(TSCFOutput), dimension(:), intent(in)                :: SCFOutput
+            type(TSCFParams), intent(in)                              :: SCFParams
+            type(TAOBasis), intent(in)                                :: AOBasis
+            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TSystem), intent(inout)                              :: System
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
+            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TCoulTHCGrid), intent(inout)                         :: THCGrid
+
+            real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB
+            real(F64) :: EtotDFT_ABC, EtotHF_ABC, EtotRPA_ABC, EcSingles_ABC, EcRPA_ABC, EcExchange_ABC
+            real(F64) :: EtotDFT_ABCD, EtotHF_ABCD, EtotRPA_ABCD, EcSingles_ABCD, EcRPA_ABCD, EcExchange_ABCD
+            real(F64) :: EtotDFT_Nadd, EtotHF_Nadd, EtotRPA_Nadd, EcSingles_Nadd, EcRPA_Nadd, EcExchange_Nadd
+            integer, parameter :: MaxNSubsystems = 15
+            real(F64), dimension(MaxNSubsystems) :: EtotDFT, EtotRPA, EtotHF, EcSingles, EcRPA, EcExchange
+            type(TRPAGrids) :: RPAGrids
+            type(TRPABasis) :: RPABasis
+            type(TMeanField), dimension(:), allocatable :: MeanFieldStates
+            real(F64), dimension(:, :, :), allocatable :: RPABasisVecs[:]
+            integer :: m, n, k, s
+            integer :: NSpins, NSystems
+            logical :: SpinUnres
+            real(F64) :: DaiMaxThresh
+            real(F64), dimension(:), allocatable :: Energy, EnergyDiffs
+            real(F64), dimension(:, :), allocatable :: SinglePoints
+            type(TClock) :: timer
+
+            allocate(Energy(RPA_ENERGY_NCOMPONENTS))
+            allocate(EnergyDiffs(RPA_ENERGY_NCOMPONENTS))
+            allocate(SinglePoints(RPA_ENERGY_NCOMPONENTS, MaxNSubsystems))
+
+            if (System%SystemKind == SYS_MOLECULE) then
+                  NSystems = 1
+            else if (System%SystemKind == SYS_DIMER) then
+                  NSystems = 3
+            else if (System%SystemKind == SYS_TRIMER) then
+                  NSystems = 7
+            else ! Tetramer
+                  NSystems = 15
+            end if
+
+            SpinUnres = .false.
+            n = 0
+            do k = 1, NSystems
+                  EtotDFT(k) = SCFOutput(k)%EtotDFT
+                  NSpins = size(SCFOutput(k)%OrbEnergies, dim=2)
+                  n = n + NSpins
+                  SpinUnres = (NSpins>1)
+            end do
+            allocate(MeanFieldStates(NSystems))
+            if (RPAParams%TensorHypercontraction) then
+                  call rpa_MeanField_Preamble(RPAParams)
+                  call clock_start(timer)
+                  do k = 1, NSystems
+                        call sys_Init(System, k)
+                        call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
+                              RPAParams, AOBasis, System, THCGrid)
+                  end do
+                  call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
+            end if
+            allocate(RPAGrids%daiValues(RPA_HISTOGRAM_NBINS, n))
+            allocate(RPAGrids%daiWeights(RPA_HISTOGRAM_NBINS, n))
+            m = 1
+            DaiMaxThresh = huge(ONE)
+            do k = 1, NSystems
+                  NSpins = size(SCFOutput(k)%OrbEnergies, dim=2)
+                  if (k == 1 .and. RPAParams%GridLimitDai) then
+                        !
+                        ! Compute the maximum Ea-Ei difference
+                        ! for the entire complex. That threshold
+                        ! value is subsequently used to limit
+                        ! the range of orbital excitations considered
+                        ! during the grid optimization.
+                        !
+                        if (RPAParams%TensorHypercontraction) then
+                              call rpa_DaiMaxThresh(DaiMaxThresh, &
+                                    MeanFieldStates(k)%OrbEnergies, &
+                                    MeanFieldStates(k)%NOcc, &
+                                    MeanFieldStates(k)%NVirt, &
+                                    MeanFieldStates(k)%NSpins, &
+                                    RPAParams%CoreOrbThresh)
+                        else
+                              call rpa_DaiMaxThresh(DaiMaxThresh, &
+                                    SCFOutput(k)%OrbEnergies, &
+                                    SCFOutput(k)%NOcc, &
+                                    SCFOutput(k)%NVirt, &
+                                    NSpins, &
+                                    RPAParams%CoreOrbThresh)
+                        end if
+                  end if
+                  do s = 1, NSpins
+                        if (RPAParams%TensorHypercontraction) then
+                              call rpa_DaiHistogram( &
+                                    RPAGrids%daiValues(:, m), &
+                                    RPAGrids%daiWeights(:, m), &
+                                    MeanFieldStates(k)%OrbEnergies(:, s), &
+                                    MeanFieldStates(k)%NOcc(s), &
+                                    MeanFieldStates(k)%NVirt(s), &
+                                    RPAParams%CoreOrbThresh, &
+                                    DaiMaxThresh)
+                        else
+                              call rpa_DaiHistogram( &
+                                    RPAGrids%daiValues(:, m), &
+                                    RPAGrids%daiWeights(:, m), &
+                                    SCFOutput(k)%OrbEnergies(:, s), &
+                                    SCFOutput(k)%NOcc(s), &
+                                    SCFOutput(k)%NVirt(s), &
+                                    RPAParams%CoreOrbThresh, &
+                                    DaiMaxThresh)
+                        end if
+                        !
+                        ! The index m runs over different subsystems, i.e., interacting molecules
+                        ! as well as different spins if the calculation is open-shell
+                        !
+                        m = m + 1
+                  end do
+            end do
+
+            do k = 1, NSystems
+                  call sys_Init(System, k)
+                  call toprule()
+                  call msg(cfield("RPA for " // sys_ChemicalFormula(System), 76))
+                  call midrule()
+                  call blankline()
+                  if (SpinUnres) then
+                        call msg("Using spin-unrestricted open-shell Kohn-Sham reference")
+                  else
+                        call msg("Using spin-restricted closed-shell Kohn-Sham reference")
+                  end if
+                  if (RPAParams%TensorHypercontraction) then
+                        call rpa_THC_Etot(Energy, MeanFieldStates(k), AOBasis, RPAParams, &
+                              RPAGrids, THCGrid)
+                  else
+                        if (RPAParams%CoupledClusters) then
+                              call rpa_CC_Etot(Energy, SCFOutput(k), AOBasis, RPAParams, &
+                                    RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, &
+                                    SCFParams, System)
+                        else
+                              call rpa_Etot(Energy, SCFOutput(k), SCFParams, AOBasis, System, RPAParams, &
+                                    RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis)
+                        end if
+                  end if
+                  EtotRPA(k) = Energy(RPA_ENERGY_TOTAL)
+                  EtotHF(k) = Energy(RPA_ENERGY_HF)
+                  EcSingles(k) = Energy(RPA_ENERGY_SINGLES)
+                  EcRPA(k) = Energy(RPA_ENERGY_CORR)
+                  EcExchange(k) = Energy(RPA_ENERGY_EXCHANGE)
+                  SinglePoints(:, k) = Energy
+                  SinglePoints(RPA_ENERGY_DFT, k) = EtotDFT(k)
+            end do
+            if (System%SystemKind == SYS_MOLECULE) then
+                  if (RPAParams%CoupledClusters) then
+                        call rpa_PrintEnergies(SinglePoints(:, 1), RPAParams, 1)
+                  else
+                        call msg("RPA Single-Point Energies (a.u.)", underline=.true.)
+
+                        call msg(lfield("E(DFT)", 50) // lfield(str(EtotDFT(1), d=9), 20))
+                        call msg(lfield("E(HF)", 50) // lfield(str(EtotHF(1), d=9), 20))
+                        call msg(lfield("E(RPA singles)", 50) // lfield(str(EcSingles(1), d=9), 20))
+                        call msg(lfield("E(RPA exchange)", 50) // lfield(str(EcExchange(1), d=9), 20))
+                        call msg(lfield("E(RPA correlation)", 50) // lfield(str(EcRPA(1), d=9), 20))
+                        call msg(lfield("E(RPA total)", 50) // lfield(str(EtotRPA(1), d=9), 20))
+                  end if
+            else if (System%SystemKind == SYS_DIMER) then
+                  if (RPAParams%CoupledClusters) then
+                        do k = 1, RPA_ENERGY_NCOMPONENTS
+                              call rpa_Eint2Body(EnergyDiffs(k), SinglePoints(k, :))
+                        end do
+                        call rpa_PrintEnergies(EnergyDiffs, RPAParams, NSystems)
+                  else
+                        call msg("RPA 2-Body Interaction Energies (kcal/mol)", underline=.true.)
+
+                        EtotDFT_AB = EtotDFT(SYS_TOTAL) - EtotDFT(SYS_MONO_A) - EtotDFT(SYS_MONO_B)
+                        EtotRPA_AB = EtotRPA(SYS_TOTAL) - EtotRPA(SYS_MONO_A) - EtotRPA(SYS_MONO_B)
+                        EtotHF_AB = EtotHF(SYS_TOTAL) - EtotHF(SYS_MONO_A) - EtotHF(SYS_MONO_B)
+                        EcSingles_AB = EcSingles(SYS_TOTAL) - EcSingles(SYS_MONO_A) - EcSingles(SYS_MONO_B)
+                        EcRPA_AB =  EcRPA(SYS_TOTAL) - EcRPA(SYS_MONO_A) - EcRPA(SYS_MONO_B)
+                        EcExchange_AB = EcExchange(SYS_TOTAL) - EcExchange(SYS_MONO_A) - EcExchange(SYS_MONO_B)
+
+                        call msg(lfield("Eint(DFT)", 30) // rfield(str(tokcal(EtotDFT_AB), d=6), 20))
+                        call msg(lfield("Eint(HF)", 30) // rfield(str(tokcal(EtotHF_AB), d=6), 20))
+                        call msg(lfield("Eint(RPA singles)", 30) // rfield(str(tokcal(EcSingles_AB), d=6), 20))
+                        call msg(lfield("Eint(RPA exchange)", 30) // rfield(str(tokcal(EcExchange_AB), d=6), 20))
+                        call msg(lfield("Eint(RPA correlation)", 30) // rfield(str(tokcal(EcRPA_AB), d=6), 20))
+                        call msg(lfield("Eint(RPA total)", 30) // rfield(str(tokcal(EtotRPA_AB), d=6), 20))
+                  end if
+            else if (System%SystemKind == SYS_TRIMER) then
+                  if (RPAParams%CoupledClusters) then
+                        do k = 1, RPA_ENERGY_NCOMPONENTS
+                              call rpa_EintNadd(EnergyDiffs(k), SinglePoints(k, :))
+                        end do
+                        call rpa_PrintEnergies(EnergyDiffs, RPAParams, NSystems)
+                  else
+                        call msg("RPA 3-Body Interaction Energies (kcal/mol)", underline=.true.)
+
+                        EtotDFT_ABC = EtotDFT(SYS_TOTAL) - EtotDFT(SYS_MONO_A) - EtotDFT(SYS_MONO_B) - EtotDFT(SYS_MONO_C)
+                        EtotRPA_ABC = EtotRPA(SYS_TOTAL) - EtotRPA(SYS_MONO_A) - EtotRPA(SYS_MONO_B) - EtotRPA(SYS_MONO_C)
+                        EtotHF_ABC = EtotHF(SYS_TOTAL) - EtotHF(SYS_MONO_A) - EtotHF(SYS_MONO_B) - EtotHF(SYS_MONO_C)
+                        EcSingles_ABC = EcSingles(SYS_TOTAL) - EcSingles(SYS_MONO_A) - EcSingles(SYS_MONO_B) - EcSingles(SYS_MONO_C)
+                        EcRPA_ABC =  EcRPA(SYS_TOTAL) - EcRPA(SYS_MONO_A) - EcRPA(SYS_MONO_B) - EcRPA(SYS_MONO_C)
+                        EcExchange_ABC =  EcExchange(SYS_TOTAL) - EcExchange(SYS_MONO_A) - EcExchange(SYS_MONO_B) - EcExchange(SYS_MONO_C)
+
+                        call rpa_EintNadd(EtotDFT_Nadd, EtotDFT)
+                        call rpa_EintNadd(EtotRPA_Nadd, EtotRPA)
+                        call rpa_EintNadd(EtotHF_Nadd, EtotHF)
+                        call rpa_EintNadd(EcSingles_Nadd, EcSingles)
+                        call rpa_EintNadd(EcRPA_Nadd, EcRPA)
+                        call rpa_EintNadd(EcExchange_Nadd, EcExchange)
+
+                        call msg(lfield("EintABC(DFT)", 30) // rfield(str(tokcal(EtotDFT_ABC), d=6), 20))
+                        call msg(lfield("EintABC(HF)", 30) // rfield(str(tokcal(EtotHF_ABC), d=6), 20))
+                        call msg(lfield("EintABC(RPA singles)", 30) // rfield(str(tokcal(EcSingles_ABC), d=6), 20))
+                        call msg(lfield("EintABC(RPA exchange)", 30) // rfield(str(tokcal(EcExchange_ABC), d=6), 20))
+                        call msg(lfield("EintABC(RPA correlation)", 30) // rfield(str(tokcal(EcRPA_ABC), d=6), 20))
+                        call msg(lfield("EintABC(RPA total)", 30) // rfield(str(tokcal(EtotRPA_ABC), d=6), 20))
+
+                        call msg(lfield("EintNadd(DFT)", 30) // rfield(str(tokcal(EtotDFT_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(HF)", 30) // rfield(str(tokcal(EtotHF_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA singles)", 30) // rfield(str(tokcal(EcSingles_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA exchange)", 30) // rfield(str(tokcal(EcExchange_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA correlation)", 30) // rfield(str(tokcal(EcRPA_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA total)", 30) // rfield(str(tokcal(EtotRPA_Nadd), d=6), 20))
+                  end if
+            else ! Tetramer
+                  if (RPAParams%CoupledClusters) then
+                        do k = 1, RPA_ENERGY_NCOMPONENTS
+                              call rpa_EintNadd4Body(EnergyDiffs(k), SinglePoints(k, :))
+                        end do
+                        call rpa_PrintEnergies(EnergyDiffs, RPAParams, NSystems)
+                  else
+                        call msg("RPA 4-Body Interaction Energies (kcal/mol)", underline=.true.)
+
+                        EtotDFT_ABCD = EtotDFT(SYS_TOTAL) - EtotDFT(SYS_MONO_A) - EtotDFT(SYS_MONO_B) &
+                              - EtotDFT(SYS_MONO_C) - EtotDFT(SYS_MONO_D)
+                        EtotRPA_ABCD = EtotRPA(SYS_TOTAL) - EtotRPA(SYS_MONO_A) - EtotRPA(SYS_MONO_B) &
+                              - EtotRPA(SYS_MONO_C) - EtotRPA(SYS_MONO_D)
+                        EtotHF_ABCD = EtotHF(SYS_TOTAL) - EtotHF(SYS_MONO_A) - EtotHF(SYS_MONO_B) &
+                              - EtotHF(SYS_MONO_C) - EtotHF(SYS_MONO_D)
+                        EcSingles_ABCD = EcSingles(SYS_TOTAL) - EcSingles(SYS_MONO_A) - EcSingles(SYS_MONO_B) &
+                              - EcSingles(SYS_MONO_C) - EcSingles(SYS_MONO_D)                  
+                        EcRPA_ABCD =  EcRPA(SYS_TOTAL) - EcRPA(SYS_MONO_A) - EcRPA(SYS_MONO_B) &
+                              - EcRPA(SYS_MONO_C) - EcRPA(SYS_MONO_D)
+                        EcExchange_ABCD =  EcExchange(SYS_TOTAL) - EcExchange(SYS_MONO_A) - EcExchange(SYS_MONO_B) &
+                              - EcExchange(SYS_MONO_C) - EcExchange(SYS_MONO_D)
+
+                        call rpa_EintNadd4Body(EtotDFT_Nadd, EtotDFT)
+                        call rpa_EintNadd4Body(EtotRPA_Nadd, EtotRPA)
+                        call rpa_EintNadd4Body(EtotHF_Nadd, EtotHF)
+                        call rpa_EintNadd4Body(EcSingles_Nadd, EcSingles)
+                        call rpa_EintNadd4Body(EcRPA_Nadd, EcRPA)
+                        call rpa_EintNadd4Body(EcExchange_Nadd, EcExchange)
+
+                        call msg(lfield("EintABCD(DFT)", 30) // rfield(str(tokcal(EtotDFT_ABCD), d=6), 20))
+                        call msg(lfield("EintABCD(HF)", 30) // rfield(str(tokcal(EtotHF_ABCD), d=6), 20))
+                        call msg(lfield("EintABCD(RPA singles)", 30) // rfield(str(tokcal(EcSingles_ABCD), d=6), 20))
+                        call msg(lfield("EintABCD(RPA exchange)", 30) // rfield(str(tokcal(EcExchange_ABCD), d=6), 20))
+                        call msg(lfield("EintABCD(RPA correlation)", 30) // rfield(str(tokcal(EcRPA_ABCD), d=6), 20))
+                        call msg(lfield("EintABCD(RPA total)", 30) // rfield(str(tokcal(EtotRPA_ABCD), d=6), 20))
+
+                        call msg(lfield("EintNadd(DFT)", 30) // rfield(str(tokcal(EtotDFT_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(HF)", 30) // rfield(str(tokcal(EtotHF_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA singles)", 30) // rfield(str(tokcal(EcSingles_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA exchange)", 30) // rfield(str(tokcal(EcExchange_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA correlation)", 30) // rfield(str(tokcal(EcRPA_Nadd), d=6), 20))
+                        call msg(lfield("EintNadd(RPA total)", 30) // rfield(str(tokcal(EtotRPA_Nadd), d=6), 20))
+                  end if
+            end if
+            call blankline()
+      end subroutine rpa_PostSCF
+
+
+      subroutine rpa_Eint2Body(Eint, e)
+            real(F64), intent(out)              :: Eint
+            real(F64), dimension(:), intent(in) :: e
+
+            Eint = e(SYS_TOTAL) - e(SYS_MONO_A) - e(SYS_MONO_B)
+      end subroutine rpa_Eint2Body
+
+
+      subroutine rpa_EintNadd(EintNadd, e)
+            real(F64), intent(out)              :: EintNadd
+            real(F64), dimension(:), intent(in) :: e
+
+            real(F128) :: Eab, Ebc, Eac, Eabc
+
+            Eabc = e(SYS_TOTAL) - e(SYS_MONO_A) - e(SYS_MONO_B) - e(SYS_MONO_C)
+            Eab = e(SYS_DIMER_AB) - e(SYS_MONO_A) - e(SYS_MONO_B)
+            Ebc = e(SYS_DIMER_BC) - e(SYS_MONO_B) - e(SYS_MONO_C)
+            Eac = e(SYS_DIMER_AC) - e(SYS_MONO_A) - e(SYS_MONO_C)
+            EintNadd = real(Eabc - Eab - Ebc - Eac, F64)
+      end subroutine Rpa_EintNadd
+
+
+      subroutine rpa_EintNadd4Body(EintNadd, e)
+            real(F64), intent(out)              :: EintNadd
+            real(F64), dimension(:), intent(in) :: e
+
+            real(F128) :: Eabcd
+            real(F128) :: Eab, Ebc, Eac, Ead, Ebd, Ecd
+            real(F128) :: Eabc, Eabd, Eacd, Ebcd
+            real(F128) :: EabcNadd, EabdNadd, EacdNadd, EbcdNadd
+
+            Eabcd = e(SYS_TOTAL) - e(SYS_MONO_A) - e(SYS_MONO_B) - e(SYS_MONO_C) - e(SYS_MONO_D)
+
+            Eabc = e(SYS_TRIMER_ABC) - e(SYS_MONO_A) - e(SYS_MONO_B) - e(SYS_MONO_C)
+            Eabd = e(SYS_TRIMER_ABD) - e(SYS_MONO_A) - e(SYS_MONO_B) - e(SYS_MONO_D)
+            Eacd = e(SYS_TRIMER_ACD) - e(SYS_MONO_A) - e(SYS_MONO_C) - e(SYS_MONO_D)
+            Ebcd = e(SYS_TRIMER_BCD) - e(SYS_MONO_B) - e(SYS_MONO_C) - e(SYS_MONO_D)
+
+            Eab = e(SYS_DIMER_AB) - e(SYS_MONO_A) - e(SYS_MONO_B)
+            Ebc = e(SYS_DIMER_BC) - e(SYS_MONO_B) - e(SYS_MONO_C)
+            Eac = e(SYS_DIMER_AC) - e(SYS_MONO_A) - e(SYS_MONO_C)
+            Ead = e(SYS_DIMER_AD) - e(SYS_MONO_A) - e(SYS_MONO_D)
+            Ebd = e(SYS_DIMER_BD) - e(SYS_MONO_B) - e(SYS_MONO_D)
+            Ecd = e(SYS_DIMER_CD) - e(SYS_MONO_C) - e(SYS_MONO_D)
+
+            EabcNadd = Eabc - Eab - Ebc - Eac
+            EabdNadd = Eabd - Eab - Ead - Ebd
+            EacdNadd = Eacd - Eac - Ead - Ecd
+            EbcdNadd = Ebcd - Ebc - Ebd - Ecd
+
+            EintNadd = real(Eabcd - Eab - Ebc - Eac - Ead - Ebd - Ecd &
+                  - EabcNadd - EabdNadd - EacdNadd - EbcdNadd, F64)
+      end subroutine Rpa_EintNadd4Body
+
+
+      subroutine rpa_Etot(Energy, SCFOutput, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
+            RPABasis, CholeskyVecs, CholeskyBasis)
+            !
+            ! Compute total random-phase approximation energy (EtotRPA) including the HF-like contribution
+            ! (EtotHF=Enucl+Ekin+Ene+Ecoul+Eexch), the correction for singles (EcSingles, Eq. 33 in Ref. 1),
+            ! and the direct random-phase correlation energy (EcRPA).
+            !
+            ! The direct RPA correlation, EcRPA, is computed using randomized trace estimation. The numerical
+            ! precision is controlled by the set of thresholds defined in RPAParams.
+            !
+            ! The singles correction is computed using Eq. 33 in Ref. 1 instead of Eq. 32 in Ref. 1 to
+            ! reduce the errors propagating from an imperfectly converged SCF.
+            ! (The errors resulting from Eq. 32 would be significant, I checked that by
+            ! performing HF SCF, for which EcSingles should be exactly zero.)
+            !
+            ! 1. Klimes, J., Kaltak, M., Maggio, E., Kresse, G. J. Chem. Phys. 143, 102816 (2015);
+            !    doi: 10.1063/1.4929346
+            !
+            real(F64), dimension(:), intent(out)                      :: Energy
+            type(TSCFOutput), intent(in)                              :: SCFOutput
+            type(TSCFParams), intent(in)                              :: SCFParams
+            type(TAOBasis), intent(in)                                :: AOBasis
+            type(TSystem), intent(in)                                 :: System
+            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TRPAGrids), intent(inout)                            :: RPAGrids
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
+            type(TRPABasis), intent(inout)                            :: RPABasis
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
+            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+
+            integer :: NMO, NSpins, MaxNOcc, MaxNVirt
+            type(txcdef) :: HFonDFT
+            type(tclock) :: t_rpaexch
+            type(tgriddiag) :: diag
+            integer :: s
+            real(F64) :: ExcDummy
+            logical :: SpinUnres
+            real(F64) :: OccNumber
+            real(F64), dimension(1) :: AUXOut
+            real(F64), dimension(1, 1) :: AUXIn
+            real(F64), dimension(:, :, :), allocatable :: F_cao[:], F_sao[:]
+            real(F64), dimension(:, :, :), allocatable :: Rho_sao
+            real(F64), dimension(:, :), allocatable :: F_oao
+            real(F64), dimension(:), allocatable :: TransfWork
+            real(F64), dimension(:), allocatable :: HFEigenvals
+            real(F64), dimension(:), allocatable :: BufferK
+            real(F64), dimension(:), allocatable :: BufferJ
+            real(F64), dimension(:), allocatable :: BufferRho1D
+            real(F64), dimension(:, :, :), allocatable :: BufferTxc
+            real(F64), dimension(:, :, :), allocatable :: OccCoeffs
+            real(F64), dimension(:, :, :), allocatable :: VirtCoeffs
+            real(F64), dimension(:, :), allocatable :: OccEnergies
+            real(F64), dimension(:, :), allocatable :: VirtEnergies
+            real(F64), dimension(:, :, :), allocatable :: F_ao
+            integer :: DimJK, DimRho1D, DimTxc
+            real(F64) :: EtotRPA, EtotHF, EcSingles, EcRPA
+            real(F64) :: time_F
+            integer :: ThisImage, NImages, NThreads
+
+            ThisImage = this_image()
+            NImages = num_images()
+            Energy = ZERO
+
+            associate ( &
+                  C_oao => SCFOutput%C_oao, &
+                  OrbEnergies => SCFOutput%OrbEnergies, &
+                  MOBasisVecsCart => SCFOutput%MOBasisVecsCart, &
+                  MOBasisVecsSpher => SCFOutput%MOBasisVecsSpher, &
+                  Rho_cao => SCFOutput%Rho_cao, &
+                  Hbare_cao => SCFOutput%Hbare_cao, &
+                  Noao => SCFOutput%Noao, &
+                  NOcc => SCFOutput%NOcc, &
+                  NVirt => SCFOutput%NVirt, &
+                  Enucl => SCFOutput%Enucl, &
+                  NAOCart => AOBasis%NAOCart, &
+                  NAOSpher => AOBasis%NAOSpher, &
+                  SpherAO => AOBasis%SpherAO &
+                  )
+                  call clock_start(t_rpaexch)
+                  call blankline()
+                  call msg("Hartree-Fock contribution to RPA", underline=.true.)
+                  NSpins = size(C_oao, dim=3)
+                  MaxNOcc = maxval(NOcc(1:NSpins))
+                  MaxNVirt = maxval(NVirt(1:NSpins))
+                  NMO = Noao
+                  if (NSpins > 1) then
+                        SpinUnres = .true.
+                        OccNumber = ONE
+                  else
+                        SpinUnres = .false.
+                        OccNumber = TWO
+                  end if
+                  !
+                  ! Define the Hartree-Fock Hamiltonian, built on DFT orbitals
+                  !
+                  call xcf_define(HFonDFT, XCF_HF, AUX_NONE, SpinUnres)
+                  !
+                  ! Build the exchange+Coulomb part of the Hartree-Fock Hamiltonian using
+                  ! converged DFT orbitals (no DFT exchange-correlation)
+                  !
+                  call msg("Building Hartree-Fock Hamiltonian from DFT orbitals")
+                  call msg("Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > " // str(SCFParams%ThreshFockJK,d=1))
+                  allocate(F_cao(NAOCart, NAOCart, NSpins)[*])
+                  if (SpherAO) then
+                        allocate(F_sao(NAOSpher, NAOSpher, NSpins)[*])
+                        allocate(Rho_sao(NAOSpher, NAOSpher, NSpins))
+                        allocate(TransfWork(NAOSpher*NAOCart))
+                        do s = 1, NSpins
+                              call SpherGTO_TransformMatrix(Rho_sao(:, :, s), Rho_cao(:, :, s), &
+                                    AOBasis%LmaxGTO, &
+                                    AOBasis%NormFactorsSpher, &
+                                    AOBasis%NormFactorsCart, &
+                                    AOBasis%ShellLocSpher, &
+                                    AOBasis%ShellLocCart, &
+                                    AOBasis%ShellMomentum, &
+                                    AOBasis%ShellParamsIdx, &
+                                    AOBasis%NAOSpher, &
+                                    AOBasis%NAOCart, &
+                                    AOBasis%NShells, TransfWork)
+                        end do
+                  else
+                        allocate(F_sao(1, 1, 1)[*])
+                        allocate(Rho_sao(1, 1, 1))
+                        allocate(TransfWork(NMO*NAOCart))
+                  end if
+                  call scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
+                  allocate(BufferK(DimJK))
+                  allocate(BufferJ(DimJK))
+                  allocate(BufferRho1D(DimRho1D))
+                  !
+                  ! The scratch matrix for the xc potential won't be allocated
+                  ! in its full size because only the Hartree-Fock hamiltonian
+                  ! is requested
+                  !
+                  allocate(BufferTxc(1, 1, 1))
+                  time_F = ZERO
+                  call scf_F_RealRho(F_cao, F_sao, EtotHF, ExcDummy, diag, AUXOut, &
+                        BufferTxc, BufferK, BufferJ, BufferRho1D, HFonDFT, &
+                        Rho_cao, Rho_sao, Hbare_cao, AUXIn, AOBasis, System, &
+                        SCFParams%ThreshFockJK, SCFParams%GridKind, SCFParams%GridPruning, time_F)
+                  deallocate(BufferK, BufferJ, BufferRho1D, BufferTxc)
+                  !
+                  ! Hartree-Fock contribution based on DFT orbitals, i.e.,
+                  ! without singles correction
+                  !
+                  EtotHF = EtotHF + Enucl
+                  if (RPAParams%SinglesCorrection /= RPA_SINGLES_NONE .and. ThisImage == 1) then
+                        call msg("Computing the singles correction:")
+                        allocate(HFEigenvals(NMO))
+                        allocate(F_oao(NMO, NMO))
+                        EcSingles = ZERO
+                        do s = 1, NSpins
+                              call scf_TransformF(F_oao, F_cao(:, :, s), F_sao(:, :, s), MOBasisVecsCart, MOBasisVecsSpher, &
+                                    NMO, NAOCart, NAOSpher, SpherAO, TransfWork)
+                              if (RPAParams%SinglesCorrection == RPA_SINGLES_KLIMES) then
+                                    if (s == 1) then
+                                          call msg("Klimes et al.: Eq. 33 in J. Chem. Phys. 143, 102816 (2015); doi: 10.1063/1.4929346")
+                                    end if
+                                    call symmetric_eigenproblem(HFEigenvals, F_oao, NMO, .false.)
+                                    !
+                                    ! Eq. 33 in Ref. 1
+                                    !
+                                    if (SpherAO) then
+                                          EcSingles = EcSingles + OccNumber * sum(HFEigenvals(1:NOcc(s))) &
+                                                - fock_RhoTrace(Rho_cao(:, :, s), F_cao(:, :, s)) &
+                                                - fock_RhoTrace(Rho_sao(:, :, s), F_sao(:, :, s))
+                                    else
+                                          EcSingles = EcSingles + OccNumber * sum(HFEigenvals(1:NOcc(s))) &
+                                                - fock_RhoTrace(Rho_cao(:, :, s), F_cao(:, :, s))
+                                    end if
+                              else if (RPAParams%SinglesCorrection == RPA_SINGLES_REN) then
+                                    if (s == 1) then
+                                          call msg("Ren et al.: Eq. 25 in Phys. Rev. B 88, 035120 (2013); doi: 10.1103/PhysRevB.88.035120")
+                                    end if
+                                    call rpa_EcSingles_Ren2013(EcSingles, C_oao(:, :, s), F_oao, NOcc(s), NVirt(s))
+                              end if
+                        end do
+                        if (RPAParams%SinglesCorrection == RPA_SINGLES_REN) then
+                              EcSingles = OccNumber * EcSingles
+                        end if
+                        deallocate(HFEigenvals, F_oao)
+                  else
+                        EcSingles = ZERO
+                  end if
+                  deallocate(F_cao, F_sao, Rho_sao, TransfWork)
+                  call msg("HF part of RPA completed in " // str(clock_readwall(t_rpaexch), d=1) // " seconds")
+                  call msg(lfield("HF contribution (EtotHF)", 50) // lfield(str(EtotHF, d=10), 20))
+                  if (RPAParams%SinglesCorrection) then
+                        call msg(lfield("Singles correction (EcSingles)", 50) // lfield(str(EcSingles, d=10), 20))
+                  end if
+                  if (.not. RPAParams%DisableCorrelation) then
+                        !
+                        ! Compute DFT MO coefficients in the Cartesian AO basis
+                        !
+                        if (SpherAO) then
+                              allocate(OccCoeffs(NAOSpher, MaxNOcc, NSpins))
+                              allocate(VirtCoeffs(NAOSpher, MaxNVirt, NSpins))
+                        else
+                              allocate(OccCoeffs(NAOCart, MaxNOcc, NSpins))
+                              allocate(VirtCoeffs(NAOCart, MaxNVirt, NSpins))
+                        end if
+                        allocate(OccEnergies(MaxNOcc, NSpins))
+                        allocate(VirtEnergies(MaxNVirt, NSpins))
+                        do s = 1, NSpins
+                              if (NOcc(s) > 0) then
+                                    if (SpherAO) then
+                                          call real_ab(OccCoeffs(:, 1:NOcc(s), s), &
+                                                MOBasisVecsSpher, C_oao(:, 1:NOcc(s), s))
+                                          call real_ab(VirtCoeffs(:, 1:NVirt(s), s), MOBasisVecsSpher, &
+                                                C_oao(:, NOcc(s)+1:NOcc(s)+NVirt(s), s))
+                                    else
+                                          call real_ab(OccCoeffs(:, 1:NOcc(s), s), &
+                                                MOBasisVecsCart, C_oao(:, 1:NOcc(s), s))
+                                          call real_ab(VirtCoeffs(:, 1:NVirt(s), s), MOBasisVecsCart, &
+                                                C_oao(:, NOcc(s)+1:NOcc(s)+NVirt(s), s))
+                                    end if
+                                    OccEnergies(1:NOcc(s), s) = OrbEnergies(1:NOcc(s), s)
+                                    VirtEnergies(1:NVirt(s), s) = OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
+                              else
+                                    OccCoeffs(:, :, s) = ZERO
+                                    VirtCoeffs(:, :, s) = ZERO
+                                    OccEnergies(:, s) = ZERO
+                                    VirtEnergies(:, s) = ZERO
+                              end if
+                        end do
+                        allocate(F_ao(0, 0, 0))
+                        call rpa_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
+                              NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+                              CholeskyVecs, CholeskyBasis, F_ao)
+                  end if
+                  EcRPA = Energy(RPA_ENERGY_CORR)
+                  EtotRPA = EtotHF + EcSingles + EcRPA
+                  call msg("RPA Single-Point Energies", underline=.true.)
+                  call msg(lfield("HF contribution (EtotHF)", 50) // lfield(str(EtotHF, d=10), 20))
+                  if (RPAParams%SinglesCorrection) then
+                        call msg(lfield("Singles correction (EcSingles)", 50) // lfield(str(EcSingles, d=10), 20))
+                        call msg(lfield("Direct RPA correlation (EcRPA)", 50) // lfield(str(EcRPA, d=10), 20))
+                        call msg(lfield("Total energy (EtotRPA=EtotHF+EcSingles+EcRPA)", 50) // lfield(str(EtotRPA, d=10), 20))
+                  else
+                        call msg(lfield("Direct RPA correlation (EcRPA)", 50) // lfield(str(EcRPA, d=10), 20))
+                        call msg(lfield("Total energy (EtotRPA=EtotHF+EcRPA)", 50) // lfield(str(EtotRPA, d=10), 20))
+                  end if
+                  call blankline()
+            end associate
+            Energy(RPA_ENERGY_TOTAL) = EtotRPA
+            Energy(RPA_ENERGY_HF) = EtotHF
+            Energy(RPA_ENERGY_SINGLES) = EcSingles
+            if (NImages > 1) then
+                  call co_broadcast(Energy, source_image=1)
+            end if
+      end subroutine rpa_Etot
+
+
+      subroutine rpa_EcSingles_Ren2013(EcSingles, C_oao, F_oao, NOcc, NVirt)
+            real(F64), intent(inout)               :: EcSingles
+            real(F64), dimension(:, :), intent(in) :: C_oao
+            real(F64), dimension(:, :), intent(in) :: F_oao
+            integer, intent(in)                    :: NOcc
+            integer, intent(in)                    :: NVirt
+
+            integer :: i0, i1, a0, a1, a, i, NMO
+            real(F64), dimension(:, :), allocatable :: Fij, Fab, Fai
+            real(F64), dimension(:, :), allocatable :: OccVecs, VirtVecs
+            real(F64), dimension(:), allocatable :: OccEnergies, VirtEnergies
+            real(F64), dimension(:, :), allocatable :: TransfWork
+
+            NMO = size(F_oao, dim=1)
+            allocate(OccEnergies(NOcc))
+            allocate(VirtEnergies(NVirt))
+            allocate(OccVecs(NMO, NOcc))
+            allocate(VirtVecs(NMO, NVirt))
+            allocate(Fij(NOcc, NOcc))
+            allocate(Fab(NVirt, NVirt))
+            allocate(Fai(NVirt, NOcc))
+            allocate(TransfWork(NMO, max(NOcc, NVirt)))
+            i0 = 1
+            i1 = NOcc
+            a0 = NOcc + 1
+            a1 = NOcc + NVirt
+            call real_ab(TransfWork(:, 1:NOcc), F_oao, C_oao(:, i0:i1))
+            call real_aTb(Fij, C_oao(:, i0:i1), TransfWork(:, 1:Nocc))
+            call real_ab(TransfWork(:, 1:NVirt), F_oao, C_oao(:, a0:a1))
+            call real_aTb(Fab, C_oao(:, a0:a1), TransfWork(:, 1:NVirt))
+            call symmetric_eigenproblem(OccEnergies, Fij, NOcc, .true.)
+            call symmetric_eigenproblem(VirtEnergies, Fab, NVirt, .true.)
+            call real_ab(OccVecs, C_oao(:, i0:i1), Fij)
+            call real_ab(VirtVecs, C_oao(:, a0:a1), Fab)
+            call real_ab(TransfWork(:, 1:NOcc), F_oao, OccVecs)
+            call real_aTb(Fai, VirtVecs, TransfWork(:, 1:NOcc))
+            do i = 1, NOcc
+                  do a = 1, NVirt
+                        EcSingles = EcSingles + Fai(a, i)**2 / (OccEnergies(i) - VirtEnergies(a))
+                  end do
+            end do
+      end subroutine rpa_EcSingles_Ren2013
+
+
+      subroutine rpa_CC_Etot(Energy, SCFOutput, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
+            RPABasis, CholeskyVecs, CholeskyBasis, SCFParams, System)
+
+            real(F64), dimension(:), intent(out)                      :: Energy
+            type(TSCFOutput), intent(in)                              :: SCFOutput
+            type(TAOBasis), intent(in)                                :: AOBasis
+            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TRPAGrids), intent(inout)                            :: RPAGrids
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
+            type(TRPABasis), intent(inout)                            :: RPABasis
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
+            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TSCFParams), intent(in)                              :: SCFParams
+            type(TSystem), intent(in)                                 :: System
+
+            integer :: NAO, NSpins, s
+            real(F64) :: Etot
+            real(F64) :: EtotHF, EhfTwoEl, EHbare, Enucl
+            real(F64), dimension(:, :, :), allocatable :: OccCoeffs_ao, VirtCoeffs_ao, F_ao
+            real(F64), dimension(:, :, :), allocatable :: Rho_ao
+            real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
+            real(F64) :: time_F
+            integer :: ThisImage
+
+            ThisImage = this_image()
+            Energy = ZERO
+            associate ( &
+                  NOcc => SCFOutput%NOcc, &
+                  NVirt => SCFOutput%NVirt, &
+                  C_oao => SCFOutput%C_oao, &
+                  Noao => SCFOutput%Noao, &
+                  NAOCart => AOBasis%NAOCart, &
+                  NAOSpher => AOBasis%NAOSpher, &
+                  SpherAO => AOBasis%SpherAO, &
+                  OrbEnergies => SCFOutput%OrbEnergies, &
+                  MOBasisVecsCart => SCFOutput%MOBasisVecsCart, &
+                  MOBasisVecsSpher => SCFOutput%MOBasisVecsSpher &
+                  )
+                  NSpins = size(OrbEnergies, dim=2)
+                  if (SpherAO) then
+                        NAO = NAOSpher
+                        call postscf_Rho(OccCoeffs_ao, VirtCoeffs_ao, Rho_ao, C_oao, MOBasisVecsSpher, &
+                              NOcc, NVirt)
+                  else
+                        NAO = NAOCart
+                        call postscf_Rho(OccCoeffs_ao, VirtCoeffs_ao, Rho_ao, C_oao, MOBasisVecsCart, &
+                              NOcc, NVirt)
+                  end if
+                  allocate(F_ao(NAO, NAO, NSpins))
+                  call postscf_FullFockMatrix(F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
+                        SCFParams, System, AOBasis, time_F)
+                  Energy(RPA_ENERGY_HF) = EtotHF
+                  if (.not. RPAParams%DisableCorrelation) then
+                        allocate(OccEnergies(max(NOcc(1), NOcc(2)), NSpins))
+                        allocate(VirtEnergies(max(NVirt(1), NVirt(2)), NSpins))
+                        do s = 1, NSpins
+                              OccEnergies(1:NOcc(s), s) = OrbEnergies(1:NOcc(s), s)
+                              VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
+                        end do
+                        call rpa_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
+                              NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+                              CholeskyVecs, CholeskyBasis, F_ao)
+                  end if
+            end associate
+            Etot = Energy(RPA_ENERGY_HF) + &
+                  Energy(RPA_ENERGY_1RDM_LINEAR) + &
+                  Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
+                  Energy(RPA_ENERGY_CORR)
+            Energy(RPA_ENERGY_TOTAL) = Etot
+            call msg("Single-Point Energies (a.u.)", underline=.true.)
+            if (RPAParams%TensorHypercontraction) then
+                  call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+                  call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+                  call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+                  call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+                  call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
+                  call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
+                  call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
+            else
+                  call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+                  call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+                  call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+                  call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+                  call msg(lfield("exchange", 40) //          rfield(str(Energy(RPA_ENERGY_EXCHANGE), d=8), 20))
+                  call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
+            end if
+            call blankline()            
+            call co_broadcast(Energy, source_image=1)
+      end subroutine rpa_CC_Etot
+
+
+      subroutine rpa_THC_Etot(Energy, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid)
+            real(F64), dimension(:), intent(out)                      :: Energy
+            type(TMeanField), intent(in)                              :: MeanField
+            type(TAOBasis), intent(in)                                :: AOBasis
+            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TRPAGrids), intent(inout)                            :: RPAGrids
+            type(TCoulTHCGrid), intent(inout)                         :: THCGrid
+
+            real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
+            integer :: s
+
+            Energy = ZERO
+            associate ( &
+                  NOcc => MeanField%NOcc, &
+                  NVirt => MeanField%NVirt, &
+                  NSpins => MeanField%NSpins, &
+                  NAOCart => AOBasis%NAOCart, &
+                  NAOSpher => AOBasis%NAOSpher, &
+                  OrbEnergies => MeanField%OrbEnergies, &
+                  OccCoeffs_ao => MeanField%OccCoeffs_ao, &
+                  VirtCoeffs_ao => MeanField%VirtCoeffs_ao, &
+                  F_ao => MeanField%F_ao &
+                  )
+                  if (.not. RPAParams%DisableCorrelation) then
+                        allocate(OccEnergies(max(NOcc(1), NOcc(2)), NSpins))
+                        allocate(VirtEnergies(max(NVirt(1), NVirt(2)), NSpins))
+                        do s = 1, NSpins
+                              OccEnergies(1:NOcc(s), s) = OrbEnergies(1:NOcc(s), s)
+                              VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
+                        end do
+                        call rpa_THC_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
+                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid)                        
+                  end if
+            end associate
+            Energy(RPA_ENERGY_HF) = MeanField%EtotHF
+            Energy(RPA_ENERGY_1RDM_LINEAR) = MeanField%Ec1RDM_Linear
+            Energy(RPA_ENERGY_1RDM_QUADRATIC) = MeanField%Ec1RDM_Quadratic
+            Energy(RPA_ENERGY_SINGLES) = Energy(RPA_ENERGY_1RDM_LINEAR) + Energy(RPA_ENERGY_1RDM_QUADRATIC)
+            Energy(RPA_ENERGY_TOTAL) = &
+                  Energy(RPA_ENERGY_HF) + &
+                  Energy(RPA_ENERGY_1RDM_LINEAR) + &
+                  Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
+                  Energy(RPA_ENERGY_CORR)
+            call msg("Single-Point Energies (a.u.)", underline=.true.)
+            call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+            call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+            call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+            call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+            call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
+            call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
+            call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
+            call blankline()            
+            call co_broadcast(Energy, source_image=1)
+      end subroutine rpa_THC_Etot
+
+
+      subroutine rpa_PrintEnergies(Energies, RPAParams, NSystems)
+            real(F64), dimension(:), intent(in) :: Energies
+            type(TRPAParams), intent(in)        :: RPAParams
+            integer, intent(in)                 :: NSystems
+
+            character(:), allocatable :: Prefix
+            character(1), parameter :: Postfix = ")"
+            integer, parameter :: ColWidth = 40
+            logical :: kcal
+            integer :: k
+            character(ColWidth), dimension(RPA_ENERGY_NCOMPONENTS) :: Labels
+            integer, parameter :: NTermsRPA = 5
+            integer, parameter :: NTermsCC = 7
+            integer, parameter :: NTermsTHC = 22
+            integer, dimension(NTermsRPA), parameter :: TermsRPA = [ &
+                  RPA_ENERGY_DFT, &
+                  RPA_ENERGY_HF, &
+                  RPA_ENERGY_SINGLES, &
+                  RPA_ENERGY_CORR, &
+                  RPA_ENERGY_TOTAL &
+                  ]
+            integer, dimension(NTermsCC), parameter :: TermsCC = [ &
+                  RPA_ENERGY_DFT, &                                ! 1
+                  RPA_ENERGY_HF, &                                 ! 2
+                  RPA_ENERGY_1RDM_LINEAR, &                        ! 3
+                  RPA_ENERGY_1RDM_QUADRATIC, &                     ! 4
+                  RPA_ENERGY_DIRECT_RING, &                        ! 5
+                  RPA_ENERGY_EXCHANGE, &                           ! 6
+                  RPA_ENERGY_TOTAL &                               ! 7
+                  ]
+            integer, dimension(NTermsTHC), parameter :: TermsTHC = [ &
+                  RPA_ENERGY_DFT, &                                ! 1
+                  RPA_ENERGY_HF, &                                 ! 2
+                  RPA_ENERGY_1RDM_LINEAR, &                        ! 3
+                  RPA_ENERGY_1RDM_QUADRATIC, &                     ! 4
+                  RPA_ENERGY_DIRECT_RING, &                        ! 5
+                  RPA_ENERGY_CUMULANT_1B, &                        ! 6
+                  RPA_ENERGY_CUMULANT_2B, &                        ! 7
+                  RPA_ENERGY_CUMULANT_2C, &                        ! 8
+                  RPA_ENERGY_CUMULANT_2D, &                        ! 9
+                  RPA_ENERGY_CUMULANT_2E, &                        ! 10
+                  RPA_ENERGY_CUMULANT_2F, &                        ! 11
+                  RPA_ENERGY_CUMULANT_2G, &                        ! 12
+                  RPA_ENERGY_CUMULANT_2H, &                        ! 13
+                  RPA_ENERGY_CUMULANT_2I, &                        ! 14
+                  RPA_ENERGY_CUMULANT_2J, &                        ! 15
+                  RPA_ENERGY_CUMULANT_2K, &                        ! 16
+                  RPA_ENERGY_CUMULANT_2L, &                        ! 17
+                  RPA_ENERGY_CUMULANT_2M, &                        ! 18
+                  RPA_ENERGY_CUMULANT_2N, &                        ! 19
+                  RPA_ENERGY_CUMULANT_2O, &                        ! 20
+                  RPA_ENERGY_CUMULANT_2P, &                        ! 21
+                  RPA_ENERGY_TOTAL &                               ! 22
+                  ]
+
+            logical, dimension(RPA_ENERGY_NCOMPONENTS) :: DisplayedValues
+
+
+            DisplayedValues = .false.
+            DisplayedValues(RPA_ENERGY_DFT) = .true.
+            DisplayedValues(RPA_ENERGY_HF) = .true.
+            DisplayedValues(RPA_ENERGY_1RDM_LINEAR) = .true.
+            DisplayedValues(RPA_ENERGY_1RDM_QUADRATIC) = .true.
+            DisplayedValues(RPA_ENERGY_DIRECT_RING) = .true.
+            DisplayedValues(RPA_ENERGY_TOTAL) = .true.
+            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
+            end if
+            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_2_HALF_THC) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2M) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2N) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2O) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2P) = .true.
+            end if
+            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_3_HALF_THC) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
+            end if
+            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_4_HALF_THC) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2E) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2H) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2K) = .true.
+            end if
+            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_5_HALF_THC) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2F) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2I) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2J) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2L) = .true.
+            end if
+            if (NSystems == 1) then
+                  Prefix = "E("
+            else if (NSystems == 3) then
+                  Prefix = "Eint("
+            else
+                  Prefix = "EintNadd("
+            end if
+
+            if (NSystems > 1) then
+                  kcal = .true.
+            else
+                  kcal = .false.
+            end if
+
+            if (RPAParams%CoupledClusters) then
+                  if (RPAParams%TensorHypercontraction) then                        
+                        Labels(RPA_ENERGY_DFT)                         = lfield(Prefix // "DFT" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_HF)                          = lfield(Prefix // "HF" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_1RDM_LINEAR)                 = lfield(Prefix // "1-RDM linear" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_1RDM_QUADRATIC)              = lfield(Prefix // "1-RDM quadratic" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_DIRECT_RING)                 = lfield(Prefix // "direct ring" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_1B)                 = lfield(Prefix // "cumulant 1b/SOSEX" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2B)                 = lfield(Prefix // "cumulant 2b/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2C)                 = lfield(Prefix // "cumulant 2c/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2D)                 = lfield(Prefix // "cumulant 2d/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2E)                 = lfield(Prefix // "cumulant 2e/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2F)                 = lfield(Prefix // "cumulant 2f/MBPT3" // Postfix, ColWidth)                        
+                        Labels(RPA_ENERGY_CUMULANT_2G)                 = lfield(Prefix // "cumulant 2g/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2H)                 = lfield(Prefix // "cumulant 2h/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2I)                 = lfield(Prefix // "cumulant 2i/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2J)                 = lfield(Prefix // "cumulant 2j/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2K)                 = lfield(Prefix // "cumulant 2k/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2L)                 = lfield(Prefix // "cumulant 2l/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2M)                 = lfield(Prefix // "cumulant 2m/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2N)                 = lfield(Prefix // "cumulant 2n/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2O)                 = lfield(Prefix // "cumulant 2o/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2P)                 = lfield(Prefix // "cumulant 2p/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "total" // Postfix, ColWidth)
+                  else
+                        Labels(RPA_ENERGY_DFT)                         = lfield(Prefix // "DFT" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_HF)                          = lfield(Prefix // "HF" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_1RDM_LINEAR)                 = lfield(Prefix // "1-RDM linear" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_1RDM_QUADRATIC)              = lfield(Prefix // "1-RDM quadratic" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_DIRECT_RING)                 = lfield(Prefix // "direct ring" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_EXCHANGE)                    = lfield(Prefix // "exchange" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "total" // Postfix, ColWidth)
+                  end if
+            else
+                  Labels(RPA_ENERGY_DFT)                         = lfield(Prefix // "DFT" // Postfix, ColWidth)
+                  Labels(RPA_ENERGY_HF)                          = lfield(Prefix // "HF" // Postfix, ColWidth)
+                  Labels(RPA_ENERGY_SINGLES)                     = lfield(Prefix // "RPA singles" // Postfix, ColWidth)
+                  Labels(RPA_ENERGY_CORR)                        = lfield(Prefix // "RPA correlation" // Postfix, ColWidth)
+                  Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "RPA total" // Postfix, ColWidth)
+            end if
+
+            if (NSystems == 1) then
+                  call msg("RPA Single-Point Energies (a.u.)", underline=.true.)
+            else if (NSystems == 3) then
+                  call msg("RPA 2-Body Interaction Energies (kcal/mol)", underline=.true.)
+            else if (NSystems == 7) then
+                  call msg("RPA 3-Body Interaction Energies (kcal/mol)", underline=.true.)
+            else
+                  call msg("RPA 4-Body Interaction Energies (kcal/mol)", underline=.true.)
+            end if
+
+            if (RPAParams%CoupledClusters) then
+                  if (RPAParams%TensorHypercontraction) then
+                        do k = 1, NTermsTHC
+                              if (DisplayedValues(TermsTHC(k))) then
+                                    call rpa_EnergyTableRow(Labels(TermsTHC(k)), Energies(TermsTHC(k)), kcal)
+                              end if
+                        end do
+                  else
+                        do k = 1, NTermsCC
+                              call rpa_EnergyTableRow(Labels(TermsCC(k)), Energies(TermsCC(k)), kcal)
+                        end do
+                  end if
+            else
+                  do k = 1, NTermsRPA
+                        call rpa_EnergyTableRow(Labels(TermsRPA(k)), Energies(TermsRPA(k)), kcal)
+                  end do
+            end if
+      end subroutine rpa_PrintEnergies
+
+
+      subroutine rpa_EnergyTableRow(Label, E, kcal)
+            character(*), intent(in) :: Label
+            real(F64), intent(in)    :: E
+            logical, intent(in)      :: kcal
+
+            if (kcal) then
+                  call msg(Label // rfield(str(tokcal(E), d=6), 20))
+            else
+                  call msg(Label // rfield(str(E, d=9), 20))
+            end if
+      end subroutine rpa_EnergyTableRow
+end module rpa_driver

@@ -1,0 +1,1 @@
+gfortran -fopenmp -fcoarray=lib -Wall -O3 -fdefault-integer-8 -ffree-line-length-0 -march=native -mtune=native -funroll-loops -fprefetch-loop-arrays -fvariable-expansion-in-unroller -ffast-math -Iobj/ -c

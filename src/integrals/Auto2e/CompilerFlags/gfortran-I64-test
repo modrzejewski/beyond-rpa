@@ -1,0 +1,1 @@
+gfortran-6 -fopenmp -O3 -fdefault-integer-8 -ffree-line-length-0 -I/home/marcin/Documents/workspace/test/ -I/home/marcin/Documents/workspace/test/Auto2e/obj/ -c

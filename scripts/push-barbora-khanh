@@ -1,0 +1,6 @@
+#!/bin/bash
+DEST="khanh_91@barbora:/home/khanh_91/a/"
+SOURCE="../"
+RSYNC="rsync -avz -e ssh --delete --exclude-from=rsync-exclude.txt"
+
+$RSYNC ${SOURCE}* $DEST

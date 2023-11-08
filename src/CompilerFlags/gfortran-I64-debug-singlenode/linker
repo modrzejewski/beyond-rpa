@@ -1,0 +1,1 @@
+gfortran -fopenmp -fcoarray=single -ffpe-trap=invalid -fdefault-integer-8 -Iobj/ -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -o 

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+PPFile="../small-core-relativistic.txt"
+echo "\$ECP" > $PPFile
+./CSVToECPInput.py 020_Ca.csv >> $PPFile
+./CSVToECPInput.py 029_Cu.csv >> $PPFile
+./CSVToECPInput.py 030_Zn.csv >> $PPFile
+./CSVToECPInput.py 038_Sr.csv >> $PPFile
+./CSVToECPInput.py 047_Ag.csv >> $PPFile
+./CSVToECPInput.py 048_Cd.csv >> $PPFile
+./CSVToECPInput.py 056_Ba.csv >> $PPFile
+./CSVToECPInput.py 079_Au.csv >> $PPFile
+./CSVToECPInput.py 080_Hg.csv >> $PPFile
+echo "\$END" >> $PPFile
+
+
+

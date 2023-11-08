@@ -1,0 +1,6 @@
+#!/bin/bash
+DEST="plgrid:/net/people/plgmodrzej/a/"
+SOURCE="../"
+RSYNC="rsync -avz -e ssh --delete --exclude-from=rsync-exclude.txt"
+
+$RSYNC ${SOURCE}* $DEST
