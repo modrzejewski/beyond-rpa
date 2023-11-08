@@ -125,7 +125,7 @@ contains
                               end do
                         end do
                   end do
-                  Ec1b = -ONE * Ec1b
+                  Ec1b = -TWO * Ec1b
                   Ec2g = -FOUR * Ec2g
                   !
                   ! Save the energy components in the output array

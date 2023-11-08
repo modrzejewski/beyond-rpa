@@ -203,7 +203,7 @@ contains
                   S2g = ZERO
                   S1b = ZERO
                   NBlocks = NGridTHC / BlockDim
-                  if (modulo(NBlocks, BlockDim) > 0) NBlocks = NBlocks + 1
+                  if (modulo(NGridTHC, BlockDim) > 0) NBlocks = NBlocks + 1
                   NBlockPairs = (NBlocks * (NBlocks + 1)) / 2
                   !$omp parallel do &
                   !$omp private(pq, p, q, M, N, g0, g1, h0, h1) &
