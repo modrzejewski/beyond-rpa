@@ -181,7 +181,7 @@ contains
             ! the non-ring part of the expectation value of the hamiltonian
             ! ---------------------------------------------------------------------------------
             call clock_start(timer)
-            call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+            call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
                   NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
             t_Cumulant = clock_readwall(timer)

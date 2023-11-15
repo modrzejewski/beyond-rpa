@@ -10,7 +10,7 @@ module rpa_CCD_Corrections
       
 contains
 
-      subroutine rpa_Cumulant_HalfTHC(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
+      subroutine rpa_Cumulant_HalfTHC(Energy, Zgh, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
             Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox)
             
             integer, intent(in)                                    :: NOcc
@@ -19,7 +19,6 @@ contains
             integer, intent(in)                                    :: NGridTHC
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(in)                 :: Zgh
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
             real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
             real(F64), dimension(NVirt, NOcc), intent(in)          :: hHFai
@@ -29,10 +28,8 @@ contains
             real(F64), dimension(:), intent(in)                    :: Am
             integer, intent(in)                                    :: CumulantApprox
 
-            real(F64), dimension(:, :, :), allocatable :: YUgim, XUgam
-            real(F64), dimension(:, :), allocatable :: ZYXUkm
-            logical :: Compute_1b2g, Compute_2bcd
-            integer :: mu
+            real(F64), dimension(:, :), allocatable :: YXUggm
+            logical :: Compute_1b2g, Compute_2bc
             type(TClock) :: timer_total, timer
             integer, parameter :: BlockDim = 300
 
@@ -49,36 +46,21 @@ contains
             call clock_start(timer_total)
             call clock_start(timer)
             Compute_1b2g = .false.
-            Compute_2bcd = .false.
-            if (CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) Compute_1b2g = .true.
-            if (CumulantApprox >= RPA_CUMULANT_LEVEL_3_HALF_THC) Compute_2bcd = .true.
+            Compute_2bc = .false.
+            if (CumulantApprox == RPA_CUMULANT_LEVEL_DEFAULT) then
+                  Compute_1b2g = .true.
+                  Compute_2bc = .true.
+            end if
             if (Compute_1b2g) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_1b_2g_HalfTHC(Energy, Zgh, Zgk, Xgi, Yga, Uaim, &
-                        Am, BlockDim, Compute_2bcd, ZYXUkm)
-                  call msg("1b(SOSEX)+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  call rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim, &
+                        Am, BlockDim, Compute_2bc, YXUggm)
+                  call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
-
-            if (Compute_2bcd) then
-                  allocate(YUgim(NGridTHC, NOcc, NVecsT2))
-                  allocate(XUgam(NGridTHC, NVirt, NVecsT2))            
-                  do mu = 1, NVecsT2
-                        !
-                        ! [YU](gamma,i,mu) = Sum(a) X(gamma,a)*U(a,i,mu)
-                        !
-                        call real_ab(YUgim(:, :, mu), Yga, Uaim(:, :, mu))
-                        !
-                        ! [XU](a,gamma,mu) = Sum(i) U(a,i,mu)*X(gamma,i)
-                        !
-                        call real_abT(XUgam(:, :, mu), Xgi, Uaim(:, :, mu))
-                        XUgam(:, :, mu) = XUgam(:, :, mu) * Sqrt(-Am(mu))
-                        YUgim(:, :, mu) = YUgim(:, :, mu) * Sqrt(-Am(mu))
-                  end do
-                  call msg("Intermediates [XU] and [YU] built in " // str(clock_readwall(timer),d=1) // " seconds")
+            if (Compute_2bc) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_2bcd_HalfTHC(Energy, Zgk, YUgim, XUgam, &
-                        Uaim, Am, ZYXUkm)
-                  call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  call rpa_CCD_corrections_2bc(Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+                  call msg("2b+2c computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             !
             ! Rescale the energy terms to get the correct MBPT prefactors.
@@ -91,40 +73,36 @@ contains
       end subroutine rpa_Cumulant_HalfTHC
 
       
-      subroutine rpa_CCD_corrections_1b_2g_HalfTHC(Energy, Zgh, Zgk, Xgi, Yga, Uaim, &
-            Am, BlockDim, Intermediates_2bcd, ZYXUkm)
+      subroutine rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim, &
+            Am, BlockDim, Intermediates_2bcd, YXUggm)
             
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(in)                 :: Zgh
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :, :), intent(in)              :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
             integer, intent(in)                                    :: BlockDim
             logical, intent(in)                                    :: Intermediates_2bcd
-            real(F64), dimension(:, :), allocatable, intent(out)   :: ZYXUkm
+            real(F64), dimension(:, :), allocatable, intent(out)   :: YXUggm
 
             real(F64), dimension(:, :), allocatable :: YXUgh
-            real(F64), dimension(:), allocatable :: YXUgg
             real(F64), dimension(:, :), allocatable :: YUgi
             integer :: mu, g
             real(F64) :: Ec1b, Ec2g
             real(F64) :: S1b, S2g
-            integer :: NVecsT2, NGridTHC, NCholesky, NOcc, NVirt
-            real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU
+            integer :: NVecsT2, NGridTHC, NOcc, NVirt
+            real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU            
             type(TClock) :: timer
 
             NGridTHC = size(Zgh, dim=1)
             NVecsT2 = size(Am)
-            NCholesky = size(Zgk, dim=2)
             NOcc = size(Xgi, dim=2)
             NVirt = size(Yga, dim=2)
             allocate(YXUgh(NGridTHC, NGridTHC))
             allocate(YUgi(NGridTHC, NOcc))
             if (Intermediates_2bcd) then
-                  allocate(YXUgg(NGridTHC))
-                  allocate(ZYXUkm(NCholesky, NVecsT2))
+                  allocate(YXUggm(NGridTHC, NVecsT2))
             end if
             t_YU = ZERO
             t_YXU = ZERO
@@ -134,11 +112,11 @@ contains
             Ec2g = ZERO
             do mu = 1, NVecsT2
                   !
-                  ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)*Sqrt(-A(mu))
+                  ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)
                   !
                   call clock_start(timer)
                   call real_ab_x(YUgi, NGridTHC, Yga, NGridTHC, Uaim(:, :, mu), &
-                        NVirt, NGridTHC, NOcc, NVirt, Sqrt(-Am(mu)), ZERO)
+                        NVirt, NGridTHC, NOcc, NVirt, ONE, ZERO)
                   t_YU = t_YU + clock_readwall(timer)
                   !
                   ! [YXU](gamma,delta,mu) = Sum(i) X(delta,i)*[YU](gamma,i,mu)
@@ -149,15 +127,14 @@ contains
                   call clock_start(timer)
                   call Zgh_YXUgh_YXUgh(S2g, S1b, Zgh, YXUgh, NGridTHC, BlockDim)
                   t_Z_YXU_YXU = t_Z_YXU_YXU + clock_readwall(timer)
-                  Ec2g = Ec2g - TWO * S2g * Abs(Am(mu))
-                  Ec1b = Ec1b + S1b
+                  Ec2g = Ec2g - TWO * S2g * Am(mu)**2
+                  Ec1b = Ec1b - S1b * Am(mu)
                   if (Intermediates_2bcd) then
-                        call clock_start(timer)
+                        !$omp parallel do private(g)                       
                         do g = 1, NGridTHC
-                              YXUgg(g) = YXUgh(g, g)
+                              YXUggm(g, mu) = YXUgh(g, g)
                         end do
-                        call real_aTv(ZYXUkm(:, mu), Zgk, YXUgg) ! [ZYXU](k,mu) = Sum(g) Z(g,k)*[YXU](g,g;mu)
-                        t_ZYXU = t_ZYXU + clock_readwall(timer)
+                        !$omp end parallel do
                   end if
             end do
             !
@@ -174,14 +151,10 @@ contains
             Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
             Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
 
-            call msg("Level-1 timings (seconds)", underline=.true.)
+            call msg("SOSEX+2g timings (seconds)", underline=.true.)
             call msg("[YU]          " // str(t_YU,d=1))
             call msg("[YXU]         " // str(t_YXU,d=1))
             call msg("Z*[YXU]*[YXU] " // str(t_Z_YXU_YXU,d=1))
-            call msg("[ZYXU]        " // str(t_ZYXU,d=1))
-
-            print *, "Ec1b=", Ec1b
-            print *, "Ec2g=", Ec2g
 
       contains
 
@@ -304,83 +277,7 @@ contains
                         S1b = S1b + Z(k) * YXU(k) * YXU_T(k)
                   end do
             end subroutine block_multiply_loop_2            
-      end subroutine rpa_CCD_corrections_1b_2g_HalfTHC
-     
-      
-      subroutine rpa_CCD_corrections_2bcd_HalfTHC(Energy, Zgk, YUgim, XUgam, Uaim, Am, ZYXUkm) 
-            real(F64), dimension(:), intent(inout)                 :: Energy
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
-            real(F64), dimension(:, :, :), intent(in)              :: YUgim
-            real(F64), dimension(:, :, :), intent(in)              :: XUgam
-            real(F64), dimension(:, :, :), intent(in)              :: Uaim
-            real(F64), dimension(:), intent(in)                    :: Am
-            real(F64), dimension(:, :), intent(in)                 :: ZYXUkm
-
-            real(F64), dimension(:, :), allocatable :: YUXUga, ZYUXUka, UZYUXUkm
-            integer :: mu, i, a
-            real(F64) :: Ec2b, Ec2c, Ec2d
-            real(F64) :: S2b, S2d
-            integer :: NVecsT2, NGridTHC, NCholesky, NOcc, NVirt
-
-            NGridTHC = size(Zgk, dim=1)
-            NVecsT2 = size(YUgim, dim=3)
-            NCholesky = size(Zgk, dim=2)
-            NOcc = size(YUgim, dim=2)
-            NVirt = size(XUgam, dim=2)
-            allocate(YUXUga(NGridTHC, NVirt))
-            allocate(ZYUXUka(NCholesky, NVirt))
-            allocate(UZYUXUkm(NCholesky, NVecsT2))
-            Ec2b = ZERO
-            Ec2c = ZERO
-            Ec2d = ZERO
-            UZYUXUkm = ZERO
-            do i = 1, NOcc
-                  !
-                  ! [YUXU](g,a,g,i) = Sum(mu) [YU](g,a,mu)*[XU](g,i,mu)
-                  !
-                  YUXUga = ZERO
-                  !$omp parallel do private(a, mu) default(shared)
-                  do a = 1, NVirt
-                        do mu = 1, NVecsT2
-                              YUXUga(:, a) = YUXUga(:, a) + XUgam(:, a, mu) * YUgim(:, i, mu)
-                        end do
-                  end do
-                  !$omp end parallel do
-                  !
-                  ! [ZYUXU](k,a,i) = Sum(g) Z(g,k)*[YUXU](g,a,g,i)
-                  !
-                  call real_aTb(ZYUXUka, Zgk, YUXUga)
-                  call real_vw_x(S2d, ZYUXUka, ZYUXUka, NCholesky*NVirt)
-                  Ec2d = Ec2d + S2d
-                  !
-                  ! [UZYUXU](k, mu) = Sum(ai) [ZYUXU](k,a,i)*U(a,i,mu)
-                  !
-                  do mu = 1, NVecsT2
-                        call real_av_x(UZYUXUkm(:, mu), ZYUXUka, NCholesky, Uaim(:, i, mu), &
-                              NCholesky, NVirt, Sqrt(-Am(mu)), ONE)
-                  end do
-            end do
-            call real_vw_x(S2b, ZYXUkm, UZYUXUkm, NCholesky*NVecsT2)
-            Ec2b = -TWO * S2b
-            Ec2c = -TWO * S2b
-            !
-            ! Symmetry factors due to the permuation symmetry of the Coulomb integrals
-            ! and the cumulant.
-            !
-            ! Note regarding SOSEX, 2b, 2c
-            ! The SOSEX term is Ec1b(Lambda=1) rescaled by 1/2. In the third order,
-            ! SOSEX contributes half of the exact MBPT prefactor of Ec2b+Ec2c.
-            ! Thus, Ec2b(Lambda=1) + Ec2c(Lambda=1) should be rescaled by 1/2 afterwards
-            ! if used alongside SOSEX.
-            !
-            Ec2b = TWO * Ec2b
-            Ec2c = TWO * Ec2c
-            Ec2d = TWO * Ec2d
-            !
-            Energy(RPA_ENERGY_CUMULANT_2B) = Ec2b
-            Energy(RPA_ENERGY_CUMULANT_2C) = Ec2c
-            Energy(RPa_ENERGY_CUMULANT_2D) = Ec2d
-      end subroutine rpa_CCD_corrections_2bcd_HalfTHC
+      end subroutine rpa_CCD_corrections_1b2g
 
 
       pure subroutine rpa_Cumulant_block_indices(p, q, pq, n)
@@ -428,4 +325,101 @@ contains
             p = in1 * (q_base + v - 1) + in2 * (v - interval1 + n - q_base)          
             q = in1 * q_base + in2 * interval1
       end subroutine rpa_Cumulant_block_indices
+
+
+      subroutine rpa_CCD_Intermediate_UYUXU(UYUXUmg, Xgi, Yga, Uaim, Am)
+            real(F64), dimension(:, :), intent(out)                :: UYUXUmg
+            real(F64), dimension(:, :), intent(in)                 :: Xgi
+            real(F64), dimension(:, :), intent(in)                 :: Yga
+            real(F64), dimension(:, :, :), intent(in)              :: Uaim
+            real(F64), dimension(:), intent(in)                    :: Am
+
+            integer :: mu, g
+            integer :: NVecsT2, NGridTHC, NOcc, NVirt
+            real(F64), dimension(:, :), allocatable :: YUim, XUam, YUXUai
+            real(F64), dimension(:, :), allocatable :: Xig, Yag
+
+            NGridTHC = size(Xgi, dim=1)
+            NVecsT2 = size(Am)
+            NOcc = size(Xgi, dim=2)
+            NVirt = size(Yga, dim=2)
+            allocate(YUim(NOcc, NVecsT2))
+            allocate(XUam(NVirt, NVecsT2))
+            allocate(YUXUai(NVirt, NOcc))
+            allocate(Xig(NOcc, NGridTHC))
+            allocate(Yag(NVirt, NGridTHC))
+            Xig = transpose(Xgi)
+            Yag = transpose(Yga)
+            do g = 1, NGridTHC
+                  !$omp parallel do private(mu) default(shared)
+                  do mu = 1, NVecsT2
+                        !
+                        ! [YU](i,mu;g) = Sum(a) Y(a,g)*U(a,i,mu)
+                        ! YU(1:NOcc,mu;g) = U(1:NVirt,1:NOcc,mu)**T Y(1:NVirt, g)
+                        !
+                        call real_aTv_x(YUim(:, mu), Uaim(:, :, mu), NVirt, Yag(:, g), NVirt, NOcc, ONE, ZERO)
+                        !
+                        ! [XU](a,mu;g) = Sum(i) X(i,g)*U(a,i,mu)
+                        ! [XU](1:NVirt,mu;g) = U(1:NVirt,1:NOcc,mu) X(1:NOcc, g)
+                        ! Note that [XU] is scaled by the eigenvalue of T2 a(mu)
+                        !
+                        call real_av_x(XUam(:, mu), Uaim(:, :, mu), NVirt, Xig(:, g), NVirt, NOcc, Am(mu), ZERO)
+                  end do
+                  !$omp end parallel do
+                  !
+                  ! [YUXU](a,i;g) = Sum(mu) [XU](a,mu;g)*[YU](i,mu;g)
+                  !
+                  call real_abT(YUXUai, XUam, YUim)
+                  !
+                  ! [UYUXU](mu,g) = Sum(ai) U(a,i,mu)*[YUXU](a,i;g)
+                  ! This operation can be executed as a matrix-vector multiplication
+                  ! UYUXU(1:NVecsT2,g) = U(1:NVirt*NOcc,1:NVecsT2)**T * YUXU(1:NVirt*NOcc)
+                  !
+                  call real_aTv_x(UYUXUmg(:, g), Uaim, NVirt*NOcc, YUXUai, NVirt*NOcc, NVecsT2, ONE, ZERO)
+            end do
+      end subroutine rpa_CCD_Intermediate_UYUXU
+
+
+      subroutine rpa_CCD_corrections_2bc(Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+            real(F64), dimension(:), intent(inout)                 :: Energy
+            real(F64), dimension(:, :), intent(in)                 :: Zgh
+            real(F64), dimension(:, :), intent(in)                 :: Xgi
+            real(F64), dimension(:, :), intent(in)                 :: Yga
+            real(F64), dimension(:, :, :), intent(in)              :: Uaim
+            real(F64), dimension(:), intent(in)                    :: Am
+            real(F64), dimension(:, :), allocatable, intent(inout) :: YXUggm
+
+            real(F64), dimension(:, :), allocatable :: ZYXUmg, UYUXUmg
+            integer :: mu
+            real(F64) :: S2b
+            integer :: NGridTHC, NVecsT2
+
+            NGridTHC = size(Zgh, dim=1)
+            NVecsT2 = size(Uaim, dim=3)
+            allocate(ZYXUmg(NVecsT2, NGridTHC))
+            do mu = 1, NVecsT2
+                  YXUggm(:, mu) = Am(mu) * YXUggm(:, mu)
+            end do
+            call real_aTb(ZYXUmg, YXUggm, Zgh)
+            deallocate(YXUggm)
+            !
+            ! [UYUXU](mu,g) = Sum(ai,nu) U(ai,mu)*[YU](g,i,nu)*[XU](a,g,nu)*a(nu)
+            !
+            allocate(UYUXUmg(NVecsT2, NGridTHC))
+            call rpa_CCD_Intermediate_UYUXU(UYUXUmg, Xgi, Yga, Uaim, Am)
+            !
+            ! S2b = Sum(g,mu) [ZYXU](mu,g)*[UYUXU](mu,g)
+            !
+            call real_vw_x(S2b, ZYXUmg, UYUXUmg, NVecsT2*NGridTHC)            
+            !
+            ! The symmetry factor due to the permuation symmetry of the Coulomb integrals
+            ! and the cumulant is included.
+            !
+            ! Ec2b + Ec2c should be rescaled by 1/2 after return from this
+            ! subroutine to get the correct third-order diagram originating from
+            ! SOSEX+2b+2c
+            !
+            Energy(RPA_ENERGY_CUMULANT_2B) = -FOUR * S2b
+            Energy(RPA_ENERGY_CUMULANT_2C) = -FOUR * S2b
+      end subroutine rpa_CCD_corrections_2bc     
 end module rpa_CCD_Corrections

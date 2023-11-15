@@ -859,12 +859,6 @@ contains
 
 
             DisplayedValues = .false.
-            DisplayedValues(RPA_ENERGY_DFT) = .true.
-            DisplayedValues(RPA_ENERGY_HF) = .true.
-            DisplayedValues(RPA_ENERGY_1RDM_LINEAR) = .true.
-            DisplayedValues(RPA_ENERGY_1RDM_QUADRATIC) = .true.
-            DisplayedValues(RPA_ENERGY_DIRECT_RING) = .true.
-            DisplayedValues(RPA_ENERGY_TOTAL) = .true.
             if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
@@ -891,6 +885,19 @@ contains
                   DisplayedValues(RPA_ENERGY_CUMULANT_2J) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2L) = .true.
             end if
+            if (RPAParams%CumulantApprox == RPA_CUMULANT_LEVEL_DEFAULT) then
+                  DisplayedValues = .false.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
+            end if
+            DisplayedValues(RPA_ENERGY_DFT) = .true.
+            DisplayedValues(RPA_ENERGY_HF) = .true.
+            DisplayedValues(RPA_ENERGY_1RDM_LINEAR) = .true.
+            DisplayedValues(RPA_ENERGY_1RDM_QUADRATIC) = .true.
+            DisplayedValues(RPA_ENERGY_DIRECT_RING) = .true.
+            DisplayedValues(RPA_ENERGY_TOTAL) = .true.
             if (NSystems == 1) then
                   Prefix = "E("
             else if (NSystems == 3) then
@@ -912,22 +919,22 @@ contains
                         Labels(RPA_ENERGY_1RDM_LINEAR)                 = lfield(Prefix // "1-RDM linear" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_1RDM_QUADRATIC)              = lfield(Prefix // "1-RDM quadratic" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_DIRECT_RING)                 = lfield(Prefix // "direct ring" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_1B)                 = lfield(Prefix // "cumulant 1b/SOSEX" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2B)                 = lfield(Prefix // "cumulant 2b/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2C)                 = lfield(Prefix // "cumulant 2c/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2D)                 = lfield(Prefix // "cumulant 2d/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2E)                 = lfield(Prefix // "cumulant 2e/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2F)                 = lfield(Prefix // "cumulant 2f/MBPT3" // Postfix, ColWidth)                        
-                        Labels(RPA_ENERGY_CUMULANT_2G)                 = lfield(Prefix // "cumulant 2g/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2H)                 = lfield(Prefix // "cumulant 2h/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2I)                 = lfield(Prefix // "cumulant 2i/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2J)                 = lfield(Prefix // "cumulant 2j/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2K)                 = lfield(Prefix // "cumulant 2k/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2L)                 = lfield(Prefix // "cumulant 2l/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2M)                 = lfield(Prefix // "cumulant 2m/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2N)                 = lfield(Prefix // "cumulant 2n/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2O)                 = lfield(Prefix // "cumulant 2o/MBPT3" // Postfix, ColWidth)
-                        Labels(RPA_ENERGY_CUMULANT_2P)                 = lfield(Prefix // "cumulant 2p/MBPT3" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_1B)                 = lfield(Prefix // "SOSEX" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2B)                 = lfield(Prefix // "2b" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2C)                 = lfield(Prefix // "2c" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2D)                 = lfield(Prefix // "2d" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2E)                 = lfield(Prefix // "2e" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2F)                 = lfield(Prefix // "2f" // Postfix, ColWidth)                        
+                        Labels(RPA_ENERGY_CUMULANT_2G)                 = lfield(Prefix // "2g" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2H)                 = lfield(Prefix // "2h" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2I)                 = lfield(Prefix // "2i" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2J)                 = lfield(Prefix // "2j" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2K)                 = lfield(Prefix // "2k" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2L)                 = lfield(Prefix // "2l" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2M)                 = lfield(Prefix // "2m" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2N)                 = lfield(Prefix // "2n" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2O)                 = lfield(Prefix // "2o" // Postfix, ColWidth)
+                        Labels(RPA_ENERGY_CUMULANT_2P)                 = lfield(Prefix // "2p" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "total" // Postfix, ColWidth)
                   else
                         Labels(RPA_ENERGY_DFT)                         = lfield(Prefix // "DFT" // Postfix, ColWidth)

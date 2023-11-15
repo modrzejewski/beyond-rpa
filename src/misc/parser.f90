@@ -3801,7 +3801,7 @@ contains
                   case ("LEVEL-5-HALF-THC", "LEVEL-5-HALFTHC")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
                   case ("DEFAULT")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_DEFAULT
                   case ("ALL")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
                   case default
