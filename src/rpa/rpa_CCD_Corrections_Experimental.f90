@@ -78,6 +78,7 @@ contains
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
 
+
             type(TClock) :: timer_total, timer
 
             call msg("CCD corrections to RPA correlation energy (experimental version)")
@@ -87,10 +88,13 @@ contains
             ! ---------------------- przykład obliczenia wkładów 1b, 2g ----
             ! ------------------ można usunąć później ----------------------
             block
-                  integer :: a, i, mu, g, h
-                  real(F64) :: Ec2g, Ec1b
-                  real(F64), dimension(:, :), allocatable :: YXUgh
-
+                  integer :: a, i, b, j, c, k, mu, nu, g, h
+                  real(F64) :: Ec2g, Ec1b, Ec2b, Ec2c
+                  real(F64), dimension(:, :), allocatable                   :: YXUgh
+                  real(F64), dimension(:, :), allocatable                   :: YXUgmu
+                  real(F64), dimension(:, :), allocatable                   :: YXUUUgmunu
+                    
+                  print *, "PLEASE WORK THIS TIME"
                   print *, "----------------- calculation --"
                   
                   allocate(YXUgh(NGridTHC, NGridTHC))
@@ -98,8 +102,6 @@ contains
                   Ec1b = ZERO
                   Ec2g = ZERO
                   do mu = 1, NVecsT2
-                        print *, "mu=", mu, "Am(mu) =" , Am(mu)
-                        
                         YXUgh = ZERO
                         do h = 1, NGridTHC
                               do g = 1, NGridTHC
@@ -132,6 +134,52 @@ contains
                   !
                   Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
                   Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
+                  
+                                  
+			allocate(YXUUUgmunu(NGridTHC, NVecsT2))
+   			allocate(YXUgmu(NGridTHC, NVecsT2))                                                                
+ 
+                  YXUgmu = ZERO                           
+                  do mu = 1, NVecsT2
+                  	  do g = 1, NGridTHC
+                  		  do i = 1, NOcc
+                  			  do a = 1, NVirt 
+                  				  YXUgmu(g, mu) = YXUgmu(g, mu) + Yga(g, a) * Xgi(g, i) * Uaim(a, i, mu)
+                  		      end do
+                  		  end do
+                  	  end do
+                  end do
+                  
+                  Ec2b = ZERO                        
+                  do nu = 1, NVecsT2
+                  print *, "nu=", nu
+                  YXUUUgmunu = ZERO
+                      do mu = 1, NVecsT2   
+                          do h = 1, NGridTHC
+                              do j = 1, NOcc
+                                  do b = 1, NVirt
+                                      do k = 1, NOcc
+                                           do c = 1, NVirt
+                                              YXUUUgmunu(h, mu) = YXUUUgmunu(h, mu) + Yga(h, b) * Xgi(h, j) * Uaim(c, k, mu) * Uaim(c, j, nu) * Uaim(b, k, nu)
+                                           end do
+                                      end do
+                                  end do
+                              end do
+                          end do
+                      end do
+                      do mu = 1, NVecsT2
+                         do h = 1, NGridTHC
+                            do g = 1, NGridTHC
+                                Ec2b = Ec2b + Zgh(g, h) * YXUUUgmunu(h, mu) *  YXUgmu(g, mu) * Am(mu) * Am(nu)
+                            end do
+                         end do
+                      end do
+                  end do
+                  
+                  Ec2b = -FOUR * Ec2b
+                  Ec2c = Ec2b			
+                  Energy(RPA_ENERGY_CUMULANT_2B) = Ec2b
+                  Energy(RPA_ENERGY_CUMULANT_2C) = Ec2c
             end block
             ! --------------------------------------------------------------
 
