@@ -7,37 +7,41 @@ jobtype uks rpa
 ! basis aug-cc-pVQZ
 ! etc.
 !
-basis aug-cc-pVQZ
+basis cc-pVDZ
 
 
 
 scf
-     xcfunc PBE
+     xcfunc HF
      thresh density 1.0E-6
 end
 
 rpa
  MBPT3
  vectors eigenvectors
+! accuracy ludicrous
  !
  ! CCD-Corrections Default <--- SOSEX + 2g, used in the JCTC paper
  ! CCD-Corrections All <--- new experimental version
  !
  CCD-Corrections Default
+ PT2
+ PT3
+ T2CouplingStrength 0.001
 end
-
-xyz
-1 1
-Ar 0.0 0.0 0.0
-Ar 0.0 0.0 3.775
-end
-
 
 ! xyz
 ! 1 1
-! Ne 0.0 0.0 0.0
-! Ne 0.0 0.0 1.41
+! Ar 0.0 0.0 0.0
+! Ar 0.0 0.0 3.775
 ! end
+
+
+xyz
+1 1
+Ne 0.0 0.0 0.0
+Ne 0.0 0.0 3.091
+end
 
 
 

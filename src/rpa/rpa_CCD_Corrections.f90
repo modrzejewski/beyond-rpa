@@ -4,14 +4,16 @@ module rpa_CCD_Corrections
       use rpa_definitions
       use rpa_MeanField
       use rpa_CCD_Corrections_Experimental
+      use rpa_PT_Terms
       use clock
+      use display
       
       implicit none
       
 contains
 
-      subroutine rpa_Cumulant_HalfTHC(Energy, Zgh, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox)
+      subroutine rpa_Cumulant_HalfTHC(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
+            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox, T2EigenvalueThresh)
             
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
@@ -19,6 +21,7 @@ contains
             integer, intent(in)                                    :: NGridTHC
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(in)                 :: Zgh
+            real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
             real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
             real(F64), dimension(NVirt, NOcc), intent(in)          :: hHFai
@@ -27,11 +30,14 @@ contains
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
             integer, intent(in)                                    :: CumulantApprox
+            real(F64), intent(in)                                  :: T2EigenvalueThresh
 
             real(F64), dimension(:, :), allocatable :: YXUggm
-            logical :: Compute_1b2g, Compute_2bc
+            integer :: mu0, mu1, NVecsT2_Significant
             type(TClock) :: timer_total, timer
             integer, parameter :: BlockDim = 300
+            logical, parameter :: Compute_1b2g = .true.
+            logical, parameter :: Compute_2bc = .true.
 
             if (CumulantApprox == RPA_CUMULANT_LEVEL_5_HALF_THC) then
                   !
@@ -39,27 +45,36 @@ contains
                   !
                   call rpa_CCD_corrections_FullSet(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
-                  return
-            end if
-            
+            end if            
             call msg("CCD corrections to RPA correlation energy")
             call clock_start(timer_total)
-            call clock_start(timer)
-            Compute_1b2g = .false.
-            Compute_2bc = .false.
-            if (CumulantApprox == RPA_CUMULANT_LEVEL_DEFAULT) then
-                  Compute_1b2g = .true.
-                  Compute_2bc = .true.
+            !
+            ! Compute the range of significant T2 eigenvalues
+            ! Significant eigenvalues: mu in (mu0, mu1)
+            ! Note that the first eigenvalue is the one most negative
+            !
+            mu0 = 1
+            call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
+            NVecsT2_Significant = mu1 - mu0 + 1
+            call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
+            call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
+            if (NVecsT2_Significant == NVecsT2) then
+                  call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
+            else
+                  call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
+                  call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
+                        // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
             end if
             if (Compute_1b2g) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim, &
-                        Am, BlockDim, Compute_2bc, YXUggm)
+                  call rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
+                        Am(mu0:mu1), BlockDim, Compute_2bc, YXUggm)
                   call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             if (Compute_2bc) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_2bc(Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+                  call rpa_CCD_corrections_2bc(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
+                        Am(mu0:mu1), YXUggm)
                   call msg("2b+2c computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             !
@@ -421,5 +436,29 @@ contains
             !
             Energy(RPA_ENERGY_CUMULANT_2B) = -FOUR * S2b
             Energy(RPA_ENERGY_CUMULANT_2C) = -FOUR * S2b
-      end subroutine rpa_CCD_corrections_2bc     
+      end subroutine rpa_CCD_corrections_2bc
+
+      
+      subroutine rpa_CCD_NVecsT2(NVecsT2, Am, T2Thresh)
+            integer, intent(out)                :: NVecsT2
+            real(F64), dimension(:), intent(in) :: Am
+            real(F64), intent(in)               :: T2Thresh
+
+            integer :: k, NVecsT2_All
+
+            NVecsT2_All = size(Am)
+            NVecsT2 = 1
+            if (abs(Am(1)) > ZERO) then
+                  do k = 2, NVecsT2_All
+                        if (abs(Am(k)/Am(1)) > T2Thresh) then
+                              NVecsT2 = k
+                        else
+                              exit
+                        end if
+                  end do
+            else
+                  call msg("Invalid eigenvalues of T2", MSG_ERROR)
+                  error stop
+            end if
+      end subroutine rpa_CCD_NVecsT2
 end module rpa_CCD_Corrections

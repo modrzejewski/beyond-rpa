@@ -3808,6 +3808,16 @@ contains
                         call msg("Invalid label of the cumulant approximation", MSG_ERROR)
                         error stop
                   end select
+            case ("PT2", "PT_ORDER2", "PT-ORDER2", "PT-ORDER-2")
+                  RPAParams%PT_Order2 = .true.
+            case ("PT3", "PT_ORDER3", "PT-ORDER3", "PT-ORDER-3")
+                  RPAParams%PT_Order3 = .true.
+            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH")
+                  read(val, *) m
+                  RPAParams%T2EigenvalueThresh = m
+            case ("T2COUPLINGSTRENGTH")
+                  read(val, *) m
+                  RPAParams%T2CouplingStrength = m
             case ("MEANFIELDPARTITIONING")
                   select case (uppercase(val))
                   case ("KS-TYPE", "KS", "KOHN-SHAM", "LINEAR-SWITCHING")
