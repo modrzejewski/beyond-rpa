@@ -1,0 +1,58 @@
+jobtype uks rpa
+
+! Basis sets
+! basis cc-pVDZ <----this is the smallest, good for debugging
+! basis aug-cc-pVDZ
+! basis aug-cc-pVTZ
+! basis aug-cc-pVQZ
+! etc.
+!
+basis cc-pVDZ
+
+
+
+scf
+     xcfunc HF
+     thresh density 1.0E-6
+end
+
+rpa
+ MBPT3
+ vectors eigenvectors
+! accuracy ludicrous
+ !
+ ! CCD-Corrections Default <--- SOSEX + 2g, used in the JCTC paper
+ ! CCD-Corrections All <--- new experimental version
+ !
+ CCD-Corrections Default
+ PT2
+ PT3
+ T2CouplingStrength 0.001
+end
+
+! xyz
+! 1 1
+! Ar 0.0 0.0 0.0
+! Ar 0.0 0.0 3.775
+! end
+
+
+xyz
+1 1
+Ne 0.0 0.0 0.0
+Ne 0.0 0.0 3.091
+end
+
+
+
+! xyz                                                                             
+! 3 3                                                                             
+! charges 0 0                                                                     
+! O        -0.702196054    -0.056060256     0.009942262                           
+! H        -1.022193224    0.846775782     -0.011488714                           
+! H        0.257521062    0.042121496     0.005218999                             
+! O        2.268880784    0.026340101     0.000508029                             
+! H        2.645502399    -0.412039965     0.766632411                            
+! H        2.641145101    -0.449872874     -0.744894473                           
+! end
+

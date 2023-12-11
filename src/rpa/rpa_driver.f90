@@ -788,9 +788,30 @@ contains
                   Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
                   Energy(RPA_ENERGY_CORR)
             call msg("Single-Point Energies (a.u.)", underline=.true.)
+            if (RPAParams%PT_Order2) then
+                  call msg(lfield("MP2 singlet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
+                  call msg(lfield("MP2 triplet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_TRIPLET_PAIR), d=8), 20))
+                  call msg(lfield("direct MP2", 40) //           rfield(str(Energy(MP2_ENERGY_DIRECT), d=8), 20))
+                  call msg(lfield("total MP2", 40) //            rfield(str(Energy(MP2_ENERGY_TOTAL), d=8), 20))
+            end if
+            if (RPAParams%PT_Order3) then
+                  call msg(lfield("MP3 A", 40) // rfield(str(Energy(MP3_ENERGY_A), d=8), 20))
+                  call msg(lfield("MP3 B", 40) // rfield(str(Energy(MP3_ENERGY_B), d=8), 20))
+                  call msg(lfield("MP3 C", 40) // rfield(str(Energy(MP3_ENERGY_C), d=8), 20))
+                  call msg(lfield("MP3 D", 40) // rfield(str(Energy(MP3_ENERGY_D), d=8), 20))
+                  call msg(lfield("MP3 E", 40) // rfield(str(Energy(MP3_ENERGY_E), d=8), 20))
+                  call msg(lfield("MP3 F", 40) // rfield(str(Energy(MP3_ENERGY_F), d=8), 20))
+                  call msg(lfield("MP3 G", 40) // rfield(str(Energy(MP3_ENERGY_G), d=8), 20))
+                  call msg(lfield("MP3 H", 40) // rfield(str(Energy(MP3_ENERGY_H), d=8), 20))
+                  call msg(lfield("MP3 I", 40) // rfield(str(Energy(MP3_ENERGY_I), d=8), 20))
+                  call msg(lfield("MP3 J", 40) // rfield(str(Energy(MP3_ENERGY_J), d=8), 20))
+                  call msg(lfield("MP3 K", 40) // rfield(str(Energy(MP3_ENERGY_K), d=8), 20))
+                  call msg(lfield("MP3 L", 40) // rfield(str(Energy(MP3_ENERGY_L), d=8), 20))
+                  call msg(lfield("total MP3", 40) // rfield(str(Energy(MP3_ENERGY_TOTAL), d=8), 20))
+            end if
             call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
-            call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
-            call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+            call msg(lfield("1-RDM linear", 40) //      rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+            call msg(lfield("1-RDM quadratic", 40) //   rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
             call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
             call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
             call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
@@ -857,6 +878,28 @@ contains
 
             logical, dimension(RPA_ENERGY_NCOMPONENTS) :: DisplayedValues
 
+            integer, parameter :: NTermsPT2 = 4
+            integer, parameter :: NTermsPT3 = 13
+            integer, dimension(NTermsPT2), parameter :: TermsPT2 = [ &
+                  MP2_ENERGY_SINGLET_PAIR, &
+                  MP2_ENERGY_TRIPLET_PAIR, &
+                  MP2_ENERGY_DIRECT, &
+                  MP2_ENERGY_TOTAL]
+            integer, dimension(NTermsPT3), parameter :: TermsPT3 = [ &
+                  MP3_ENERGY_A, &
+                  MP3_ENERGY_B, &
+                  MP3_ENERGY_C, &
+                  MP3_ENERGY_D, &
+                  MP3_ENERGY_E, &
+                  MP3_ENERGY_F, &
+                  MP3_ENERGY_G, &
+                  MP3_ENERGY_H, &
+                  MP3_ENERGY_I, &
+                  MP3_ENERGY_J, &
+                  MP3_ENERGY_K, &
+                  MP3_ENERGY_L,&
+                  MP3_ENERGY_TOTAL &
+                  ]
 
             DisplayedValues = .false.
             if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) then
@@ -898,6 +941,16 @@ contains
             DisplayedValues(RPA_ENERGY_1RDM_QUADRATIC) = .true.
             DisplayedValues(RPA_ENERGY_DIRECT_RING) = .true.
             DisplayedValues(RPA_ENERGY_TOTAL) = .true.
+            if (RPAParams%PT_Order2) then
+                  do k = 1, NTermsPT2
+                        DisplayedValues(TermsPT2(k)) = .true.
+                  end do
+            end if
+            if (RPAParams%PT_Order3) then
+                  do k = 1, NTermsPT3
+                        DisplayedValues(TermsPT3(k)) = .true.
+                  end do
+            end if
             if (NSystems == 1) then
                   Prefix = "E("
             else if (NSystems == 3) then
@@ -952,6 +1005,28 @@ contains
                   Labels(RPA_ENERGY_CORR)                        = lfield(Prefix // "RPA correlation" // Postfix, ColWidth)
                   Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "RPA total" // Postfix, ColWidth)
             end if
+            
+            if (RPAParams%PT_Order2) then
+                  Labels(MP2_ENERGY_SINGLET_PAIR) = lfield(Prefix // "MP2 singlet pairs" // Postfix, ColWidth)
+                  Labels(MP2_ENERGY_TRIPLET_PAIR) = lfield(Prefix // "MP2 triplet pairs" // Postfix, ColWidth)
+                  Labels(MP2_ENERGY_DIRECT) = lfield(Prefix // "direct MP2" // Postfix, ColWidth)
+                  Labels(MP2_ENERGY_TOTAL) = lfield(Prefix // "total MP2" // Postfix, ColWidth)
+            end if
+            if (RPAParams%PT_Order3) then
+                  Labels(MP3_ENERGY_A) = lfield(Prefix // "MP3 A" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_B) = lfield(Prefix // "MP3 B" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_C) = lfield(Prefix // "MP3 C" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_D) = lfield(Prefix // "MP3 D" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_E) = lfield(Prefix // "MP3 E" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_F) = lfield(Prefix // "MP3 F" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_G) = lfield(Prefix // "MP3 G" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_H) = lfield(Prefix // "MP3 H" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_I) = lfield(Prefix // "MP3 I" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_J) = lfield(Prefix // "MP3 J" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_K) = lfield(Prefix // "MP3 K" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_L) = lfield(Prefix // "MP3 L" // Postfix, ColWidth)
+                  Labels(MP3_ENERGY_TOTAL) = lfield(Prefix // "total MP3" // Postfix, ColWidth)
+            end if
 
             if (NSystems == 1) then
                   call msg("RPA Single-Point Energies (a.u.)", underline=.true.)
@@ -962,7 +1037,22 @@ contains
             else
                   call msg("RPA 4-Body Interaction Energies (kcal/mol)", underline=.true.)
             end if
-
+            !
+            ! Perturbation theory terms. Used only for debugging
+            !
+            do k = 1, NTermsPT2
+                  if (DisplayedValues(TermsPT2(k))) then
+                        call rpa_EnergyTableRow(Labels(TermsPT2(k)), Energies(TermsPT2(k)), kcal)
+                  end if
+            end do
+            do k = 1, NTermsPT3
+                  if (DisplayedValues(TermsPT3(k))) then
+                        call rpa_EnergyTableRow(Labels(TermsPT3(k)), Energies(TermsPT3(k)), kcal)
+                  end if
+            end do
+            !
+            ! Random-phase approximation and beyond-RPA energy components
+            !
             if (RPAParams%CoupledClusters) then
                   if (RPAParams%TensorHypercontraction) then
                         do k = 1, NTermsTHC

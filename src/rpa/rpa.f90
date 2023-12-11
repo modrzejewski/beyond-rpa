@@ -2152,7 +2152,12 @@ contains
                   
                   RPAParams%SmallEigenvalCutoffT2, &
                   RPAParams%GuessNVecsT2, &
-                  RPAParams%MaxBatchDimT2)
+                  RPAParams%MaxBatchDimT2, &
+
+                  RPAParams%T2EigenvalueThresh, &
+                  RPAParams%T2CouplingStrength, &
+                  RPAParams%PT_Order2, &
+                  RPAParams%PT_Order3)
             !
             ! Prevent recomputation of quadrature grids. The frequency grid is computed only
             ! once for the combined system and shared between its subsystems to retain
@@ -2177,7 +2182,8 @@ contains
 
             THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
 
-            SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2)
+            SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
+            T2EigenvalueThresh, T2CouplingStrength, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)                       :: Energy
             real(F64), dimension(:, :, :), intent(in)                    :: OccCoeffs_ao
@@ -2219,6 +2225,11 @@ contains
             real(F64), intent(in)                                        :: SmallEigenvalsCutoffT2
             real(F64), intent(in)                                        :: GuessNVecsT2
             integer, intent(in)                                          :: MaxBatchDimT2
+
+            real(F64), intent(in)                                        :: T2EigenvalueThresh
+            real(F64), intent(in)                                        :: T2CouplingStrength
+            logical, intent(in)                                          :: PT_Order2
+            logical, intent(in)                                          :: PT_Order3
 
             integer :: NAO, NCholesky, NVecsPiU, MaxNai, s
             integer :: THC_NGrid
@@ -2275,7 +2286,9 @@ contains
                   THC_BlockDim, THC_QRThresh_T2, hHFai, &
                   Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
                   NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
-                  SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox)
+                  SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox, &
+                  T2EigenvalueThresh, T2CouplingStrength, &
+                  PT_Order2, PT_Order3)
             Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
       end subroutine rpa_THC_Ecorr_1
 end module rpa

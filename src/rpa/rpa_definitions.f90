@@ -117,7 +117,7 @@ module rpa_definitions
       ! ---------------------------------------------------------
       !         RPA and beyond-RPA energy components
       !----------------------------------------------------------
-      integer, parameter :: RPA_ENERGY_NCOMPONENTS = 36 ! includes some unused fields
+      integer, parameter :: RPA_ENERGY_NCOMPONENTS = 100 ! includes some unused fields
       !
       ! Total energy of the SCF step preceeding RPA calculations
       !
@@ -184,9 +184,30 @@ module rpa_definitions
       integer, parameter :: RPA_ENERGY_CUMULANT_2N = 34
       integer, parameter :: RPA_ENERGY_CUMULANT_2O = 35
       integer, parameter :: RPA_ENERGY_CUMULANT_2P = 36
-
+      
       integer, dimension(2), parameter :: RPA_CORRELATION_TERMS = [RPA_ENERGY_DIRECT_RING, RPA_ENERGY_CUMULANT_2P]
-
+      ! -------------------------------------------------------------------
+      ! Perturbation theory contributions
+      ! Slow implementation, should be used only for testing
+      ! -------------------------------------------------------------------            
+      integer, parameter :: MP2_ENERGY_SINGLET_PAIR = 50
+      integer, parameter :: MP2_ENERGY_TRIPLET_PAIR = 51
+      integer, parameter :: MP2_ENERGY_DIRECT       = 52
+      integer, parameter :: MP2_ENERGY_TOTAL        = 53
+      integer, parameter :: MP3_ENERGY_A            = 54
+      integer, parameter :: MP3_ENERGY_B            = 55
+      integer, parameter :: MP3_ENERGY_C            = 56
+      integer, parameter :: MP3_ENERGY_D            = 57
+      integer, parameter :: MP3_ENERGY_E            = 58
+      integer, parameter :: MP3_ENERGY_F            = 59
+      integer, parameter :: MP3_ENERGY_G            = 60
+      integer, parameter :: MP3_ENERGY_H            = 61
+      integer, parameter :: MP3_ENERGY_I            = 62
+      integer, parameter :: MP3_ENERGY_J            = 63
+      integer, parameter :: MP3_ENERGY_K            = 64
+      integer, parameter :: MP3_ENERGY_L            = 65
+      integer, parameter :: MP3_ENERGY_TOTAL        = 66
+      
       integer, parameter :: RPA_CUMULANT_LEVEL_0 = 0          ! RPA
       integer, parameter :: RPA_CUMULANT_LEVEL_DEFAULT = 10   ! RPA + 1b (SOSEX) + 2g + 2b + 2c
       integer, parameter :: RPA_CUMULANT_LEVEL_1_HALF_THC = 1 ! RPA + 1b (SOSEX) + 2g
@@ -400,6 +421,21 @@ module rpa_definitions
             ! with weight equal to 1.
             !
             logical :: AC_1RDMQuad = .false.
+            !
+            ! Perturbation theory terms: MP2 and MP3
+            !
+            logical :: PT_Order2 = .false.
+            logical :: PT_Order3 = .false.
+            !
+            ! Removal of small eigenvalues of T2
+            !
+            real(F64) :: T2EigenvalueThresh = 0.0_F64
+            !
+            ! Coupling strength Lambda passed to the T2 solver.
+            ! A value different from 1.0 should be used only
+            ! for debugging.
+            !
+            real(F64) :: T2CouplingStrength = 1.0_F64
       end type TRPAParams
 
       type TRPAGrids

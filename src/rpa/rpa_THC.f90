@@ -72,7 +72,8 @@ contains
             THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
             hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
             NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
-            MaxBatchDimT2, CumulantApprox)
+            MaxBatchDimT2, CumulantApprox, T2EigenvalueThresh, T2CouplingStrength, &
+            PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)       :: Energy
             real(F64), dimension(:, :), intent(in)       :: THC_Xgp
@@ -94,6 +95,10 @@ contains
             real(F64), intent(in)                        :: SmallEigenvalsCutoffT2
             integer, intent(in)                          :: MaxBatchDimT2
             integer, intent(in)                          :: CumulantApprox
+            real(F64), intent(in)                        :: T2EigenvalueThresh
+            real(F64), intent(in)                        :: T2CouplingStrength
+            logical, intent(in)                          :: PT_Order2
+            logical, intent(in)                          :: PT_Order3
 
             real(F64), dimension(:, :, :), allocatable :: PiUEigenvecs
             real(F64), dimension(:, :), allocatable :: PiUEigenvals
@@ -138,8 +143,9 @@ contains
             call msg("1. Semicanonical basis of the GMBPT mean-field hamiltonian")
             call msg("2. Single excitations energy")
             call msg("3. Direct ring terms")
-            call msg("4. O(N**4) MBPT2 SOSEX correction (cumulant 1b)")
-            call msg("5. O(N**4) MBPT3 correction (cumulant 2g)")
+            call msg("4. O(N**4) second-order exchange (SOSEX)")
+            call msg("5. O(N**4) third-order exchange (2b+2c)")
+            call msg("6. O(N**4) non-ring CCD (2g)")
             call midrule()
             !            
             call msg("Mean field")
@@ -158,7 +164,7 @@ contains
             call real_abT(THC_Zgh, THC_ZgkFull, THC_ZgkFull)            
             !
             ! Polarizability Chi(u) and T2 amplitudes built from the semicanonical orbitals of hHF(OO+VV)
-            ! Correlation energy evaluated analytically from Pi(u)
+            ! RPA correlation energy, EcRPA, evaluated analytically from Pi(u)
             !
             call clock_start(timer)
             call rpa_THC_PiU(PiUEigenvecs, Rkai, THC_Xga, THC_Xgi, THC_ZgkPiU, NOcc, NVirt, &
@@ -166,11 +172,13 @@ contains
             call rpa_CC_EcRPA_Analytic(EcRPA, PiUEigenvecs, Freqs, FreqWeights, NFreqs, NVecsPiU)
             t_PiU = t_PiU + clock_readwall(timer)
             !
-            ! T2 amplitudes at Lambda=1
+            ! T2 amplitudes. The T2 amplitudes are computed at full coupling strength, Lambda=1,
+            ! unless the T2CouplingStrength parameter has a non-default value. This should be
+            ! used only for debugging, e.g., verifying  the beyond-RPA terms against PT terms.
             !
             call rpa_CC_Diagonalize_PiU(PiUEigenvals, PiUEigenvecs, t_PiUDiag, NVecsPiU, NFreqs)
             call clock_start(timer)
-            Lambda = ONE
+            Lambda = T2CouplingStrength
             call rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai(:, :, s), &
                   NVecsPiU, NOcc(s), NVirt(s), &
                   Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
@@ -181,9 +189,17 @@ contains
             ! the non-ring part of the expectation value of the hamiltonian
             ! ---------------------------------------------------------------------------------
             call clock_start(timer)
-            call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+            call rpa_Cumulant_HalfTHC(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
-                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
+                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2EigenvalueThresh)
+            ! ---------------------------------------------------------------------------------
+            ! Perturbation theory terms
+            ! This is an extremely slow code and should be used only for debugging.
+            ! ---------------------------------------------------------------------------------
+            if (PT_Order2) call rpa_PT_Order2(Energy, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
+            if (PT_Order3) call rpa_PT_Order3(Energy, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
             t_Cumulant = clock_readwall(timer)
             Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
             call blankline()
