@@ -24,7 +24,7 @@ rpa
  ! CCD-Corrections Default <--- SOSEX + 2g, used in the JCTC paper
  ! CCD-Corrections All <--- new experimental version
  !
- CCD-Corrections Default
+ CCD-Corrections All
  PT2
  PT3
  T2CouplingStrength 0.001

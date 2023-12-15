@@ -88,11 +88,13 @@ contains
             allocate(YXagi(NVirt, NGridTHC, NOcc))
             YXgai = ZERO
             YXagi = ZERO
-            do i = 1, NOcc                                
+            do i = 1, NOcc    
                 do a = 1, NVirt
+                    !$omp parallel do private(g) default(shared)
                     do g = 1, NGridTHC
                         YXgai(g, a, i) = Yga(g, a) * Xgi(g, i)
                     end do
+                    !$omp end parallel do
                 end do
                 YXagi(:, :, i) = transpose(YXgai(:, :, i))    
             end do        
@@ -157,9 +159,11 @@ contains
             XXigj = ZERO
             do j = 1, NOcc                                
                 do i = 1, NOcc
+                    !$omp parallel do private(g) default(shared)
                     do g = 1, NGridTHC
                         XXgij(g, i, j) = Xgi(g, i) * Xgi(g, j)
                     end do
+                    !$omp end parallel do
                 end do
                 XXigj(:, :, j) = transpose(XXgij(:, :, j))    
             end do        
@@ -169,18 +173,22 @@ contains
             YYagb = ZERO
             do b = 1, NVirt                                
                 do a = 1, NVirt
+                    !$omp parallel do private(g) default(shared)
                     do g = 1, NGridTHC
                         YYgab(g, a, b) = Yga(g, a) * Yga(g, b)
                     end do
+                    !$omp end parallel do
                 end do
                 YYagb(:, :, b) = transpose(YYgab(:, :, b))    
             end do
             
             !------------------------- ERIs type ZYY calculation intermediate -------------------------
             ZYYgab = ZERO
+            !$omp parallel do private(b) default(shared)
             do b = 1, NVirt                                
                 ZYYgab(:, :, b) = matmul(Zgh, YYgab(:, :, b))
             end do
+            !$omp end parallel do
             
             !------------------------- ERIs type Vijkl(i, k, j, l) -----------------------
             Vijkl = ZERO
@@ -232,7 +240,7 @@ contains
                 real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
                 real(F64), dimension(:, :, :, :), intent(in)                :: Vaibj
                 
-                integer :: i, j, k, a
+                integer :: i, j, k, a, c
                 real(F64) :: Ec1b, Ec2b, Ec2c, Ec2d
                 real(F64), dimension(:, :), allocatable                     :: VTac
                 
@@ -246,12 +254,11 @@ contains
             do j = 1, NOcc                                
                 do i = 1, NOcc
                     do a = 1, NVirt
-                    Ec1b = Ec1b + DOT_PRODUCT(Vaibj(a, :, i, j), Taibj(:, a, i, j))
+                    Ec1b = Ec1b + DOT_PRODUCT(Vaibj(:, a, j, i), Taibj(:, a, i, j))
                     end do
                 end do
             end do
             
-            !------------------------- CCD Ec2b, Ec2c, Ec2d main calculation -------------------------
             allocate(VTac(NVirt, NVirt))
             Ec2b = ZERO
             Ec2d = ZERO
@@ -260,9 +267,9 @@ contains
                     do i = 1, NOcc
                     VTac = ZERO
                     VTac = matmul(Vaibj(:, :, i, j), Taibj(:, :, k, j))
-                        do a = 1, NVirt
-                        Ec2b = Ec2b + DOT_PRODUCT(VTac(a, :), Taibj(:, a, k, i))
-                        Ec2d = Ec2d + DOT_PRODUCT(VTac(a, :), Taibj(:, a, i, k))
+                        do c = 1, NVirt
+                        Ec2b = Ec2b + DOT_PRODUCT(VTac(:, c), Taibj(:, c, i, k))
+                        Ec2d = Ec2d + DOT_PRODUCT(VTac(:, c), Taibj(:, c, k, i))
                         end do
                     end do
                 end do
@@ -294,7 +301,7 @@ contains
                 real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
                 real(F64), dimension(:, :, :, :), intent(in)                :: Vijab
                 
-                integer :: i, j, k, b
+                integer :: i, j, k, c
                 real(F64) :: Ec2g, Ec2h, Ec2i, Ec2j
                 real(F64), dimension(:, :), allocatable                     :: VTbc
                 
@@ -312,9 +319,9 @@ contains
                     do j = 1, NOcc
                     VTbc = ZERO
                     VTbc = matmul(Vijab(:, :, j, i), Taibj(:, :, j, k))
-                        do b = 1, NVirt
-                        Ec2g = Ec2g + DOT_PRODUCT(VTbc(b, :), Taibj(:, b, k, i))
-                        Ec2i = Ec2i + DOT_PRODUCT(VTbc(b, :), Taibj(:, b, i, k))
+                        do c = 1, NVirt
+                        Ec2g = Ec2g + DOT_PRODUCT(VTbc(:, c), Taibj(:, c, i, k))
+                        Ec2i = Ec2i + DOT_PRODUCT(VTbc(:, c), Taibj(:, c, k, i))
                         end do
                     end do
                 end do
@@ -327,8 +334,8 @@ contains
                     do j = 1, NOcc
                     VTbc = ZERO
                     VTbc = matmul(Vijab(:, :, j, i), Taibj(:, :, k, j))
-                        do b = 1, NVirt
-                        Ec2h = Ec2h + DOT_PRODUCT(VTbc(b, :), Taibj(:, b, i, k))
+                        do c = 1, NVirt
+                        Ec2h = Ec2h + DOT_PRODUCT(VTbc(:, c), Taibj(:, c, k, i))
                         end do
                     end do
                 end do
@@ -375,8 +382,8 @@ contains
                     do j = 1, NOcc
                         do i = 1, NOcc
                             do b = 1, NVirt
-                            Ec2e = Ec2e + Vijkl(i, k, j, l) * DOT_PRODUCT(Taibj(b, :, l, j), Taibj(:, b, i, k))
-                            Ec2f = Ec2f + Vijkl(i, k, j, l) * DOT_PRODUCT(Taibj(b, :, j, l), Taibj(:, b, i, k))
+                            Ec2e = Ec2e + Vijkl(i, k, j, l) * DOT_PRODUCT(Taibj(:, b, j, l), Taibj(:, b, i, k))
+                            Ec2f = Ec2f + Vijkl(i, k, j, l) * DOT_PRODUCT(Taibj(:, b, l, j), Taibj(:, b, i, k))
                             end do
                         end do
                     end do
@@ -416,21 +423,22 @@ contains
             !------------------------- CCD Ec2k, Ec2l main calculation -------------------------
             Ec2k = ZERO
             Ec2l = ZERO
+            !$omp parallel do collapse(2) private(b, d) 
             do i = 1, NOcc
                 do j = 1, NOcc
                     do b = 1, NVirt
                         do d = 1, NVirt
                         VT = ZERO
                             do c = 1, NVirt
-                            VT = VT + DOT_PRODUCT(Vabcd(c, :, d, b), Taibj(:, c, i, j))
+                            VT = VT + DOT_PRODUCT(Vabcd(:, c, b, d), Taibj(:, c, i, j))
                             end do
-                            Ec2k = Ec2k + Taibj(d, b, j, i) * VT
-                            Ec2l = Ec2l + Taibj(d, b, i, j) * VT
+                            Ec2k = Ec2k + Taibj(b, d, i, j) * VT
+                            Ec2l = Ec2l + Taibj(b, d, j, i) * VT
                         end do
                     end do
                 end do
             end do
-            
+            !$omp end parallel do
             
             Ec2k = TWO * Ec2k
             Ec2l = -ONE * Ec2l
@@ -441,320 +449,6 @@ contains
     end  subroutine rpa_Ec2k_corection
     
     
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !----------------------------------------------          Beyond RPA corrections test procedure          -----------------------------------------------!
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-      subroutine rpa_CCD_corrections_test(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
-
-
-                integer, intent(in)                                         :: NOcc
-                integer, intent(in)                                         :: NVirt
-                integer, intent(in)                                         :: NVecsT2
-                integer, intent(in)                                         :: NGridTHC
-                real(F64), dimension(:), intent(inout)                      :: Energy
-                real(F64), dimension(:, :), intent(in)                      :: Zgh
-                real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
-                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi
-                real(F64), dimension(NOcc), intent(in)                      :: OccEnergies
-                real(F64), dimension(NVirt), intent(in)                     :: VirtEnergies
-                real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)      :: Uaim
-                real(F64), dimension(:), intent(in)                         :: Am
-            
-                integer :: a, i, b, j, c, k, d, l, mu, g, h 
-                real(F64) :: Ec2b, Ec2c, Ec2d, Ec2e, Ec2f, Ec2g, Ec2h, Ec2i, Ec2j, Ec2k, Ec2l
-                real(F64), dimension(:, :, :, :), allocatable               :: Wijkl
-                real(F64), dimension(:, :, :, :), allocatable               :: Wabcd
-                real(F64), dimension(:, :, :, :), allocatable               :: Waibj
-                real(F64), dimension(:, :, :, :), allocatable               :: Wijab
-                real(F64), dimension(:, :, :, :), allocatable               :: Daibj
-                
-                
-            allocate(Daibj(NVirt, NOcc, NVirt, NOcc))
-            allocate(Wijkl(NOcc, NOcc, NOcc, NOcc))
-            allocate(Wabcd(NVirt, NVirt, NVirt, NVirt))
-            allocate(Waibj(NVirt, NOcc, NVirt, NOcc))
-            allocate(Wijab(NOcc, NOcc, NVirt, NVirt))
-
-!                  !$omp parallel do private(h) default(shared)
-!                  !$omp end parallel do
-
-            Daibj = ZERO
-            do j = 1, NOcc
-                do i = 1, NOcc
-                    do b = 1, NVirt
-                        do a = 1, NVirt
-                            do mu = 1, NVecsT2
-                                Daibj(a, i, b, j) = Daibj(a, i, b, j) + Am(mu) * Uaim(a, i, mu) * Uaim(b, j, mu)
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            
-            Wijkl = ZERO
-            do l = 1, NOcc
-                do k = 1, NOcc
-                    do j = 1, NOcc
-                        do i = 1, NOcc
-                            do g = 1, NGridTHC
-                                do h = 1, NGridTHC
-                                    Wijkl(i, j, k, l) = Wijkl(i, j, k, l) + Zgh(g, h) * Xgi(g, i) * Xgi(g, j) * Xgi(h, k) * Xgi(h, l)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            
-            Wabcd = ZERO
-            do d = 1, NVirt
-                do c = 1, NVirt
-                    do b = 1, NVirt
-                        do a = 1, NVirt
-                            do g = 1, NGridTHC
-                                do h = 1, NGridTHC
-                                    Wabcd(a, b, c, d) = Wabcd(a, b, c, d) + Zgh(g, h) * Yga(g, a) * Yga(g, b) * Yga(h, c) * Yga(h, d)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            
-            Waibj = ZERO
-            do j = 1, NOcc
-                do b = 1, NVirt
-                    do i = 1, NOcc
-                        do a = 1, NVirt
-                            do g = 1, NGridTHC
-                                do h = 1, NGridTHC
-                                    Waibj(a, i, b, j) = Waibj(a, i, b, j) + Zgh(g, h) * Yga(g, a) * Xgi(g, i) * Yga(h, b) * Xgi(h, j)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            
-            Wijab = ZERO
-            do b = 1, NVirt
-                do a = 1, NVirt
-                    do j = 1, NOcc
-                        do i = 1, NOcc
-                            do g = 1, NGridTHC
-                                do h = 1, NGridTHC
-                                    Wijab(i, j, a, b) = Wijab(i, j, a, b) + Zgh(g, h) * Xgi(g, i) *  Xgi(g, j) * Yga(h, a) * Yga(h, b)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-!-------------------------------------------------------------------------------------------------------------------------------------
-            Ec2b = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2b = Ec2b + Waibj(a, i, b, j) * Daibj(a, i, c, k) * Daibj(c, j, b, k)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2b = -FOUR * Ec2b
-            
-            Ec2c = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2c = Ec2c + Waibj(a, i, b, j) * Daibj(a, k, c, i) * Daibj(c, k, b, j)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2c = -FOUR * Ec2c
-            
-            Ec2d = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2d = Ec2d + Waibj(a, i, b, j) * Daibj(a, k, c, i) * Daibj(c, j, b, k)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2d = TWO * Ec2d
-            
-            Ec2e = ZERO
-            do l = 1, NOcc
-                do k = 1, NOcc
-                    do j = 1, NOcc
-                        do i = 1, NOcc
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2e = Ec2e + Wijkl(i, j, k, l) * Daibj(a, i, b, k) * Daibj(b, l, a, j)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2e = TWO * Ec2e
-            
-            Ec2f = ZERO
-            do l = 1, NOcc
-                do k = 1, NOcc
-                    do j = 1, NOcc
-                        do i = 1, NOcc
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2f = Ec2f + Wijkl(i, j, k, l) * Daibj(a, i, b, k) * Daibj(b, j, a, l)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2f = -ONE * Ec2f
-            
-            Ec2g = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2g = Ec2g + Wijab(i, j, a, b) * Daibj(a, j, c, k) * Daibj(c, k, b, i)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2g = -FOUR * Ec2g
-            
-            Ec2h = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2h = Ec2h + Wijab(i, j, a, b) * Daibj(a, k, c, j) * Daibj(c, i, b, k)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2h = -FOUR * Ec2h
-            
-            Ec2i = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2i = Ec2i + Wijab(i, j, a, b) * Daibj(a, j, c, k) * Daibj(c, i, b, k)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2i = TWO * Ec2i
-            
-            Ec2j = ZERO
-            do k = 1, NOcc
-                do j = 1, NOcc
-                    do i = 1, NOcc
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2j = Ec2j + Wijab(i, j, a, b) * Daibj(a, k, c, j) * Daibj(c, k, b, i)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2j = TWO * Ec2j
-            
-            Ec2k = ZERO
-            do j = 1, NOcc
-                do i = 1, NOcc
-                    do d = 1, NVirt
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2k = Ec2k + Wabcd(a, b, c, d) * Daibj(a, i, c, j) * Daibj(d, j, b, i)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2k = TWO * Ec2k
-            
-            Ec2l = ZERO
-            do j = 1, NOcc
-                do i = 1, NOcc
-                    do d = 1, NVirt
-                        do c = 1, NVirt
-                            do b = 1, NVirt
-                                do a = 1, NVirt
-                                    Ec2l = Ec2l + Wabcd(a, b, c, d) * Daibj(a, i, c, j) * Daibj(d, i, b, j)
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-            Ec2l = -ONE * Ec2l
-            
-            
-            Energy(RPA_ENERGY_CUMULANT_2B) = Ec2b
-            Energy(RPA_ENERGY_CUMULANT_2C) = Ec2c
-            Energy(RPA_ENERGY_CUMULANT_2D) = Ec2d
-            Energy(RPA_ENERGY_CUMULANT_2e) = Ec2e
-            Energy(RPA_ENERGY_CUMULANT_2f) = Ec2f
-            Energy(RPA_ENERGY_CUMULANT_2g) = Ec2g
-            Energy(RPA_ENERGY_CUMULANT_2i) = Ec2i
-            Energy(RPA_ENERGY_CUMULANT_2h) = Ec2h
-            Energy(RPA_ENERGY_CUMULANT_2j) = Ec2j
-            Energy(RPA_ENERGY_CUMULANT_2k) = Ec2k
-            Energy(RPA_ENERGY_CUMULANT_2l) = Ec2l
-
-
-            deallocate(Daibj)
-            deallocate(Wijkl)
-            deallocate(Wabcd)
-            deallocate(Waibj)
-            deallocate(Wijab)
-
-
-            Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_1B)
-            Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2B)
-            Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2C)
-      end subroutine rpa_CCD_corrections_test
-     
-     
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------------          Beyond RPA corrections main procedure          -----------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
@@ -792,8 +486,6 @@ contains
 !                  !$omp parallel do private(h) default(shared)
 !                  !$omp end parallel do
 
-!            call rpa_CCD_corrections_test(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
-!            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
             call amplitudes_aibj(Taibj, NOcc, NVirt, NVecsT2, Uaim, Am)
             call ERI_aibj(Vaibj, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
             call rpa_Ec2b_corection(Energy, NOcc, NVirt, Taibj, Vaibj)
