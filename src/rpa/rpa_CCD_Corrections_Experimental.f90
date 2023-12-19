@@ -203,25 +203,31 @@ contains
             !------------------------- ERIs type Vijab(a, b, i, j) -----------------------
             Wijab = ZERO
             Vijab = ZERO
+            !$omp parallel do collapse(2) private(j, b) default(shared)
             do j = 1, NOcc
                 do b = 1, NVirt
                     Wijab(:, :, b, j) = matmul(XXigj(:, :, j), ZYYgab(:, :, b)) 
                 end do
             end do
+            !$omp end parallel do
             
+            !$omp parallel do collapse(2) private(i, a) default(shared)
             do i = 1, NOcc
                 do a = 1, NVirt
                     Vijab(:, a, :, i) = transpose(Wijab(:, a, :, i))
                 end do
             end do
+            !$omp end parallel do
             
             !------------------------- ERIs type Vabcd(a, c, b, d) -----------------------
             Vabcd = ZERO
+            !$omp parallel do collapse(2) private(a, b) default(shared)
             do a = 1, NVirt
                 do b = 1, NVirt
                     Vabcd(:, :, a, b) = matmul(YYagb(:, :, a), ZYYgab(:, :, b)) 
                 end do
             end do
+            !$omp end parallel do
             
             
             call msg("ERIs (ij|ab) (ij|kl) (ab|cd) computed in " // str(clock_readwall(timer),d=1) // " seconds")
@@ -423,11 +429,10 @@ contains
             !------------------------- CCD Ec2k, Ec2l main calculation -------------------------
             Ec2k = ZERO
             Ec2l = ZERO
-            !$omp parallel do collapse(2) private(b, d) 
             do i = 1, NOcc
                 do j = 1, NOcc
-                    do b = 1, NVirt
-                        do d = 1, NVirt
+                    do d = 1, NVirt
+                        do b = 1, NVirt
                         VT = ZERO
                             do c = 1, NVirt
                             VT = VT + DOT_PRODUCT(Vabcd(:, c, b, d), Taibj(:, c, i, j))
@@ -438,7 +443,9 @@ contains
                     end do
                 end do
             end do
-            !$omp end parallel do
+            
+!            !$omp parallel do collapse(2) private(d, b) default(shared)
+!            !$omp end parallel do
             
             Ec2k = TWO * Ec2k
             Ec2l = -ONE * Ec2l
@@ -478,9 +485,6 @@ contains
             
             allocate(Taibj(NVirt, NVirt, NOcc, NOcc))
             allocate(Vaibj(NVirt, NVirt, NOcc, NOcc))
-            allocate(Vijab(NVirt, NVirt, NOcc, NOcc))
-            allocate(Vijkl(NOcc, NOcc, NOcc, NOcc))
-            allocate(Vabcd(NVirt, NVirt, NVirt, NVirt))
             
             
 !                  !$omp parallel do private(h) default(shared)
@@ -489,6 +493,10 @@ contains
             call amplitudes_aibj(Taibj, NOcc, NVirt, NVecsT2, Uaim, Am)
             call ERI_aibj(Vaibj, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
             call rpa_Ec2b_corection(Energy, NOcc, NVirt, Taibj, Vaibj)
+            deallocate(Vaibj)
+            allocate(Vijab(NVirt, NVirt, NOcc, NOcc))
+            allocate(Vijkl(NOcc, NOcc, NOcc, NOcc))
+            allocate(Vabcd(NVirt, NVirt, NVirt, NVirt))
             call ERI_ijab_ijkl_abcd(Vijab, Vijkl, Vabcd, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
             call rpa_Ec2g_corection(Energy, NOcc, NVirt, Taibj, Vijab)
             call rpa_Ec2e_corection(Energy, NOcc, NVirt, Taibj, Vijkl)
