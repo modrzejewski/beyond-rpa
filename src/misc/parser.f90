@@ -3782,7 +3782,9 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
-            case ("CCD-CORRECTIONS", "CCDCORRECTIONS")                  
+            case ("CCD-CORRECTIONS", "CCDCORRECTIONS")
+                  RPAParams%TensorHypercontraction = .true.
+                  RPAParams%CoupledClusters = .true.
                   select case (uppercase(val))
                   case ("LEVEL-0")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_0
