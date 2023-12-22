@@ -7,7 +7,7 @@
 ## Max meomry per node (in MB)
 #SBATCH --mem 120000
 #SBATCH --time=1:00:00 
-#SBATCH -A plgrpa2023-cpu
+#SBATCH -A plgrpa2024-cpu
 #SBATCH -p plgrid-testing
 #SBATCH --output="example.log"
 #SBATCH --error="example.log"

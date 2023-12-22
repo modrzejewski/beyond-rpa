@@ -1,0 +1,1 @@
+ifx -qopenmp -O3 -xHost -no-prec-div -i8 -qmkl -coarray -I./obj/ -c 
