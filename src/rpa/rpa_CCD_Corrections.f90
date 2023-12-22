@@ -43,7 +43,7 @@ contains
                   !
                   ! Experimental code
                   !
-                  call rpa_CCD_corrections_FullSet(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
+                  call rpa_CCD_corrections_FullSet(Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
             end if            
             call msg("CCD corrections to RPA correlation energy")

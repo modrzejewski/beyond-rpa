@@ -6,7 +6,7 @@
 #SBATCH --mem 100000
 #SBATCH --time=1:00:00
 #SBATCH -A plgrpa2024-cpu
-#SBATCH -p plgrid-testing
+#SBATCH -p plgrid-now
 #SBATCH --output="build.log"
 #SBATCH --error="build.log"
 #SBATCH --mail-type=ALL

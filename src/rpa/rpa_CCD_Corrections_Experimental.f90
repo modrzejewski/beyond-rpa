@@ -459,7 +459,7 @@ contains
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------------          Beyond RPA corrections main procedure          -----------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-      subroutine rpa_CCD_corrections_FullSet(Energy, Zgh, Yga, Xgi, OccEnergies, VirtEnergies, &
+      subroutine rpa_CCD_corrections_FullSet(Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
             Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
             
             
@@ -469,6 +469,7 @@ contains
                 integer, intent(in)                                         :: NGridTHC
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 real(F64), dimension(:, :), intent(in)                      :: Zgh
+                real(F64), dimension(:, :), intent(in)                      :: Zgk
                 real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
                 real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi
                 real(F64), dimension(NOcc), intent(in)                      :: OccEnergies
