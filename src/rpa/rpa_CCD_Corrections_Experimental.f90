@@ -538,13 +538,14 @@ contains
     !----------------------------------------------          Beyond RPA corrections main procedure          -----------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
       subroutine rpa_CCD_corrections_FullSet(Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
+            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, NCholesky)
             
             
                 integer, intent(in)                                         :: NOcc
                 integer, intent(in)                                         :: NVirt
                 integer, intent(in)                                         :: NVecsT2
                 integer, intent(in)                                         :: NGridTHC
+                integer, intent(in)                                         :: NCholesky
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 real(F64), dimension(:, :), intent(in)                      :: Zgh
                 real(F64), dimension(:, :), intent(in)                      :: Zgk

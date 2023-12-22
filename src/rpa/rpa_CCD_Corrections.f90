@@ -44,7 +44,7 @@ contains
                   ! Experimental code
                   !
                   call rpa_CCD_corrections_FullSet(Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
-                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC)
+                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
             end if            
             call msg("CCD corrections to RPA correlation energy")
             call clock_start(timer_total)
