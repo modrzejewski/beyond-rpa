@@ -231,9 +231,87 @@ contains
             
             
             call msg("ERIs (ij|ab) (ij|kl) (ab|cd) computed in " // str(clock_readwall(timer),d=1) // " seconds")
-    end  subroutine ERI_ijab_ijkl_abcd
-    
-    
+      end  subroutine ERI_ijab_ijkl_abcd
+
+
+      subroutine ERI_ijab_ijkl_abcd_v2(Vabcd, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi)
+
+            real(F64), dimension(:, :, :, :), intent(out)                   :: Vabcd
+                integer, intent(in)                                         :: NOcc
+                integer, intent(in)                                         :: NVirt
+                integer, intent(in)                                         :: NGridTHC
+                integer, intent(in)                                         :: NCholesky
+                real(F64), dimension(:, :), intent(in)                      :: Zgk
+                real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
+                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi                
+
+                real(F64), dimension(:), allocatable :: YYg
+                real(F64), dimension(:, :, :), allocatable :: ZYYkab
+                real(F64), dimension(:), allocatable :: VabcdBlock
+                integer :: a, b
+                integer :: ab0, ab1, cd0, cd1, Nab, Ncd
+                integer :: k, l, NBlocks
+                integer, parameter :: BlockDim = 100
+
+                allocate(ZYYkab(NCholesky, NVirt, NVirt))
+                !$omp parallel private(YYg) &
+                !$omp private(a, b)
+                allocate(YYg(NGridTHC)) ! private YYk array for each thread
+                !$omp do collapse(2)
+                do b = 1, NVirt                                
+                      do a = 1, NVirt
+                            YYg(:) = Yga(:, a) * Yga(:, b) ! vector operation
+                            call real_ATv(ZYYkab(:, a, b), Zgk, YYg) ! matrix-vector multiplication w = A**T*v
+                      end do
+                end do
+                !$omp end do
+                !$omp end parallel
+
+                allocate(VabcdBlock(BlockDim**2)) ! ------------ blok zaalokowany jako jednowymiarowy pasek ----------
+                NBlocks = NVirt**2 / BlockDim
+                if (modulo(NVirt**2, BlockDim) > 0) NBlocks = NBlocks + 1 ! ------ blok na krawędzi może mieć wymiar < BlockDim
+                do l = 1, NBlocks ! ----- pętla po blokach macierzy V; granice bloku to (ab0:ab1, cd0:cd1), wymiar to Nab x Ncd -----
+                      do k = 1, NBlocks
+                            cd0 = 1 + BlockDim * (l - 1)
+                            cd1 = min(NVirt**2, BlockDim * l)
+                            ab0 = 1 + BlockDim * (k - 1) 
+                            ab1 = min(NVirt**2, BlockDim * k)
+                            Nab = ab1 - ab0 + 1
+                            Ncd = cd1 - cd0 + 1
+                            call ZYY_ZYY_Block(Vabcd, VabcdBlock(1:Nab*Ncd), ZYYkab, &
+                                  ab0, ab1, cd0, cd1, NVirt)
+                      end do
+                end do
+                
+          contains
+
+                subroutine ZYY_ZYY_Block(Vacbd, VabcdBlock, ZYYkab, ab0, ab1, cd0, cd1, NVirt)
+                      integer, intent(in)                                    :: ab0, ab1, cd0, cd1
+                      real(F64), dimension(:, :, :, :), intent(inout)       :: Vacbd
+                      real(F64), dimension(ab0:ab1, cd0:cd1), intent(out)    :: VabcdBlock
+                      real(F64), dimension(NCholesky, NVirt**2), intent(in)  :: ZYYkab
+                      integer, intent(in)                                    :: NVirt
+                      
+                      integer :: ab, cd, a, b, c, d
+                      
+                      call real_aTb(VabcdBlock, ZYYkab(:, ab0:ab1), ZYYkab(:, cd0:cd1)) ! sklejone indeksy ab, cd
+                      do cd = cd0, cd1
+                            do ab = ab0, ab1
+                                  !
+                                  ! ab = a + NVirt * (b - 1)
+                                  ! cd = c + NVirt * (d - 1)
+                                  !
+                                  b = (ab - 1) / NVirt + 1
+                                  a = ab - NVirt * (b - 1)
+                                  d = (cd - 1) / NVirt + 1
+                                  c = cd - NVirt * (d - 1)
+                                  Vacbd(a, c, b, d) = VabcdBlock(ab, cd)
+                            end do
+                      end do
+                end subroutine ZYY_ZYY_BLOCK
+      end subroutine ERI_ijab_ijkl_abcd_v2
+
+            
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------          Calculation of Ec1b, Ec2b, Ec2c, Ec2d corrections          -----------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
@@ -499,6 +577,19 @@ contains
             allocate(Vijkl(NOcc, NOcc, NOcc, NOcc))
             allocate(Vabcd(NVirt, NVirt, NVirt, NVirt))
             call ERI_ijab_ijkl_abcd(Vijab, Vijkl, Vabcd, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
+
+            ! ----------- odkomentować 
+            ! block
+            !       type(TClock) :: timer
+            !       integer :: NCholesky
+                  
+            !       call clock_start(timer)
+            !       NCholesky = size(Zgk, dim=2)
+            !       call ERI_ijab_ijkl_abcd_v2(Vabcd, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi)
+            !       call msg("v2 integrals completed in " // str(clock_readwall(timer), d=1) // " seconds")
+            ! end block
+
+            
             call rpa_Ec2g_corection(Energy, NOcc, NVirt, Taibj, Vijab)
             call rpa_Ec2e_corection(Energy, NOcc, NVirt, Taibj, Vijkl)
             call rpa_Ec2k_corection(Energy, NOcc, NVirt, Taibj, Vabcd)
