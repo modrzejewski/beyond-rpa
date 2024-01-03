@@ -8,6 +8,7 @@ module drv_dft_rpa
       use basis
       use initialize
       use ParallelCholesky
+      use TwoStepCholesky
       use CABS
       use PostSCF
       use MolproInterface
@@ -24,6 +25,7 @@ contains
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
             type(TCholeskyBasis) :: CholeskyBasis
+            type(TChol2Vecs) :: Chol2Vecs
             type(TCoulTHCGrid) :: THCGrid
             real(F64), dimension(:, :, :), allocatable :: CholeskyVecs[:]
             integer :: NSystems
@@ -51,6 +53,9 @@ contains
             ! ------------------------------------------------------------------------
             if (SCFParams%UseCholeskyBasis .or. RPAParams%TensorHypercontraction) then
                   call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
+                  print *, "===================================================================="
+                  call chol2_Step1_SimpleInterface(Chol2Vecs, AOBasis, RPAParams)
+                  print *, "===================================================================="
             else
                   allocate(CholeskyVecs(0, 0, 0)[*])
             end if
