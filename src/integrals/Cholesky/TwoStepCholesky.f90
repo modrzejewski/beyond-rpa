@@ -86,7 +86,7 @@ contains
             integer, dimension(:), allocatable :: NewLoc, OldLoc
             real(F64), dimension(:), allocatable :: DOld
 
-            if (NShellPairs(CHOL2_CANDIDATES) > 0 .and. NPivots > 0) then
+            if (NShellPairs(CHOL2_CANDIDATES) > 0) then
                   allocate(NewLoc(NShellPairs(CHOL2_CANDIDATES)))
                   allocate(OldLoc(NShellPairs(CHOL2_CANDIDATES)))
                   NCompressed = 0
@@ -103,6 +103,7 @@ contains
                   end if
                   call move_alloc(from=D, to=DOld)
                   allocate(D(NOrbPairs(CHOL2_CANDIDATES)))
+                  !$omp parallel do private(g, ShAB, Nab, g0, g1, h0, h1)
                   do g = 1, NShellPairs(CHOL2_CANDIDATES)
                         ShAB = ShellPairMap(g, CHOL2_CANDIDATES)
                         Nab = ShellPairDim(ShAB)
@@ -112,30 +113,35 @@ contains
                         h1 = OldLoc(g) + Nab - 1
                         D(g0:g1) = DOld(h0:h1)
                   end do
+                  !$omp end parallel do
                   !
                   ! Move pivot candidate columns to the front
                   ! and remove non-candidate columns from
                   ! the storage.
                   !
-                  NBlocks = NPivots / BlockDim
-                  if (modulo(NPivots, BlockDim) > 0) NBlocks = NBlocks + 1
-                  do b = 1, NBlocks
-                        call move_alloc(from=V(b)%L, to=T)
-                        !
-                        ! Reallocation of L with smaller number of columns saves memory
-                        !
-                        allocate(V(b)%L(BlockDim, NCompressed))
-                        do g = 1, NShellPairs(CHOL2_CANDIDATES)
-                              ShAB = ShellPairMap(g, CHOL2_CANDIDATES)
-                              Nab = ShellPairDim(ShAB)
-                              g0 = NewLoc(g)
-                              g1 = NewLoc(g) + Nab - 1
-                              h0 = OldLoc(g)
-                              h1 = OldLoc(g) + Nab - 1
-                              V(b)%L(:, g0:g1) = T(:, h0:h1)
+                  if (NPivots > 0) then
+                        NBlocks = NPivots / BlockDim
+                        if (modulo(NPivots, BlockDim) > 0) NBlocks = NBlocks + 1
+                        do b = 1, NBlocks
+                              call move_alloc(from=V(b)%L, to=T)
+                              !
+                              ! Reallocation of L with smaller number of columns saves memory
+                              !
+                              allocate(V(b)%L(BlockDim, NCompressed))
+                              !$omp parallel do private(g, ShAB, Nab, g0, g1, h0, h1)
+                              do g = 1, NShellPairs(CHOL2_CANDIDATES)
+                                    ShAB = ShellPairMap(g, CHOL2_CANDIDATES)
+                                    Nab = ShellPairDim(ShAB)
+                                    g0 = NewLoc(g)
+                                    g1 = NewLoc(g) + Nab - 1
+                                    h0 = OldLoc(g)
+                                    h1 = OldLoc(g) + Nab - 1
+                                    V(b)%L(:, g0:g1) = T(:, h0:h1)
+                              end do
+                              !$omp end parallel do
                         end do
-                  end do
-                  if (NBlocks >= 1) deallocate(T)
+                        if (NBlocks >= 1) deallocate(T)
+                  end if
                   do g = 1, NShellPairs(CHOL2_CANDIDATES)
                         ShAB = ShellPairMap(g, CHOL2_CANDIDATES)
                         ShellPairLoc(CHOL2_COMPRESSED_STORAGE, ShAB) = NewLoc(g)
@@ -461,6 +467,9 @@ contains
             end if
             NShellPairs(CHOL2_BASE) = k1 - k0 + 1
             NOrbPairs(CHOL2_BASE) = 0
+            do k = k0, k1
+                  NOrbPairs(CHOL2_BASE) = NOrbPairs(CHOL2_BASE) + VdiagDim(IdxMap(k))
+            end do
             ShAB = 1
             p = 1
             allocate(D(NOrbPairs(CHOL2_BASE)))
@@ -476,7 +485,6 @@ contains
                   ShellPairLoc(CHOL2_FULL_STORAGE, ShAB) = p
                   LocAB = VdiagLoc(l)
                   D(p:p+Nab-1) = Vdiag(LocAB:LocAB+Nab-1)
-                  NOrbPairs(CHOL2_BASE) = NOrbPairs(CHOL2_BASE) + Nab
                   ShAB = ShAB + 1
                   p = p + Nab
             end do
@@ -897,6 +905,31 @@ contains
             end do
             !$omp end parallel do
       end subroutine chol2_M
+
+
+      subroutine chol2_Lj(L, M, T, MaxDpq, j, pq_j, pq_j_batch, Npq)
+            real(F64), dimension(:, :), intent(inout)           :: L
+            real(F64), dimension(:), intent(out)                :: T
+            real(F64), dimension(:, :), intent(in)              :: M
+            real(F64), intent(in)                               :: MaxDpq
+            integer, intent(in)                                 :: j
+            integer, intent(in)                                 :: pq_j
+            integer, intent(in)                                 :: pq_j_batch
+            integer, intent(in)                                 :: Npq
+
+            integer :: jPrev
+
+            L(:, j) = M(:, pq_j_batch)
+            if (j > 1) then
+                  jPrev = j - 1
+                  T(1:jPrev) = L(pq_j, 1:jPrev)
+                  call real_av_x(L(:, j), L(:, 1:jPrev), Npq, T, Npq, jPrev, -ONE, ONE)
+                  !
+                  ! Perform matrix-vector multiplication w(1:n) = alpha * A(1:m,1:n)**T v(1:m) + beta * w(1:n)
+                  !
+            end if
+            L(:, j) = L(:, j) / sqrt(MaxDpq)
+      end subroutine chol2_Lj
       
 
       subroutine chol2_Pivots(Pivots, NCholesky, NShellPairs, NOrbPairs, &
@@ -939,20 +972,20 @@ contains
 
             integer, dimension(:, :), allocatable :: ShellPairMap
             integer, dimension(:), allocatable :: ColumnLoc
-            real(F64), dimension(:), allocatable :: Lj, LjBatch
-            real(F64), dimension(:, :), allocatable :: M
+            real(F64), dimension(:, :), allocatable :: M, Lpqj
+            real(F64), dimension(:), allocatable :: Tpq
             real(F64) :: Dmax, Dmin
             integer :: MaxNBatch
             integer :: i, j0, j1, j
-            integer :: p0, p1, q0, q1
-            integer :: k,  ShAB, Nab
+            integer :: k
             real(F64) :: MaxDpq            
             integer :: MaxLoc, MaxLocBatch
-            real(F64) :: MemoryMB, Percentage
+            real(F64) :: MemoryMB, MemoryMB_M, MemoryMB_V
+            integer :: Percentage, NRemaining
             logical :: Converged
             logical :: DoMicroIters, DoMacroIters
             character(:), allocatable :: line
-            real(F64) :: time_rTr, time_2e, time_rk, t_iter
+            real(F64) :: time_rTr, time_2e, time_rk, t_iter, time_Compress
             type(tclock) :: timer, timer_iter, DeltaT
             integer :: CurrentBlock, BlockBoundary, MaxNBlocks
             type(TCompressedCholVecs), dimension(:), allocatable   :: V
@@ -961,11 +994,13 @@ contains
             time_rTr = ZERO
             time_rk = ZERO
             time_2e = ZERO
+            time_Compress = ZERO
             call blankline()
-            call msg("Step 1 of Cholesky decomposition: locating pivots", underline=.true.)
+            call msg("Step 1 of Cholesky decomposition: locating pivots", underline=.true.)            
             call msg("Dimensions of the Coulomb matrix: (" // str(NOrbPairs(CHOL2_BASE)) // "," // str(NOrbPairs(CHOL2_BASE)) // ")")
             call msg("Threshold for diagonal matrix elements: Dpq > " // str(TauThresh, d=1))
             call msg("Max number of Cholesky vectors: " // str(MaxNCholesky))
+            call msg("Rk storage block size: " // str(BlockDim))
             MaxNBatch = min(NOrbPairs(CHOL2_BASE), max(MaxNAngFunc**2, 1000))
             call msg("Max dimension of 2e integrals buffer: (" // str(NOrbPairs(CHOL2_BASE)) // "," // str(MaxNBatch) // ")")
             allocate(ShellPairMap(NShellPairs(CHOL2_BASE), 3))
@@ -1006,19 +1041,21 @@ contains
                   !   and determine the initial batch of AO pairs
                   ! * Reallocate arrays to a smaller dimension
                   ! ----------------------------------------------------------------------------------------------
+                  call clock_start(DeltaT)
                   call chol2_DefineCandidates(ShellPairMap, NShellPairs, NOrbPairs, ShellPairLoc, &
                         ShellPairDim, D, TauThresh)
                   call chol2_Compress(V, D, ShellPairLoc, ShellPairMap, NShellPairs, NOrbPairs, &
                         ShellPairDim, NCholesky, BlockDim)
                   MaxNBatch = min(NOrbPairs(CHOL2_CANDIDATES), max(MaxNAngFunc**2, 1000))
+                  time_Compress = time_Compress + clock_readwall(DeltaT)
                   !
                   ! Spread factor sigma=0.01 defined in Eq. 8 of J. Chem. Phys. 150, 194112 (2019);
                   ! doi: 10.1063/1.5083802
                   !
                   Dmin = max(0.01_F64 * Dmax, TauThresh)
                   allocate(M(NOrbPairs(CHOL2_CANDIDATES), MaxNBatch))
-                  allocate(Lj(NOrbPairs(CHOL2_CANDIDATES)))
-                  allocate(LjBatch(MaxNBatch))
+                  allocate(Lpqj(NOrbPairs(CHOL2_CANDIDATES), MaxNBatch))
+                  allocate(Tpq(NOrbPairs(CHOL2_CANDIDATES)))
                   call chol2_DefineBatch(ShellPairMap, NShellPairs, NOrbPairs, ColumnLoc, ShellPairDim, ShellPairLoc, &
                         D, Dmin, MaxNBatch)
                   ! ----------------------------------------------------------------------------------------------
@@ -1041,7 +1078,7 @@ contains
                   j0 = NCholesky + 1
                   j = 0
                   DoMicroIters = (NCholesky < MaxNCholesky .and. NOrbPairs(CHOL2_BATCH) > 0)
-                  MicroIters: do while (DoMicroIters)
+                  MicroIters: do while (DoMicroIters)                        
                         j = j + 1
                         j1 = NCholesky
                         ! ----------------------------------------------------------------------------------------
@@ -1054,11 +1091,11 @@ contains
                               allocate(V(CurrentBlock)%L(BlockDim, NOrbPairs(CHOL2_CANDIDATES)))
                               BlockBoundary = CurrentBlock * BlockDim
                         end if
-                        Pivots(MaxLoc) = 1                        
-                        Lj(:) = M(:, MaxLocBatch) / Sqrt(MaxDpq)
-                        V(CurrentBlock)%L(NCholesky-BlockDim*(CurrentBlock-1), :) = Lj(:)
-                        D(:) = D(:) - Lj(:)**2
-                        time_rk = time_rk + clock_readwall(DeltaT)                        
+                        Pivots(MaxLoc) = 1
+                        call chol2_Lj(Lpqj, M, Tpq, MaxDpq, j, MaxLoc, MaxLocBatch, NOrbPairs(CHOL2_CANDIDATES))
+                        V(CurrentBlock)%L(NCholesky-BlockDim*(CurrentBlock-1), :) = Lpqj(:, j)
+                        D(:) = D(:) - Lpqj(:, j)**2
+                        time_rk = time_rk + clock_readwall(DeltaT)
                         ! ---------------------------------------------------------------------------
                         !                              Convergence test
                         ! ---------------------------------------------------------------------------
@@ -1075,24 +1112,6 @@ contains
                         if (j == NOrbPairs(CHOL2_BATCH) .or. NCholesky == MaxNCholesky) then
                               DoMicroIters = .false.
                         end if
-                        ! ---------------------------------------------------------------------------
-                        !              Subtract contribution from the current Cholesky vector
-                        !              if there is anything left in the current batch
-                        ! ---------------------------------------------------------------------------
-                        !
-                        do k = 1, NShellPairs(CHOL2_BATCH)
-                              ShAB = ShellPairMap(k, CHOL2_BATCH)
-                              Nab = ShellPairDim(ShAB)
-                              p0 = ShellPairLoc(CHOL2_COMPRESSED_STORAGE, ShAB)
-                              p1 = ShellPairLoc(CHOL2_COMPRESSED_STORAGE, ShAB) + Nab - 1
-                              q0 = ColumnLoc(k)
-                              q1 = ColumnLoc(k) + Nab - 1
-                              LjBatch(q0:q1) = Lj(p0:p1)
-                        end do
-                        !
-                        ! M = M - Lj*Lj**T
-                        !
-                        call real_vwT(M, Lj, LjBatch, -ONE)
                   end do MicroIters                  
                   Dmax = maxval(D, dim=1)
                   if (Dmax <= TauThresh) then
@@ -1102,16 +1121,19 @@ contains
                   if (NCholesky == MaxNCholesky .or. NOrbPairs(CHOL2_BATCH) == 0) then
                         DoMacroIters = .false.
                   end if
-                  deallocate(M)
-                  deallocate(Lj)
-                  deallocate(LjBatch)
-                  MemoryMB = (storage_size(1.0_F64,kind=I64)*CurrentBlock*BlockDim*NOrbPairs(CHOL2_CANDIDATES)) &
+                  MemoryMB_V = (storage_size(1.0_F64,kind=I64)*CurrentBlock*BlockDim*NOrbPairs(CHOL2_CANDIDATES)) &
                         / (8.0_F64*1024.0_F64*1024.0_F64)
-                  Percentage = nint(100*(real(NOrbPairs(CHOL2_BASE)-NOrbPairs(CHOL2_CANDIDATES),F64)/real(NOrbPairs(CHOL2_BASE),F64)))
+                  MemoryMB_M = (storage_size(1.0_F64,kind=I64)*size(M)) / (8.0_F64*1024.0_F64*1024.0_F64)
+                  MemoryMB = MemoryMB_V + MemoryMB_M
+                  NRemaining = count(D > TauThresh)
+                  Percentage = nint(100*(real(NOrbPairs(CHOL2_BASE)-NRemaining,F64)/real(NOrbPairs(CHOL2_BASE),F64)))
                   t_iter = clock_readwall(timer_iter)
                   line = lfield(str(i), 5) // lfield(str(Dmax,d=1), 12) // lfield(str(MemoryMB,d=1),15) // &
                         lfield(str(NCholesky), 12) // lfield(str(Percentage), 5) // lfield(str(t_Iter,d=1), 12)
                   call msg(line)
+                  deallocate(M)
+                  deallocate(Lpqj)
+                  deallocate(Tpq)
             end do MacroIters
             call blankline()
             call msg("Step 1 of the Cholesky decomposition completed")
@@ -1124,9 +1146,10 @@ contains
             end if
             call msg("Cholesky decomposition completed in " // str(clock_readwall(timer),d=1) // " seconds")
             call msg("Detailed timings in seconds")
-            call msg("subtract prev contribs I (M-R**T*R): " // str(time_rTr,d=1))
-            call msg("subtract prev contribs II (Rk): " // str(time_rk,d=1))
-            call msg("two-electron integrals: " // str(time_2e,d=1))
+            call msg("Subtract prev contribs I (M-R**T*R): " // str(time_rTr,d=1))
+            call msg("Subtract prev contribs II (Rk): " // str(time_rk,d=1))
+            call msg("Two-electron integrals: " // str(time_2e,d=1))
+            call msg("Reallocation: " // str(time_Compress,d=1))
             call blankline()
       end subroutine chol2_Pivots
       

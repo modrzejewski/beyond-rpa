@@ -308,7 +308,7 @@ module rpa_definitions
             ! Block size of Cholesky vectors used during the two-step Cholesky
             ! factorization
             !
-            integer :: CholVecsBlock = 100
+            integer :: CholVecsBlock = 500
             !
             ! Maximum size of a single batch of T2 eigenvectors processed at the same time.
             ! See the algorithm used for the diagonalization of the T2 amplitude matrix.

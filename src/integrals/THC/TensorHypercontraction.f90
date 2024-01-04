@@ -966,9 +966,11 @@ contains
                         !
                         allocate(V(b)%L(BlockDim, NCandidates))
                         associate (LNew => V(b)%L)
+                              !$omp parallel do private(g)
                               do g = 1, NCandidates
                                     LNew(:, g) = T(:, Map(g))
                               end do
+                              !$omp end parallel do
                         end associate
                   end do
                   if (NBlocks >= 1) deallocate(T)                  
