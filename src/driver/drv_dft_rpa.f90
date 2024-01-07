@@ -8,6 +8,7 @@ module drv_dft_rpa
       use basis
       use initialize
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use TwoStepCholesky
       use CABS
       use PostSCF
@@ -54,7 +55,7 @@ contains
             if (SCFParams%UseCholeskyBasis .or. RPAParams%TensorHypercontraction) then
                   call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
                   print *, "===================================================================="
-                  call chol2_Step1_SimpleInterface(Chol2Vecs, AOBasis, RPAParams)
+                  call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, RPAParams)
                   print *, "===================================================================="
             else
                   allocate(CholeskyVecs(0, 0, 0)[*])

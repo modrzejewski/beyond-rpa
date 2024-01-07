@@ -43,7 +43,8 @@ FileList += [("DFT", ["common/string.f90",
                       "common/qnewton.f90",
                       "common/gaussquad.f90",
                       "integrals/grid/grid_definitions.f90",
-                      "integrals/THC/thc_definitions.f90"])]
+                      "integrals/THC/thc_definitions.f90",
+                      "integrals/Cholesky/TwoStepCholesky_definitions.f90"])]
 FileList += [("DFT", ["common/display.f90"])]
 FileList += [("DFT", ["common/journal.f90"])]
 FileList += [("DFT", ["common/h_xcfunc.f90"])]
@@ -413,11 +414,14 @@ FileList += [("DFT", ["integrals/OverlapIntegrals.f90"])]
 FileList += [("DFT", ["integrals/sphergto.f90"])]
 FileList += [("DFT", ["integrals/basis_sets.f90"])]
 FileList += [("DFT", ["integrals/ECP/PseudopotentialData.f90"])]
+
 FileList += [("DFT", ["integrals/Cholesky/ParallelCholesky.f90",
                       "integrals/ECP/Pseudopotential.f90",
                       "integrals/OneElectronInts.f90",
                       "integrals/grid/GridFunctions.f90",
-                      "integrals/Cholesky/TwoStepCholesky.f90"])]
+                      "integrals/Cholesky/TwoStepCholesky_Step1.f90",
+                      "integrals/Cholesky/TwoStepCholesky_Step2.f90"])]
+FileList += [("DFT", ["integrals/Cholesky/TwoStepCholesky.f90"])]
 FileList += [("DFT", ["integrals/grid/BeckeGrid.f90"])]
 FileList += [("DFT", ["integrals/ECP/SOPseudopotential.f90",
                       "integrals/THC/TensorHypercontraction.f90"])]
