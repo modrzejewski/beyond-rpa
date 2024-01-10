@@ -16,6 +16,7 @@ module rpa_driver
       use sys_definitions
       use ParallelCholesky
       use PostSCF
+      use TwoStepCholesky_definitions
 
       implicit none
 
@@ -36,7 +37,7 @@ contains
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TSystem), intent(inout)                              :: System
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
 
             real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB
@@ -384,7 +385,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
 
             integer :: NMO, NSpins, MaxNOcc, MaxNVirt
             type(txcdef) :: HFonDFT
@@ -664,7 +665,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             type(TSCFParams), intent(in)                              :: SCFParams
             type(TSystem), intent(in)                                 :: System
 

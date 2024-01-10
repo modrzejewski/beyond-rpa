@@ -9,6 +9,7 @@ module drv_dft_rpa
       use initialize
       use ParallelCholesky
       use TwoStepCholesky_definitions
+      use thc_definitions
       use TwoStepCholesky
       use CABS
       use PostSCF
@@ -18,15 +19,16 @@ module drv_dft_rpa
 
 contains
 
-      subroutine task_uks_rpa(System, SCFParams, RPAParams)
-            type(TSystem), intent(inout) :: System
-            type(TSCFParams), intent(in) :: SCFParams
-            type(TRPAParams), intent(in) :: RPAParams
+      subroutine task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
+            type(TSystem), intent(inout)   :: System
+            type(TSCFParams), intent(in)   :: SCFParams
+            type(TRPAParams), intent(in)   :: RPAParams
+            type(TChol2Params), intent(in) :: Chol2Params
+            type(TTHCParams), intent(in)   :: THCParams
             
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
-            type(TCholeskyBasis) :: CholeskyBasis
-            type(TChol2Vecs) :: Chol2Vecs
+            type(TChol2Vecs) :: CholeskyBasis
             type(TCoulTHCGrid) :: THCGrid
             real(F64), dimension(:, :, :), allocatable :: CholeskyVecs[:]
             integer :: NSystems
@@ -53,10 +55,12 @@ contains
             !              Cholesky decomposition of the Coulomb matrix
             ! ------------------------------------------------------------------------
             if (SCFParams%UseCholeskyBasis .or. RPAParams%TensorHypercontraction) then
-                  call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
-                  print *, "===================================================================="
-                  call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, RPAParams)
-                  print *, "===================================================================="
+                  if (THCParams%THC_QuadraticMemory) then
+                        call chol2_Algo_Koch_JCP2019(CholeskyBasis, AOBasis, Chol2Params)
+                        call chol2_FullDimVectors(CholeskyVecs, CholeskyBasis, AOBasis, Chol2Params)
+                  else
+                        call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
+                  end if
             else
                   allocate(CholeskyVecs(0, 0, 0)[*])
             end if
@@ -87,9 +91,8 @@ contains
                         call sys_Init(System, k)
                         call data_load_2(System)
                         call init_modules()
-                  end if
-                  
-                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, CholeskyVecs, CholeskyBasis)                  
+                  end if                  
+                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, CholeskyVecs, CholeskyBasis)
                   if (.not. SCFOutput(k)%Converged) then
                         call msg("SCF not converged. Cannot continue with a post-SCF calculation", MSG_ERROR)
                         error stop

@@ -32,6 +32,7 @@ module ParallelCholesky
       use sort
       use basis_sets
       use rpa_definitions
+      use TwoStepCholesky_definitions
       
       implicit none
 
@@ -44,18 +45,18 @@ module ParallelCholesky
       integer, parameter :: SUBSET_STORAGE = 2
       integer, parameter :: SUBSET_INDEX = 3
 
-      type TCholeskyBasis
-            integer :: NVecs
-            integer :: MaxSubsetDim
-            integer, dimension(2) :: NSubsets
-            integer :: NOrbPairs
-            integer :: NShellPairs
-            integer, dimension(:, :), allocatable :: ShellPairs
-            integer, dimension(:, :), allocatable :: ShellPairLoc
-            integer, dimension(:), allocatable :: ShellPairDim
-            integer, dimension(:), allocatable :: SubsetDim
-            integer, dimension(:, :), allocatable :: SubsetBounds
-      end type TCholeskyBasis
+      ! type TCholeskyBasis
+      !       integer :: NVecs
+      !       integer :: MaxSubsetDim
+      !       integer, dimension(2) :: NSubsets
+      !       integer :: NOrbPairs
+      !       integer :: NShellPairs
+      !       integer, dimension(:, :), allocatable :: ShellPairs
+      !       integer, dimension(:, :), allocatable :: ShellPairLoc
+      !       integer, dimension(:), allocatable :: ShellPairDim
+      !       integer, dimension(:), allocatable :: SubsetDim
+      !       integer, dimension(:, :), allocatable :: SubsetBounds
+      ! end type TCholeskyBasis
 
 contains
 
@@ -1351,7 +1352,7 @@ contains
             ! of two electron Coulomb integrals (pq|rs).
             !
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: R[:]
-            type(TCholeskyBasis), intent(out)                         :: CholeskyBasis
+            type(TChol2Vecs), intent(out)                             :: CholeskyBasis
             type(TAOBasis), intent(in)                                :: AOBasis
             type(TRPAParams), intent(in)                              :: RPAParams
 

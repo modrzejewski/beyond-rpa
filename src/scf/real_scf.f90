@@ -24,6 +24,7 @@ module real_scf
       use CholeskyCoulomb
       use CholeskyExchange
       use CholeskyFock
+      use TwoStepCholesky_definitions
       use OneElectronInts
       use Pseudopotential, only : pp_V
       !$ use omp_lib
@@ -688,7 +689,7 @@ contains
             type(TAOBasis), intent(in)                             :: AOBasis
             type(TSystem), intent(in)                              :: System
             real(F64), dimension(:, :, :), intent(in)              :: Rkpq
-            type(TCholeskyBasis), intent(in)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(in)                           :: CholeskyBasis
             integer, intent(in)                                    :: GridKind
             logical, intent(in)                                    :: GridPruning
             integer, intent(in)                                    :: MaxBufferDimMB
@@ -776,7 +777,7 @@ contains
             type(TAOBasis), intent(in)                             :: AOBasis
             type(TSystem), intent(in)                              :: System
             real(F64), dimension(:, :, :), intent(in)              :: CholeskyVecs
-            type(TCholeskyBasis), intent(in)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(in)                           :: CholeskyBasis
             integer, intent(in)                                    :: GridKind
             logical, intent(in)                                    :: GridPruning
             real(F64), intent(inout)                               :: time_F
@@ -1001,7 +1002,7 @@ contains
             integer, optional, intent(in)                             :: MaxBufferDimMB
             integer, optional, intent(in)                             :: TargetBlockDim
             real(F64), dimension(:, :, :), optional, intent(in)       :: CholeskyVecs
-            type(TCholeskyBasis), optional, intent(in)                :: CholeskyBasis
+            type(TChol2Vecs), optional, intent(in)                    :: CholeskyBasis
 
             type(tgriddiag) :: gdiag
             real(F64), dimension(:, :, :), allocatable :: RhoK_cao, Ck_oao
@@ -1478,7 +1479,7 @@ contains
             type(TAOBasis), intent(in)                          :: AOBasis
             type(TSystem), intent(in)                           :: System
             real(F64), dimension(:, :, :), optional, intent(in) :: CholeskyVecs
-            type(TCholeskyBasis), optional, intent(in)          :: CholeskyBasis
+            type(TChol2Vecs), optional, intent(in)              :: CholeskyBasis
 
             type(txcdef) :: XCModel, NonSCF
             real(F64) :: MaxRhoDiff, MaxOrbGrad, LinDepThresh

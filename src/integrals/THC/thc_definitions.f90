@@ -1,5 +1,6 @@
 module thc_definitions
       use arithmetic
+      use grid_definitions
 
       implicit none
 
@@ -55,4 +56,11 @@ module thc_definitions
             !
             real(F64), dimension(:, :), allocatable :: ZgkPiU
       end type TCoulTHCGrid
+
+      type TTHCParams
+            integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
+            real(F64) :: THC_QRThresh = 1.0E-3_F64
+            integer   :: THC_BlockDim = 500
+            logical   :: THC_QuadraticMemory = .false.
+      end type TTHCParams
 end module thc_definitions

@@ -43,8 +43,8 @@ FileList += [("DFT", ["common/string.f90",
                       "common/qnewton.f90",
                       "common/gaussquad.f90",
                       "integrals/grid/grid_definitions.f90",
-                      "integrals/THC/thc_definitions.f90",
                       "integrals/Cholesky/TwoStepCholesky_definitions.f90"])]
+FileList += [("DFT", ["integrals/THC/thc_definitions.f90"])]
 FileList += [("DFT", ["common/display.f90"])]
 FileList += [("DFT", ["common/journal.f90"])]
 FileList += [("DFT", ["common/h_xcfunc.f90"])]

@@ -2,6 +2,7 @@ module CholeskyCoulomb
       use arithmetic
       use real_linalg
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use basis_sets
       
       implicit none
@@ -334,7 +335,7 @@ contains
             real(F64), dimension(:, :, :), intent(in)  :: Rho            
             type(TAOBasis), intent(in)                 :: AOBasis
             real(F64), dimension(:, :, :), intent(in)  :: R
-            type(TCholeskyBasis), intent(in)           :: CholeskyBasis
+            type(TChol2Vecs), intent(in)               :: CholeskyBasis
 
             associate ( &
                   NVecs => CholeskyBasis%NVecs, &

@@ -100,7 +100,7 @@ contains
             integer, intent(in)                      :: MaxNAngFunc
             integer, intent(in)                      :: PtrOffset
 
-            integer :: K, L, AtomA, AtomB, AtomC, AtomD
+            integer :: KL, K, L, AtomA, AtomB, AtomC, AtomD
             integer :: ShellParamsA, ShellParamsB, ShellParamsC, ShellParamsD
             integer :: ShAB, ShA, ShB, pq0, pq1, Npq
             integer :: ShCD, ShC, ShD, rs0, rs1, Nrs
@@ -109,82 +109,81 @@ contains
             real(F64), dimension(MaxNAngFunc**4) :: V, T
 
             Vpqrs = ZERO
-            !$omp parallel do collapse(2) schedule(guided) &
-            !$omp private(L, K) &
+            !$omp parallel do schedule(guided) &
+            !$omp private(L, K, KL) &
             !$omp private(ShAB, ShCD, ShA, ShB, ShC, ShD, AtomA, AtomB, AtomC, AtomD) &
             !$omp private(ShellParamsA, ShellParamsB, ShellParamsC, ShellParamsD) &
             !$omp private(La, Lb, Lc, Ld, Na, Nb, Nc, Nd, Npq, Nrs, pq0, pq1, rs0, rs1) &
             !$omp private(V, T) &
             !$omp default(shared)
-            do L = 1, NPivotShellPairs
-                  do K = 1, NPivotShellPairs
-                        ShAB = PivotShellPairs(K)
-                        ShCD = PivotShellPairs(L)
+            do KL = 1, (NPivotShellPairs * (NPivotShellPairs + 1)) / 2
+                  call chol2_pq2p_ge_q(K, L, KL, NPivotShellPairs)
+                  ShAB = PivotShellPairs(K)
+                  ShCD = PivotShellPairs(L)
 
-                        ShA = ShellPairs(1, ShAB)
-                        ShB = ShellPairs(2, ShAB)
-                        ShC = ShellPairs(1, ShCD)
-                        ShD = ShellPairs(2, ShCD)
+                  ShA = ShellPairs(1, ShAB)
+                  ShB = ShellPairs(2, ShAB)
+                  ShC = ShellPairs(1, ShCD)
+                  ShD = ShellPairs(2, ShCD)
 
-                        AtomA = ShellCenters(ShA)
-                        AtomB = ShellCenters(ShB)
-                        AtomC = ShellCenters(ShC)
-                        AtomD = ShellCenters(ShD)
+                  AtomA = ShellCenters(ShA)
+                  AtomB = ShellCenters(ShB)
+                  AtomC = ShellCenters(ShC)
+                  AtomD = ShellCenters(ShD)
 
-                        ShellParamsB = ShellParamsIdx(ShB)
-                        ShellParamsA = ShellParamsIdx(ShA)
-                        ShellParamsC = ShellParamsIdx(ShC)
-                        ShellParamsD = ShellParamsIdx(ShD)
+                  ShellParamsB = ShellParamsIdx(ShB)
+                  ShellParamsA = ShellParamsIdx(ShA)
+                  ShellParamsC = ShellParamsIdx(ShC)
+                  ShellParamsD = ShellParamsIdx(ShD)
 
-                        La = ShellMomentum(ShellParamsA)
-                        Lb = ShellMomentum(ShellParamsB)
-                        Lc = ShellMomentum(ShellParamsC)
-                        Ld = ShellMomentum(ShellParamsD)
+                  La = ShellMomentum(ShellParamsA)
+                  Lb = ShellMomentum(ShellParamsB)
+                  Lc = ShellMomentum(ShellParamsC)
+                  Ld = ShellMomentum(ShellParamsD)
 
-                        Na = NAngFunc(ShellParamsA)
-                        Nb = NAngFunc(ShellParamsB)
-                        Nc = NAngFunc(ShellParamsC)                        
-                        Nd = NAngFunc(ShellParamsD)
+                  Na = NAngFunc(ShellParamsA)
+                  Nb = NAngFunc(ShellParamsB)
+                  Nc = NAngFunc(ShellParamsC)                        
+                  Nd = NAngFunc(ShellParamsD)
 
-                        Npq = PivotShellPairDim(K)
-                        Nrs = PivotShellPairDim(L)
+                  Npq = PivotShellPairDim(K)
+                  Nrs = PivotShellPairDim(L)
 
-                        pq0 = PivotShellPairLoc(K)
-                        pq1 = PivotShellPairLoc(K) + Npq - 1
-                        rs0 = PivotShellPairLoc(L)
-                        rs1 = PivotShellPairLoc(L) + Nrs - 1
+                  pq0 = PivotShellPairLoc(K)
+                  pq1 = PivotShellPairLoc(K) + Npq - 1
+                  rs0 = PivotShellPairLoc(L)
+                  rs1 = PivotShellPairLoc(L) + Nrs - 1
 
-                        call Auto2eERI(PtrOffset+auto2e_idx(Ld, Lc, Lb, La))%ptr( &
-                              V, &
-                              !
-                              ! ShellD
-                              !
-                              AtomCoords(:, AtomD), CntrCoeffs(:, ShellParamsD), &
-                              NormFactors(:, ShellParamsD), Exponents(:, ShellParamsD), &
-                              NPrimitives(ShellParamsD), &
-                              !
-                              ! ShellC
-                              !
-                              AtomCoords(:, AtomC), CntrCoeffs(:, ShellParamsC), &
-                              NormFactors(:, ShellParamsC), Exponents(:, ShellParamsC), &
-                              NPrimitives(ShellParamsC), &
-                              !
-                              ! ShellB
-                              !
-                              AtomCoords(:, AtomB), CntrCoeffs(:, ShellParamsB), &
-                              NormFactors(:, ShellParamsB), Exponents(:, ShellParamsB), &
-                              NPrimitives(ShellParamsB), &
-                              !
-                              ! ShellA
-                              !
-                              AtomCoords(:, AtomA), CntrCoeffs(:, ShellParamsA), &
-                              NormFactors(:, ShellParamsA), Exponents(:, ShellParamsA), &
-                              NPrimitives(ShellParamsA), &
-                              Kappa)
+                  call Auto2eERI(PtrOffset+auto2e_idx(Ld, Lc, Lb, La))%ptr( &
+                        V, &
+                        !
+                        ! ShellD
+                        !
+                        AtomCoords(:, AtomD), CntrCoeffs(:, ShellParamsD), &
+                        NormFactors(:, ShellParamsD), Exponents(:, ShellParamsD), &
+                        NPrimitives(ShellParamsD), &
+                        !
+                        ! ShellC
+                        !
+                        AtomCoords(:, AtomC), CntrCoeffs(:, ShellParamsC), &
+                        NormFactors(:, ShellParamsC), Exponents(:, ShellParamsC), &
+                        NPrimitives(ShellParamsC), &
+                        !
+                        ! ShellB
+                        !
+                        AtomCoords(:, AtomB), CntrCoeffs(:, ShellParamsB), &
+                        NormFactors(:, ShellParamsB), Exponents(:, ShellParamsB), &
+                        NPrimitives(ShellParamsB), &
+                        !
+                        ! ShellA
+                        !
+                        AtomCoords(:, AtomA), CntrCoeffs(:, ShellParamsA), &
+                        NormFactors(:, ShellParamsA), Exponents(:, ShellParamsA), &
+                        NPrimitives(ShellParamsA), &
+                        Kappa)
 
-                        call chol2_write_Vpqrs(Vpqrs(pq0:pq1, rs0:rs1), T, V, Na, Nb, Nc, Nd, Npq, Nrs, &
-                              PivotOrbPairs(pq0:pq1), PivotOrbPairs(rs0:rs1))
-                  end do
+                  call chol2_write_Vpqrs(Vpqrs(pq0:pq1, rs0:rs1), T, V, Na, Nb, Nc, Nd, Npq, Nrs, &
+                        PivotOrbPairs(pq0:pq1), PivotOrbPairs(rs0:rs1))
             end do
             !$omp end parallel do
       end subroutine chol2_Vpqrs_FullInterface

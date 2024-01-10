@@ -13,6 +13,8 @@ module parser
       use sys_definitions
       use scf_definitions
       use rpa_definitions
+      use thc_definitions
+      use TwoStepCholesky_definitions
       use Pseudopotential, only: pp_ZNumbers
       use grid_definitions
 
@@ -1084,11 +1086,13 @@ contains
       end function isnew_element
 
 
-      subroutine read_inputfile(System, SCFParams, RPAParams, filename)
-            type(TSystem), intent(out)   :: System
-            type(TSCFParams), intent(out) :: SCFParams
-            type(TRPAParams), intent(out) :: RPAParams
-            character(len=*), intent(in) :: filename
+      subroutine read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, filename)
+            type(TSystem), intent(out)      :: System
+            type(TSCFParams), intent(out)   :: SCFParams
+            type(TRPAParams), intent(out)   :: RPAParams
+            type(TChol2Params), intent(out) :: Chol2Params
+            type(TTHCParams), intent(out)   :: THCParams
+            character(len=*), intent(in)    :: filename
 
             integer :: OldXYZFormat
             character(len=DEFLEN) :: line
@@ -1258,7 +1262,7 @@ contains
                               end if
                         end if
                   else if (current_block == block_RPA) then
-                        call read_block_RPA(RPAParams, SCFParams, line)
+                        call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
                   else if (current_block == block_SCF) then
                         call read_block_SCF(SCFParams, line)
                   else if (current_block == block_XYZ) then
@@ -3665,10 +3669,12 @@ contains
       end subroutine read_block_RhoSpher
 
 
-      subroutine read_block_RPA(RPAParams, SCFParams, line)
-            type(TRPAParams), intent(inout) :: RPAParams
-            type(TSCFParams), intent(inout) :: SCFParams
-            character(*), intent(in)        :: Line
+      subroutine read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
+            type(TTHCParams), intent(inout)   :: THCParams
+            character(*), intent(in)          :: Line
             
             character(:), allocatable :: key, val
             real(F64) :: m
@@ -3731,24 +3737,31 @@ contains
             case ("THC_QRTHRESH")
                   read(val, *) m
                   RPAParams%THC_QRThresh = m
+                  THCParams%THC_QRThresh = m
             case ("THC_QRTHRESH_T2")
                   read(val, *) m
-                  RPAParams%THC_QRThresh_T2 = m                  
+                  RPAParams%THC_QRThresh_T2 = m
             case ("THC_BLOCKDIM")
                   read(val, *) i
                   RPAParams%THC_BlockDim = i
+                  THCParams%THC_BlockDim = i
             case ("THC_BECKEGRIDKIND")
                   select case (uppercase(val))
                   case ("SG1", "SG-1")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
                   case ("MEDIUM")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
                   case ("FINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
                   case ("XFINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
                   case ("THC")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_THC
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_THC
                   case default
                         call msg("Unknown grid kind", priority=MSG_ERROR)
                         error stop
@@ -3766,6 +3779,16 @@ contains
                         RPAParams%AC_1RDMQuad = .false.
                   case default 
                         call msg("Invalid value of AC_1RDMQuad", MSG_ERROR)
+                        error stop
+                  end select
+            case ("THC_QUADRATICMEMORY", "THC_QUADRATIC_MEMORY", "THC-QUADRATIC-MEMORY")
+                  select case (uppercase(val))
+                  case ("ENABLE", "ENABLED", "TRUE", "")
+                        THCParams%THC_QuadraticMemory = .true.
+                  case ("DISABLE", "DISABLED", "FALSE")
+                        THCParams%THC_QuadraticMemory = .false.
+                  case default 
+                        call msg("Invalid value of QuadraticMemory", MSG_ERROR)
                         error stop
                   end select
             case ("T1APPROX", "T1APPROXIMATION", "T1-APPROX", "T1-APPROXIMATION")
@@ -3958,6 +3981,7 @@ contains
             case ("CHOLESKYTAUTHRESH", "CHOLESKYTAUTHRESHOLD")
                   read(val, *) m
                   RPAParams%CholeskyTauThresh = m
+                  Chol2Params%CholeskyTauThresh = m
             case ("TARGETERRORFREQ")
                   read(val, *) m
                   RPAParams%TargetErrorFreq = m
@@ -3976,6 +4000,7 @@ contains
             case ("MAXBLOCKDIM")
                   read(val, *) i
                   RPAParams%MaxBlockDim = i
+                  Chol2Params%MaxBlockDim = i
             case default
                   call msg("Unknown keyword in RPA block: " // key, MSG_ERROR)
                   stop

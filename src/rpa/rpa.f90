@@ -8,6 +8,7 @@ module rpa
       use Auto2e
       use GaussPRNG
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use SpherGTO
       use basis_sets
       use OrbDiffHist
@@ -1715,7 +1716,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             associate ( &
@@ -1783,7 +1784,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             integer :: NSpins, NAtoms, NAO, NShells

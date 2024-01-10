@@ -35,7 +35,6 @@ module TwoStepCholesky
       use string
       use sort
       use basis_sets
-      use rpa_definitions
       use TwoStepCholesky_definitions
       use TwoStepCholesky_Step1
       use TwoStepCholesky_Step2
@@ -44,10 +43,10 @@ module TwoStepCholesky
 
 contains
 
-      subroutine chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, RPAParams)
-            type(TChol2Vecs), intent(out) :: Chol2Vecs
-            type(TAOBasis), intent(in)    :: AOBasis
-            type(TRPAParams), intent(in)  :: RPAParams
+      subroutine chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, Chol2Params)
+            type(TChol2Vecs), intent(out)  :: Chol2Vecs
+            type(TAOBasis), intent(in)     :: AOBasis
+            type(TChol2Params), intent(in) :: Chol2Params
             !
             ! Generate the pivots of the Cholesky factorization V = R**T * R.
             !
@@ -68,8 +67,8 @@ contains
             !    Linear-Scaling Techniques in Computational Chemistry and Physics: Methods and Applications,
             !    301-343, Springer 2011; doi: 10.1007/978-90-481-2853-2_13
             !
-            call chol2_Step1(Chol2Vecs, AOBasis, RPAParams)
-            call chol2_Step2(Chol2Vecs, AOBasis, RPAParams)
+            call chol2_Step1(Chol2Vecs, AOBasis, Chol2Params)
+            call chol2_Step2(Chol2Vecs, AOBasis, Chol2Params)
       end subroutine chol2_Algo_Koch_JCP2019
       
 
@@ -81,7 +80,7 @@ contains
             integer, dimension(:), allocatable, intent(out)             :: Pivots
             integer, intent(out)                                        :: NCholesky
             integer, dimension(2, (NShells*(NShells+1))/2), intent(out) :: ShellPairs
-            integer, dimension(4, (NShells*(NShells+1))/2), intent(out) :: ShellPairLoc
+            integer, dimension(3, (NShells*(NShells+1))/2), intent(out) :: ShellPairLoc
             integer, dimension((NShells*(NShells+1))/2), intent(out)    :: ShellPairDim
             integer, intent(out)                                        :: NShellPairs
             integer, intent(out)                                        :: NOrbPairs
@@ -110,6 +109,7 @@ contains
             integer :: PtrOffset
             integer :: MaxNOrbPairs, MaxNCholesky, MaxNAngFunc, MaxSubsetDim
             integer, dimension(:), allocatable :: NShellPairs0, NOrbPairs0
+            integer, dimension(:, :), allocatable :: ShellPairLoc0
             real(F64), dimension(:), allocatable :: Vdiag
             real(F64), dimension(:), allocatable :: D
             integer :: ThisImage
@@ -146,9 +146,10 @@ contains
             !
             allocate(NShellPairs0(4))
             allocate(NOrbPairs0(4))
-            call chol2_DefineBase(ShellPairs, ShellPairLoc, ShellPairDim, NShellPairs0, NOrbPairs0, D, PrescreenError, &
+            allocate(ShellPairLoc0(4, (NShells*(NShells+1))/2))
+            call chol2_DefineBase(ShellPairs, ShellPairLoc0, ShellPairDim, NShellPairs0, NOrbPairs0, D, PrescreenError, &
                   TauThresh, Vdiag, ShellParamsIdx, ShellMomentum, NAngFunc, NShells, NAO)
-            call chol2_DefineSubsets(SubsetDim, SubsetBounds, ShellPairLoc, NSubsets, &
+            call chol2_DefineSubsets(SubsetDim, SubsetBounds, ShellPairLoc0, NSubsets, &
                   ShellPairDim, NShellPairs0, NOrbPairs0, OrbPairsBlock)
             NShellPairs = NShellPairs0(CHOL2_BASE)
             NOrbPairs = NOrbPairs0(CHOL2_BASE)
@@ -158,24 +159,25 @@ contains
             if (ThisImage == 1) then
                   call chol2_Pivots(Pivots, NCholesky, NShellPairs0, NOrbPairs0, &
                         D, MaxNCholesky, TauThresh, &
-                        ShellPairs, ShellPairLoc, ShellPairDim, ShellCenters, &
+                        ShellPairs, ShellPairLoc0, ShellPairDim, ShellCenters, &
                         AtomCoords, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, Exponents, &
                         NormFactors, Kappa, MaxNAngFunc, NAO, PtrOffset, CholVecsBlock)
             end if
+            ShellPairLoc(:, :) = ShellPairLoc0(1:3, :)
             call co_broadcast(Pivots, source_image=1)
       end subroutine chol2_Step1_FullInterface
 
 
-      subroutine chol2_Step1(Chol2Vecs, AOBasis, RPAParams)
-            type(TChol2Vecs), intent(out) :: Chol2Vecs
-            type(TAOBasis), intent(in)    :: AOBasis
-            type(TRPAParams), intent(in)  :: RPAParams
+      subroutine chol2_Step1(Chol2Vecs, AOBasis, Chol2Params)
+            type(TChol2Vecs), intent(out)  :: Chol2Vecs
+            type(TAOBasis), intent(in)     :: AOBasis
+            type(TChol2Params), intent(in) :: Chol2Params
 
             integer :: MaxNShellPairs
             
             MaxNShellPairs = (AOBasis%NShells * (AOBasis%NShells + 1)) / 2
             allocate(Chol2Vecs%ShellPairs(2, MaxNShellPairs))
-            allocate(Chol2Vecs%ShellPairLoc(4, MaxNShellPairs))
+            allocate(Chol2Vecs%ShellPairLoc(3, MaxNShellPairs))
             allocate(Chol2Vecs%ShellPairDim(MaxNShellPairs))
             if (AOBasis%SpherAO) then
                   call chol2_Step1_FullInterface( &
@@ -189,7 +191,7 @@ contains
                         Chol2Vecs%SubsetDim, &
                         Chol2Vecs%SubsetBounds, &
                         Chol2Vecs%NSubsets, &
-                        RPAParams%CholeskyTauThresh, & 
+                        Chol2Params%CholeskyTauThresh, & 
                         AOBasis%ShellCenters, &
                         AOBasis%AtomCoords, &
                         AOBasis%ShellParamsIdx, &
@@ -199,13 +201,13 @@ contains
                         AOBasis%CntrCoeffs, &
                         AOBasis%Exponents, &
                         AOBasis%NormFactorsSpher, &
-                        RPAParams%Kappa, &
+                        Chol2Params%Kappa, &
                         AOBasis%LmaxGTO, &
                         AOBasis%NAOSpher, &
                         AOBasis%NShells, &
                         AOBasis%SpherAO, &
-                        RPAParams%MaxBlockDim, &
-                        RPAParams%CholVecsBlock)
+                        Chol2Params%MaxBlockDim, &
+                        Chol2Params%CholVecsBlock)
             else
                   call chol2_Step1_FullInterface( &
                         Chol2Vecs%Pivots, &
@@ -218,7 +220,7 @@ contains
                         Chol2Vecs%SubsetDim, &
                         Chol2Vecs%SubsetBounds, &
                         Chol2Vecs%NSubsets, &
-                        RPAParams%CholeskyTauThresh, &
+                        Chol2Params%CholeskyTauThresh, &
                         AOBasis%ShellCenters, &
                         AOBasis%AtomCoords, &
                         AOBasis%ShellParamsIdx, &
@@ -228,18 +230,18 @@ contains
                         AOBasis%CntrCoeffs, &
                         AOBasis%Exponents, &
                         AOBasis%NormFactorsCart, &
-                        RPAParams%Kappa, &
+                        Chol2Params%Kappa, &
                         AOBasis%LmaxGTO, &
                         AOBasis%NAOCart, &
                         AOBasis%NShells, &
                         AOBasis%SpherAO, &
-                        RPAParams%MaxBlockDim, &
-                        RPAParams%CholVecsBlock)
+                        Chol2Params%MaxBlockDim, &
+                        Chol2Params%CholVecsBlock)
             end if
       end subroutine chol2_Step1
 
 
-      subroutine chol2_Step2(Chol2Vecs, AOBasis, RPAParams)
+      subroutine chol2_Step2(Chol2Vecs, AOBasis, Chol2Params)
             !
             ! Perform the second step of the pivoted Cholesky decomposition
             ! according to the algorithm of Koch et al.
@@ -261,7 +263,7 @@ contains
             !
             type(TChol2Vecs), intent(inout) :: Chol2Vecs
             type(TAOBasis), intent(in)      :: AOBasis
-            type(TRPAParams), intent(in)    :: RPAParams
+            type(TChol2Params), intent(in)  :: Chol2Params
 
             real(F64), dimension(:, :), allocatable :: Vpqrs
             type(TClock) :: timer, DeltaT
@@ -334,7 +336,7 @@ contains
                         Chol2Vecs%NPivotShellPairs, &
                         ShellPairs, &
                         AOBasis, &
-                        RPAParams%Kappa)
+                        Chol2Params%Kappa)
                   t_Vpqrs = clock_readwall(DeltaT)
                   !
                   ! V=L*L**T
@@ -361,4 +363,81 @@ contains
                   call blankline()
             end associate
       end subroutine chol2_Step2
+
+
+      subroutine chol2_AllocWorkspace(Wabrs, Chol2Vecs)
+            real(F64), dimension(:, :), allocatable, intent(out) :: Wabrs
+            type(TChol2Vecs), intent(in)                         :: Chol2Vecs
+
+            integer :: MaxSubsetDim
+            
+            MaxSubsetDim = maxval(Chol2Vecs%SubsetDim)
+            allocate(Wabrs(MaxSubsetDim, Chol2Vecs%NVecs))
+      end subroutine chol2_AllocWorkspace
+      
+
+      subroutine chol2_FullDimVectors_Batch(Rkpq, Wabrs, SubsetIdx, Chol2Vecs, AOBasis, Chol2Params)
+            !
+            ! Compute the full dimension Cholesky vectors for a given subset of AO indices pq
+            ! according to Eq. 3 in Ref. 1.
+            ! 
+            ! 1. Sarai D. Folkestad, Eirik F. Kjønstad and Henrik Koch,
+            !    J. Chem. Phys. 150, 194112 (2019);
+            !    doi: 10.1063/1.5083802
+            !
+            real(F64), dimension(:, :), intent(out) :: Rkpq
+            real(F64), dimension(:, :), intent(out) :: Wabrs
+            integer, intent(in)                     :: SubsetIdx
+            type(TChol2Vecs), intent(in)            :: Chol2Vecs
+            type(TAOBasis), intent(in)              :: AOBasis
+            type(TChol2Params), intent(in)          :: Chol2Params
+            
+            call chol2_Vabrs(Wabrs, &
+                  Chol2Vecs%SubsetBounds(:, SubsetIdx), &
+                  Chol2Vecs%PivotShellPairs, &
+                  Chol2Vecs%PivotShellPairLoc, &
+                  Chol2Vecs%PivotShellPairDim, &
+                  Chol2Vecs%PivotOrbPairs, &
+                  Chol2Vecs%NPivotShellPairs, &
+                  Chol2Vecs%ShellPairLoc, &
+                  Chol2Vecs%ShellPairs, &
+                  Chol2Vecs%ShellPairDim, &
+                  AOBasis, &
+                  Chol2Params%Kappa)
+            !
+            ! Eq. 3 in Ref. 1
+            ! R(k,pq) <- InvL(k,rs)*V(pq,rs)
+            !
+            associate ( &
+                  InvL => Chol2Vecs%Inv_L, &
+                  Vabrs => Wabrs &
+                  )
+                  call real_abT(Rkpq, InvL, Wabrs)
+            end associate
+      end subroutine chol2_FullDimVectors_Batch
+
+
+      subroutine chol2_FullDimVectors(Rkpq, Chol2Vecs, AOBasis, Chol2Params)                    
+            real(F64), dimension(:, :, :), allocatable, intent(inout) :: Rkpq[:]
+            type(TChol2Vecs), intent(in)                              :: Chol2Vecs
+            type(TAOBasis), intent(in)                                :: AOBasis
+            type(TChol2Params), intent(in)                            :: Chol2Params
+            
+
+            real(F64), dimension(:, :), allocatable :: Wabrs
+            integer :: SubsetIdx, X, Y
+            integer :: MaxSubsetDim
+            
+            MaxSubsetDim = maxval(Chol2Vecs%SubsetDim)
+            if (allocated(Rkpq)) deallocate(Rkpq)
+            allocate(Rkpq(Chol2Vecs%NVecs, MaxSubsetDim, Chol2Vecs%NSubsets(1))[*])
+            call chol2_AllocWorkspace(Wabrs, Chol2Vecs)
+            Y = this_image()
+            do X = 1, Chol2Vecs%NSubsets(1)
+                  SubsetIdx = X + (Y - 1) * Chol2Vecs%NSubsets(1)
+                  call chol2_FullDimVectors_Batch(Rkpq(:, :, X), Wabrs, SubsetIdx, &
+                        Chol2Vecs, AOBasis, Chol2Params)
+            end do
+            sync all
+      end subroutine chol2_FullDimVectors
 end module TwoStepCholesky
