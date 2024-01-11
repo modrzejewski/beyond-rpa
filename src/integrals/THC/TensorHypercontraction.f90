@@ -6,8 +6,10 @@ module TensorHypercontraction
       use real_linalg
       use basis_sets
       use ParallelCholesky
+      use TwoStepCholesky
       use sys_definitions
       use thc_definitions
+      use TwoStepCholesky_definitions
       
       implicit none
 
@@ -228,6 +230,34 @@ contains
       end subroutine thc_Test_Vapprox
 
 
+      subroutine thc_CoulombMatrix_QuarticMemory(THCGrid, AOBasis, System, THCParams, Chol2Params)
+            type(TCoulTHCGrid), intent(out) :: THCGrid
+            type(TAOBasis), intent(in)      :: AOBasis
+            type(TSystem), intent(in)       :: System
+            type(TTHCParams), intent(in)    :: THCParams
+            type(TChol2Params), intent(in)  :: Chol2Params
+
+            type(TChol2Vecs) :: Chol2Vecs
+            real(F64), dimension(1, 1, 1) :: Rkpq
+            !
+            ! Locate pivots of the Coulomb matrix. This step is required before
+            ! generating the Z matrix subroutine, where the Cholesky vectors
+            ! are computed on the fly
+            !
+            call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, Chol2Params)
+            
+            associate ( &
+                  BeckeGridKind => THCParams%THC_BeckeGridKind, & ! parent molecular grid
+                  QRThresh => THCParams%THC_QRThresh, & ! threshold for rank-revealing QR/Cholesky
+                  BlockDim => THCParams%THC_BlockDim, & ! block dimension for the on the fly THC/Cholesky
+                  NCholesky => Chol2Vecs%NVecs &
+                  )
+                  call thc_Grid(THCGrid%Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
+                  call thc_Z(THCGrid%Zgk, THCGrid%Xgp, Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
+            end  associate
+      end subroutine thc_CoulombMatrix_QuarticMemory
+      
+
       subroutine thc_Grid(Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
@@ -314,8 +344,7 @@ contains
       end subroutine thc_Grid
 
       
-      subroutine thc_Z(Zgk, Xgp, AOBasis, Rkpq, NCholesky, ShellPairs, &
-            ShellPairLoc, ShellPairDim, SubsetDim, SubsetBounds, NSubsets)
+      subroutine thc_Z(Zgk, Xgp, Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
             !
             ! Compute the Z factor of the THC decomposition
             ! of Cholesky-decomposed Coulomb integrals (Eq. 13 in Ref. 1)
@@ -346,15 +375,11 @@ contains
             !
             real(F64), dimension(:, :), allocatable, intent(out) :: Zgk
             real(F64), dimension(:, :), intent(in)               :: Xgp
-            type(TAOBasis), intent(in)                           :: AOBasis
             real(F64), dimension(:, :, :), intent(in)            :: Rkpq
-            integer, intent(in)                                  :: NCholesky
-            integer, dimension(:, :), intent(in)                 :: ShellPairs
-            integer, dimension(:, :), intent(in)                 :: ShellPairLoc
-            integer, dimension(:), intent(in)                    :: ShellPairDim
-            integer, dimension(:), intent(in)                    :: SubsetDim
-            integer, dimension(:, :), intent(in)                 :: SubsetBounds
-            integer, dimension(2), intent(in)                    :: NSubsets
+            type(TChol2Vecs), intent(in)                         :: Chol2Vecs
+            type(TChol2Params), intent(in)                       :: Chol2Params
+            type(TAOBasis), intent(in)                           :: AOBasis
+            type(TTHCParams), intent(in)                         :: THCParams
             
             real(F64), dimension(:, :), allocatable :: Sgh
             integer :: ThisImage
@@ -366,28 +391,9 @@ contains
             call msg("Least squares fitting of Z: LDL**T linear system solver")
             call clock_start(timer_Z)
             NGridQR = size(Xgp, dim=1)
-            allocate(Zgk(NGridQR, NCholesky))
-            if (AOBasis%SpherAO) then
-                  associate ( &
-                        NAO => AOBasis%NAOSpher, &
-                        ShellLoc => AOBasis%ShellLocSpher, &
-                        NAngFunc => AOBasis%NAngFuncSpher, &
-                        ShellParamsIdx => AOBasis%ShellParamsIdx &
-                        )                        
-                        call thc_XR(Zgk, Rkpq, NCholesky, Xgp, NGridQR, NAO, SubsetBounds, NSubsets, SubsetDim, &
-                              ShellPairs, ShellPairLoc, ShellPairDim, ShellParamsIdx, ShellLoc, NAngFunc)
-                  end associate
-            else
-                  associate ( &
-                        NAO => AOBasis%NAOCart, &
-                        ShellLoc => AOBasis%ShellLocCart, &
-                        NAngFunc => AOBasis%NAngFuncCart, &
-                        ShellParamsIdx => AOBasis%ShellParamsIdx &
-                        )
-                        call thc_XR(Zgk, Rkpq, NCholesky, Xgp, NGridQR, NAO, SubsetBounds, NSubsets, SubsetDim, &
-                              ShellPairs, ShellPairLoc, ShellPairDim, ShellParamsIdx, ShellLoc, NAngFunc)
-                  end associate
-            end if
+            allocate(Zgk(NGridQR, Chol2Vecs%NVecs))
+            call thc_XR(Zgk, Rkpq, Xgp, NGridQR, AOBasis, THCParams%THC_QuadraticMemory, &
+                  Chol2Vecs, Chol2Params)
             if (ThisImage == 1) then
                   allocate(Sgh(NGridQR, NGridQR))
                   call thc_S(Sgh, Xgp)
@@ -401,8 +407,7 @@ contains
       end subroutine thc_Z
 
 
-      subroutine thc_XR(XRgk, Rkpq, NCholesky, Xgp, NGrid, NAO, SubsetBounds, NSubsets, SubsetDim, &
-            ShellPairs, ShellPairLoc, ShellPairDim, ShellParamsIdx, ShellLoc, NAngFunc)
+      subroutine thc_XR(XRgk, Rkpq, Xgp, NGrid, AOBasis, QuadraticMemory, Chol2Vecs, Chol2Params)
             !
             ! Compute metric matrix E(1:NGrid, 1:NGrid) = XR(1:NGrid,1:NCholesky)*XR(1:NGrid,1:NCholesky)
             ! (Eq. 35 in Ref. 1).
@@ -413,54 +418,93 @@ contains
             !
             real(F64), dimension(:, :), intent(out)              :: XRgk
             real(F64), dimension(:, :, :), intent(in)            :: Rkpq
-            integer, intent(in)                                  :: NCholesky
             real(F64), dimension(:, :), intent(in)               :: Xgp
             integer, intent(in)                                  :: NGrid
-            integer, intent(in)                                  :: NAO
-            integer, dimension(:, :), intent(in)                 :: SubsetBounds
-            integer, dimension(2), intent(in)                    :: NSubsets
-            integer, dimension(:), intent(in)                    :: SubsetDim
-            integer, dimension(:, :), intent(in)                 :: ShellPairs
-            integer, dimension(:, :), intent(in)                 :: ShellPairLoc
-            integer, dimension(:), intent(in)                    :: ShellPairDim
-            integer, dimension(:), intent(in)                    :: ShellParamsIdx
-            integer, dimension(:), intent(in)                    :: ShellLoc
-            integer, dimension(:), intent(in)                    :: NAngFunc
-            
+            type(TAOBasis), intent(in)                           :: AOBasis
+            logical, intent(in)                                  :: QuadraticMemory
+            type(TChol2Vecs), intent(in)                         :: Chol2Vecs
+            type(TChol2Params), intent(in)                       :: Chol2Params
+
             integer :: X, Y, L
             integer :: Npq
             integer :: MaxSubsetDim, ldR
             integer :: ThisImage
             real(F64), dimension(:, :), allocatable :: Xgpq
+            real(F64), dimension(:, :), allocatable :: Wabrs
+            real(F64), dimension(:, :), allocatable :: RkpqBatch
 
-            ThisImage = this_image()
-            Y = ThisImage
-            ldR = size(Rkpq, dim=1)
-            MaxSubsetDim = maxval(SubsetDim)
-            allocate(Xgpq(NGrid, MaxSubsetDim))
-            XRgk = ZERO
-            do X = 1, NSubsets(1)
-                  L = X + (Y - 1) * NSubsets(1)
-                  Npq = SubsetDim(L)
-                  !
-                  ! Collocation matrices X(g,pq) for the current subset
-                  ! of orbital pair indices pq. These need to be precomputed
-                  ! to enable fast matrix multiplication.
-                  !
-                  call thc_Xgpq(Xgpq, Xgp, SubsetBounds(:, L), NGrid, Npq, &
-                        ShellPairs, ShellPairLoc, ShellPairDim, ShellLoc, ShellParamsIdx, &
-                        NAngFunc, NAO)
-                  !
-                  ! XR(1:NGrid,1:NCholesky) = 2 * X(1:NGrid,1:Npq)*R(1:NCholesky,1:Npq)**T
-                  !
-                  ! Note the scaling factor of 2. This takes into account the permutational symmetry
-                  ! Sum(pq) X(g,pq)*R(k,pq) = 2 * Sum(p>q) X(g,pq)*R(k,pq) + diagonal terms
-                  ! The diagonal terms of X(g,pq) are scaled by 1/2.
-                  !
-                  call real_abT_x(XRgk, NGrid, Xgpq, NGrid, Rkpq(:, :, X), ldR, NGrid, NCholesky, Npq, TWO, ONE)
-            end do
-            call co_sum(XRgk, result_image=1)
-            sync all
+            associate ( &
+                  NCholesky => Chol2Vecs%NVecs, &
+                  NSubsets => Chol2Vecs%NSubsets, &
+                  ShellPairs => Chol2Vecs%ShellPairs, &
+                  ShellPairLoc => Chol2Vecs%ShellPairLoc, &
+                  ShellPairDim => Chol2Vecs%ShellPairDim, &
+                  SubsetDim => Chol2Vecs%SubsetDim, &
+                  SubsetBounds => Chol2Vecs%SubsetBounds &
+                  )
+                  ThisImage = this_image()
+                  Y = ThisImage
+                  MaxSubsetDim = maxval(SubsetDim)
+                  allocate(Xgpq(NGrid, MaxSubsetDim))
+                  if (QuadraticMemory) then
+                        ldR = 0
+                        call chol2_AllocWorkspace(Wabrs, Chol2Vecs)
+                        allocate(RkpqBatch(NCholesky, MaxSubsetDim))
+                  else
+                        ldR = size(Rkpq, dim=1)
+                  end if
+                  XRgk = ZERO
+                  do X = 1, NSubsets(1)
+                        L = X + (Y - 1) * NSubsets(1)
+                        Npq = SubsetDim(L)
+                        !
+                        ! Collocation matrices X(g,pq) for the current subset
+                        ! of orbital pair indices pq. These need to be precomputed
+                        ! to enable fast matrix multiplication.
+                        !
+                        if (AOBasis%SpherAO) then
+                              associate ( &
+                                    NAO => AOBasis%NAOSpher, &
+                                    ShellLoc => AOBasis%ShellLocSpher, &
+                                    NAngFunc => AOBasis%NAngFuncSpher, &
+                                    ShellParamsIdx => AOBasis%ShellParamsIdx &
+                                    )
+                                    call thc_Xgpq(Xgpq, Xgp, SubsetBounds(:, L), NGrid, Npq, &
+                                          ShellPairs, ShellPairLoc, ShellPairDim, ShellLoc, ShellParamsIdx, &
+                                          NAngFunc, NAO)                                    
+                              end associate
+                        else
+                              associate ( &
+                                    NAO => AOBasis%NAOCart, &
+                                    ShellLoc => AOBasis%ShellLocCart, &
+                                    NAngFunc => AOBasis%NAngFuncCart, &
+                                    ShellParamsIdx => AOBasis%ShellParamsIdx &
+                                    )
+                                    call thc_Xgpq(Xgpq, Xgp, SubsetBounds(:, L), NGrid, Npq, &
+                                          ShellPairs, ShellPairLoc, ShellPairDim, ShellLoc, ShellParamsIdx, &
+                                          NAngFunc, NAO)
+                              end associate
+                        end if
+                        !
+                        ! XR(1:NGrid,1:NCholesky) = 2 * X(1:NGrid,1:Npq)*R(1:NCholesky,1:Npq)**T
+                        !
+                        ! Note the scaling factor of 2. This takes into account the permutational symmetry
+                        ! Sum(pq) X(g,pq)*R(k,pq) = 2 * Sum(p>q) X(g,pq)*R(k,pq) + diagonal terms
+                        ! The diagonal terms of X(g,pq) are scaled by 1/2.
+                        !
+                        if (QuadraticMemory) then
+                              call chol2_FullDimVectors_Batch(RkpqBatch, Wabrs, L, &
+                                    Chol2Vecs, AOBasis, Chol2Params)
+                              call real_abT_x(XRgk, NGrid, Xgpq, NGrid, RkpqBatch, NCholesky, &
+                                    NGrid, NCholesky, Npq, TWO, ONE)      
+                        else
+                              call real_abT_x(XRgk, NGrid, Xgpq, NGrid, Rkpq(:, :, X), ldR, &
+                                    NGrid, NCholesky, Npq, TWO, ONE)
+                        end if
+                  end do
+                  call co_sum(XRgk, result_image=1)
+                  sync all
+            end associate
       end subroutine thc_XR
 
 

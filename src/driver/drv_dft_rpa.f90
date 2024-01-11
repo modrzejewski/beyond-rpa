@@ -56,35 +56,34 @@ contains
             ! ------------------------------------------------------------------------
             if (SCFParams%UseCholeskyBasis .or. RPAParams%TensorHypercontraction) then
                   if (THCParams%THC_QuadraticMemory) then
+                        call thc_CoulombMatrix_QuarticMemory(THCGrid, AOBasis, &
+                              System, THCParams, Chol2Params)
+                        allocate(CholeskyVecs(0, 0, 0)[*])
+                  else
                         call chol2_Algo_Koch_JCP2019(CholeskyBasis, AOBasis, Chol2Params)
                         call chol2_FullDimVectors(CholeskyVecs, CholeskyBasis, AOBasis, Chol2Params)
-                  else
-                        call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
+                        ! call chol_CoulombMatrix_B(CholeskyVecs, CholeskyBasis, AOBasis, RPAParams)
+                        if (RPAParams%TensorHypercontraction) then
+                              associate ( &
+                                    BeckeGridKind => RPAParams%THC_BeckeGridKind, & ! parent molecular grid
+                                    QRThresh => RPAParams%THC_QRThresh, & ! threshold for rank-revealing QR/Cholesky
+                                    BlockDim => RPAParams%THC_BlockDim, & ! block dimension for the on the fly THC/Cholesky
+                                    NCholesky => CholeskyBasis%NVecs, &
+                                    NSubsets => CholeskyBasis%NSubsets, &
+                                    ShellPairs => CholeskyBasis%ShellPairs, &
+                                    ShellPairLoc => CholeskyBasis%ShellPairLoc, &
+                                    ShellPairDim => CholeskyBasis%ShellPairDim, &
+                                    SubsetDim => CholeskyBasis%SubsetDim, &
+                                    SubsetBounds => CholeskyBasis%SubsetBounds, &
+                                    Rkpq => CholeskyVecs &
+                                    )
+                                    call thc_Grid(THCGrid%Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
+                                    call thc_Z(THCGrid%Zgk, THCGrid%Xgp, Rkpq, CholeskyBasis, Chol2Params, AOBasis, THCParams)
+                              end  associate
+                        end if
                   end if
             else
                   allocate(CholeskyVecs(0, 0, 0)[*])
-            end if
-            ! ------------------------------------------------------------------------
-            !                         Tensor hypercontraction
-            ! ------------------------------------------------------------------------
-            if (RPAParams%TensorHypercontraction) then
-                  associate ( &
-                        BeckeGridKind => RPAParams%THC_BeckeGridKind, & ! parent molecular grid
-                        QRThresh => RPAParams%THC_QRThresh, & ! threshold for rank-revealing QR/Cholesky
-                        BlockDim => RPAParams%THC_BlockDim, & ! block dimension for the on the fly THC/Cholesky
-                        NCholesky => CholeskyBasis%NVecs, &
-                        NSubsets => CholeskyBasis%NSubsets, &
-                        ShellPairs => CholeskyBasis%ShellPairs, &
-                        ShellPairLoc => CholeskyBasis%ShellPairLoc, &
-                        ShellPairDim => CholeskyBasis%ShellPairDim, &
-                        SubsetDim => CholeskyBasis%SubsetDim, &
-                        SubsetBounds => CholeskyBasis%SubsetBounds, &
-                        Rkpq => CholeskyVecs &
-                        )
-                        call thc_Grid(THCGrid%Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
-                        call thc_Z(THCGrid%Zgk, THCGrid%Xgp, AOBasis, Rkpq, NCholesky, ShellPairs, &
-                              ShellPairLoc, ShellPairDim, SubsetDim, SubsetBounds, NSubsets)                                    
-                  end  associate
             end if
             do k = 1, NSystems
                   if (k > 1) then
