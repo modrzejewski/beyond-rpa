@@ -486,6 +486,38 @@ contains
             end if
       end subroutine real_Axb_symmetric_sysv
 
+
+      subroutine real_Axb_nonsymmetric_gesv(b, A)
+            !
+            ! Solve a linear system Ax = b, where A is a nonsymmetric
+            ! matrix.
+            !
+            real(F64), dimension(:, :), intent(inout) :: b
+            real(F64), dimension(:, :), intent(inout) :: a
+
+            integer :: N, NRHS, info
+            integer, dimension(:), allocatable :: ipiv
+            
+            external :: dgesv
+
+            N = size(A, dim=1)
+            NRHS = size(b, dim=2)
+            allocate(ipiv(N))
+            call dgesv("L", &
+                  N, &
+                  NRHS, &
+                  A, &
+                  N, &
+                  ipiv, &
+                  b, &
+                  N, &
+                  info)
+            if (info /= 0) then
+                  call msg("Linear system solver returned with info="//str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Axb_nonsymmetric_gesv
+      
       
       subroutine real_Pack(MPacked, MFull, NVecs)
             !

@@ -3781,12 +3781,14 @@ contains
                         call msg("Invalid value of AC_1RDMQuad", MSG_ERROR)
                         error stop
                   end select
-            case ("THC_QUADRATICMEMORY", "THC_QUADRATIC_MEMORY", "THC-QUADRATIC-MEMORY")
+            case ("THC_QUADRATICMEMORY", "THC_QUADRATIC_MEMORY", "THC-QUADRATIC-MEMORY", "QUADRATIC-MEMORY", "QUADRATICMEMORY")
                   select case (uppercase(val))
                   case ("ENABLE", "ENABLED", "TRUE", "")
                         THCParams%THC_QuadraticMemory = .true.
+                        SCFParams%UseTensorHypercontraction = .true.
                   case ("DISABLE", "DISABLED", "FALSE")
                         THCParams%THC_QuadraticMemory = .false.
+                        SCFParams%UseTensorHypercontraction = .false.
                   case default 
                         call msg("Invalid value of QuadraticMemory", MSG_ERROR)
                         error stop

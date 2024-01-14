@@ -56,7 +56,7 @@ contains
             ! ------------------------------------------------------------------------
             if (SCFParams%UseCholeskyBasis .or. RPAParams%TensorHypercontraction) then
                   if (THCParams%THC_QuadraticMemory) then
-                        call thc_CoulombMatrix_QuarticMemory(THCGrid, AOBasis, &
+                        call thc_CoulombMatrix_QuadraticMemory(THCGrid, AOBasis, &
                               System, THCParams, Chol2Params)
                         allocate(CholeskyVecs(0, 0, 0)[*])
                   else
@@ -91,7 +91,8 @@ contains
                         call data_load_2(System)
                         call init_modules()
                   end if                  
-                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, CholeskyVecs, CholeskyBasis)
+                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, &
+                        CholeskyVecs, CholeskyBasis, THCGrid)
                   if (.not. SCFOutput(k)%Converged) then
                         call msg("SCF not converged. Cannot continue with a post-SCF calculation", MSG_ERROR)
                         error stop

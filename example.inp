@@ -23,6 +23,7 @@ rpa
  ! CCD-Corrections All <--- new experimental version
  !
  CCD-Corrections All
+ QuadraticMemory
 end
 
 xyz

@@ -41,6 +41,7 @@ module thc_definitions
             ! than NGrid.
             !
             real(F64), dimension(:, :), allocatable :: Zgk
+            real(F64), dimension(:, :), allocatable :: Zgh
             !
             ! Transformed version of Z'(g,k) where the second
             ! index is transformed to the basis in which the Pi(u)

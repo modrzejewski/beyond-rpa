@@ -519,7 +519,8 @@ FileList += [("DFT", ["hamiltonian/Exchange.f90",
                       "hamiltonian/KohnShamGGA.f90",
                       "hamiltonian/KohnShamMGGA.f90",
                       "hamiltonian/CholeskyCoulomb.f90",
-                      "hamiltonian/CholeskyExchange.f90"])]
+                      "hamiltonian/CholeskyExchange.f90",
+                      "hamiltonian/THCFock.f90"])]
 FileList += [("DFT", ["hamiltonian/Fock.f90",
                       "hamiltonian/KohnSham.f90",
                       "hamiltonian/CholeskyFock.f90"])]

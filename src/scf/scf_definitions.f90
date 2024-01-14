@@ -282,6 +282,10 @@ module scf_definitions
             integer :: MaxBufferDimMB = 4000
             integer :: TargetBlockDim = 100
             ! ----------------------------------------------------
+            ! Tensor hypercontraction
+            ! ----------------------------------------------------
+            logical :: UseTensorHypercontraction = .false.
+            ! ----------------------------------------------------
             !                INTEGRATION GRID
             ! ----------------------------------------------------
             integer :: GridKind = GRD_FINE

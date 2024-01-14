@@ -230,7 +230,7 @@ contains
       end subroutine thc_Test_Vapprox
 
 
-      subroutine thc_CoulombMatrix_QuarticMemory(THCGrid, AOBasis, System, THCParams, Chol2Params)
+      subroutine thc_CoulombMatrix_QuadraticMemory(THCGrid, AOBasis, System, THCParams, Chol2Params)
             type(TCoulTHCGrid), intent(out) :: THCGrid
             type(TAOBasis), intent(in)      :: AOBasis
             type(TSystem), intent(in)       :: System
@@ -239,6 +239,7 @@ contains
 
             type(TChol2Vecs) :: Chol2Vecs
             real(F64), dimension(1, 1, 1) :: Rkpq
+            integer :: NGridTHC
             !
             ! Locate pivots of the Coulomb matrix. This step is required before
             ! generating the Z matrix subroutine, where the Cholesky vectors
@@ -254,8 +255,11 @@ contains
                   )
                   call thc_Grid(THCGrid%Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
                   call thc_Z(THCGrid%Zgk, THCGrid%Xgp, Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
+                  NGridTHC = size(THCGrid%Zgk, dim=1)
+                  allocate(THCGrid%Zgh(NGridTHC, NGridTHC))
+                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
             end  associate
-      end subroutine thc_CoulombMatrix_QuarticMemory
+      end subroutine thc_CoulombMatrix_QuadraticMemory
       
 
       subroutine thc_Grid(Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
