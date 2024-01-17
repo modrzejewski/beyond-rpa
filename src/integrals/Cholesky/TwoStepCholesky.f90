@@ -427,7 +427,10 @@ contains
             real(F64), dimension(:, :), allocatable :: Wabrs
             integer :: SubsetIdx, X, Y
             integer :: MaxSubsetDim
-            
+            type(TClock) :: timer
+
+            call clock_start(timer)
+            call msg("Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory")            
             MaxSubsetDim = maxval(Chol2Vecs%SubsetDim)
             if (allocated(Rkpq)) deallocate(Rkpq)
             allocate(Rkpq(Chol2Vecs%NVecs, MaxSubsetDim, Chol2Vecs%NSubsets(1))[*])
@@ -438,6 +441,7 @@ contains
                   call chol2_FullDimVectors_Batch(Rkpq(:, :, X), Wabrs, SubsetIdx, &
                         Chol2Vecs, AOBasis, Chol2Params)
             end do
+            call msg("Cholesky vectors computed in " // str(clock_readwall(timer),d=1) // " seconds")
             sync all
       end subroutine chol2_FullDimVectors
 end module TwoStepCholesky

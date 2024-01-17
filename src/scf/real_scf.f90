@@ -948,8 +948,8 @@ contains
       subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
             Noao, Ehomo, Elumo, Hbare_cao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
             XCModel, NonSCF, NOcc, LinDepThresh, Enucl, MaxRhoDiff, MaxOrbGrad, MaxNIters, &
-            ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, UseCholeskyBasis, &
-            UseTensorHypercontraction, MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis, &
+            ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, ERI_Algorithm, &
+            MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis, &
             THCGrid)
             !
             ! Main loop of the spin-unrestricted self-consistent field KS/DFT computations
@@ -984,8 +984,7 @@ contains
             type(TStringList), intent(in)                             :: ECPFile
             integer, intent(in)                                       :: GridKind
             logical, intent(in)                                       :: GridPruning
-            logical, intent(in)                                       :: UseCholeskyBasis
-            logical, intent(in)                                       :: UseTensorHypercontraction
+            integer, intent(in)                                       :: ERI_Algorithm
             integer, optional, intent(in)                             :: MaxBufferDimMB
             integer, optional, intent(in)                             :: TargetBlockDim
             real(F64), dimension(:, :, :), optional, intent(in)       :: CholeskyVecs
@@ -1160,20 +1159,21 @@ contains
             !    from the guess AO density matrix. Diagonalize Fk to get the
             !    initial set of MO vectors in the OAO basis (Cn_oao).
             ! --------------------------------------------------------------------
-            if (UseCholeskyBasis .and. .not. UseTensorHypercontraction) then
+            select case (ERI_Algorithm)
+            case (SCF_ERI_CHOLESKY)
                   call scf_F_Cholesky(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
                         AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
                         MaxBufferDimMB, TargetBlockDim, time_F)
-            else if (UseTensorHypercontraction) then
+            case (SCF_ERI_THC)
                   call scf_F_THC(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
                         AOBasis, System, THCGrid, GridKind, GridPruning, time_F)                  
-            else
+            case default ! Exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, RhoK_cao, RhoN_sao, &
                         Hbare_cao, AUXIn, AOBasis, System, ThreshFockJK, GridKind, GridPruning, time_F)
-            end if
+            end select
             EtotK = EelK + Enucl
             do s = 1, NSpins
                   if (ThisImage == 1) then
@@ -1207,21 +1207,22 @@ contains
             !     Build Fn := F(RhoN) to start the proper iterative process
             ! --------------------------------------------------------------------
             call clock_start(timer_Iter)
-            if (UseCholeskyBasis .and. .not. UseTensorHypercontraction) then
+            select case (ERI_Algorithm)
+            case (SCF_ERI_CHOLESKY)
                   call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
                         AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
                         MaxBufferDimMB, TargetBlockDim, time_F)
-            else if (UseTensorHypercontraction) then
+            case (SCF_ERI_THC)
                   call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
                         AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
-            else
+            case default ! exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
                         RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
                         ThreshFockJK, GridKind, GridPruning, time_F)
-            end if
+            end select
             if (ThisImage == 1) then
                   do s = 1, NSpins
                         call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
@@ -1265,21 +1266,22 @@ contains
                         !
                         ! Use the new density matrix to compute the Kohn-Sham/Fock matrix
                         !
-                        if (UseCholeskyBasis .and. .not. UseTensorHypercontraction) then
+                        select case (ERI_Algorithm)
+                        case (SCF_ERI_CHOLESKY)
                               call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                                     XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
                                     AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
                                     MaxBufferDimMB, TargetBlockDim, time_F)
-                        else if (UseTensorHypercontraction) then
+                        case (SCF_ERI_THC)
                               call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                                     XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
                                     AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
-                        else
+                        case default ! exact integrals
                               call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                                     BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
                                     RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
                                     ThreshFockJK, GridKind, GridPruning, time_F)
-                        end if
+                        end select
                         EtotN = EelN + Enucl
                         !
                         ! Measures of convergence: max norm of the orbital gradient
@@ -1551,7 +1553,8 @@ contains
                   ! ------------------------------------------------------------------------
                   !                     MAIN SELF-CONSISTENT FIELD LOOP
                   ! ------------------------------------------------------------------------
-                  if (SCFParams%UseCholeskyBasis .and. .not. SCFParams%UseTensorHypercontraction) then
+                  select case (SCFParams%ERI_Algorithm)
+                  case (SCF_ERI_CHOLESKY)
                         call scf_ConvergeOrbitals( &
                               SCFOutput%Rho_cao, &
                               SCFOutput%OrbEnergies, &
@@ -1578,14 +1581,13 @@ contains
                               SCFParams%ECPFile, &
                               SCFParams%GridKind, &
                               SCFParams%GridPruning, &
-                              .true., &
-                              .false., &
+                              SCFParams%ERI_Algorithm, &
                               SCFParams%MaxBufferDimMB, &
                               SCFParams%TargetBlockDim, &
                               CholeskyVecs, &
                               CholeskyBasis &
                               )
-                  else if (SCFParams%UseTensorHypercontraction) then
+                  case (SCF_ERI_THC)
                         call scf_ConvergeOrbitals( &
                               SCFOutput%Rho_cao, &
                               SCFOutput%OrbEnergies, &
@@ -1612,11 +1614,10 @@ contains
                               SCFParams%ECPFile, &
                               SCFParams%GridKind, &
                               SCFParams%GridPruning, &
-                              .false., &
-                              .true., &
+                              SCFParams%ERI_Algorithm, &
                               THCGrid=THCGrid &
                               )
-                  else
+                  case default ! exact integrals
                         call scf_ConvergeOrbitals( &
                               SCFOutput%Rho_cao, &
                               SCFOutput%OrbEnergies, &
@@ -1643,10 +1644,9 @@ contains
                               SCFParams%ECPFile, &
                               SCFParams%GridKind, &
                               SCFParams%GridPruning, &
-                              .false., &
-                              .false. &
+                              SCFParams%ERI_Algorithm &
                               )
-                  end if
+                  end select
                   SCFOutput%Nexcluded = NAOCart - SCFOutput%Noao
                   ! ------------------------------------------------------------------------
                   !                ADDITIONAL NUMERICAL INTEGRALS ON THE GRID

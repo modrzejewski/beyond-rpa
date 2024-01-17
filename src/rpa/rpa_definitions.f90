@@ -416,6 +416,10 @@ module rpa_definitions
             !
             logical :: TensorHypercontraction = .false.
             integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
+            !
+            ! THC decomposition threshold for RPA. This can differ
+            ! from the THC threshold for the SCF step.
+            !            
             real(F64) :: THC_QRThresh = 1.0E-3_F64
             real(F64) :: THC_QRThresh_T2 = 1.0E-5_F64
             integer   :: THC_BlockDim = 500

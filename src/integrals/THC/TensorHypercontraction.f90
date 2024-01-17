@@ -239,30 +239,61 @@ contains
 
             type(TChol2Vecs) :: Chol2Vecs
             real(F64), dimension(1, 1, 1) :: Rkpq
-            integer :: NGridTHC
             !
             ! Locate pivots of the Coulomb matrix. This step is required before
-            ! generating the Z matrix subroutine, where the Cholesky vectors
-            ! are computed on the fly
+            ! generating the Z matrix.
             !
-            call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, Chol2Params)
-            
-            associate ( &
-                  BeckeGridKind => THCParams%THC_BeckeGridKind, & ! parent molecular grid
-                  QRThresh => THCParams%THC_QRThresh, & ! threshold for rank-revealing QR/Cholesky
-                  BlockDim => THCParams%THC_BlockDim, & ! block dimension for the on the fly THC/Cholesky
-                  NCholesky => Chol2Vecs%NVecs &
-                  )
-                  call thc_Grid(THCGrid%Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
-                  call thc_Z(THCGrid%Zgk, THCGrid%Xgp, Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
-                  NGridTHC = size(THCGrid%Zgk, dim=1)
-                  allocate(THCGrid%Zgh(NGridTHC, NGridTHC))
-                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
-            end  associate
+            call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, Chol2Params)            
+            call thc_Grid( &
+                  THCGrid%Xgp, &
+                  THCGrid%NGrid, &
+                  THCGrid%NGridReduced, &
+                  THCParams%THC_BeckeGridKind, &  ! parent molecular grid
+                  THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
+                  THCParams%QRThreshReduced, &      ! threshold for the reduced-size grid
+                  THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
+                  AOBasis, System)
+            call thc_Z( &
+                  THCGrid%Zgk, &
+                  THCGrid%ZgkReduced, &
+                  THCGrid%NGrid, &
+                  THCGrid%NGridReduced, &
+                  THCGrid%Xgp, &
+                  Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
+            allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
+            call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
       end subroutine thc_CoulombMatrix_QuadraticMemory
+
+
+      subroutine thc_ReduceGrid(THCGrid)
+            type(TCoulTHCGrid), intent(inout) :: THCGrid
+            
+            real(F64), dimension(:, :), allocatable :: XgpFull
+            integer :: NCholesky, NAO
+            integer :: NGridReduced
+
+            if (THCGrid%NGridReduced < THCGrid%NGrid) then
+                  NGridReduced = THCGrid%NGridReduced
+                  NCholesky = size(THCGrid%Zgk, dim=2)
+                  NAO = size(THCGrid%Xgp, dim=2)
+                  THCGrid%NGrid = NGridReduced
+                  !
+                  ! Remove the points outside of the reduced-size grid
+                  !
+                  deallocate(THCGrid%Zgh)
+                  call move_alloc(From=THCGrid%ZgkReduced, to=THCGrid%Zgk)
+                  call move_alloc(From=THCGrid%Xgp, to=XgpFull)
+                  allocate(THCGrid%Xgp(NGridReduced, NAO))
+                  THCGrid%Xgp(:, :) = XgpFull(1:NGridReduced, :)
+                  deallocate(XgpFull)
+                  allocate(THCGrid%Zgh(NGridReduced, NGridReduced))
+                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
+            end if
+      end subroutine thc_ReduceGrid
       
 
-      subroutine thc_Grid(Xgp, BeckeGridKind, QRThresh, BlockDim, AOBasis, System)
+      subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, QRThresh, QRThreshReduced, &
+            BlockDim, AOBasis, System)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
             !
@@ -300,14 +331,17 @@ contains
             !    doi: 10.1063/1.5083802
             !
             real(F64), dimension(:, :), allocatable, intent(out) :: Xgp
+            integer, intent(out)                                 :: NGrid
+            integer, intent(out)                                 :: NGridReduced
             integer, intent(in)                                  :: BeckeGridKind
             real(F64), intent(in)                                :: QRThresh
+            real(F64), intent(in)                                :: QRThreshReduced
             integer, intent(in)                                  :: BlockDim
             type(TAOBasis), intent(in)                           :: AOBasis
             type(TSystem), intent(in)                            :: System
 
             real(F64), dimension(:), allocatable :: X, Y, Z, W
-            integer :: NGrid, NAO
+            integer :: NAO
             integer :: ThisImage
             real(F64) :: t_Grid
             type(TClock) :: timer_Grid
@@ -339,7 +373,8 @@ contains
             ! matrix S(g,h)=Sum(pq)X(pq,g)*X(pq,h). S(g,h) is built on the fly,
             ! in blocks, without the need for memory storage.
             !
-            call thc_Chol_Pivots(X, Y, Z, NGrid, AOBasis, QRThresh, BlockDim)
+            call thc_Chol_Pivots(X, Y, Z, NGrid, NGridReduced, AOBasis, QRThresh, &
+                  QRThreshReduced, BlockDim)
             allocate(Xgp(NGrid, NAO))
             call gridfunc_Orbitals(Xgp, X, Y, Z, NGrid, NAO, AOBasis)
             call thc_normalize_Xgp(Xgp)
@@ -348,7 +383,8 @@ contains
       end subroutine thc_Grid
 
       
-      subroutine thc_Z(Zgk, Xgp, Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
+      subroutine thc_Z(Zgk, ZgkReduced, NGrid, NGridReduced, Xgp, Rkpq, Chol2Vecs, &
+            Chol2Params, AOBasis, THCParams)
             !
             ! Compute the Z factor of the THC decomposition
             ! of Cholesky-decomposed Coulomb integrals (Eq. 13 in Ref. 1)
@@ -378,6 +414,9 @@ contains
             !    doi: 10.1021/acs.jctc.9b01205
             !
             real(F64), dimension(:, :), allocatable, intent(out) :: Zgk
+            real(F64), dimension(:, :), allocatable, intent(out) :: ZgkReduced
+            integer, intent(in)                                  :: NGrid
+            integer, intent(in)                                  :: NGridReduced
             real(F64), dimension(:, :), intent(in)               :: Xgp
             real(F64), dimension(:, :, :), intent(in)            :: Rkpq
             type(TChol2Vecs), intent(in)                         :: Chol2Vecs
@@ -387,23 +426,42 @@ contains
             
             real(F64), dimension(:, :), allocatable :: Sgh
             integer :: ThisImage
-            integer :: NGridQR
+            integer :: NAO, NCholesky
             real(F64) :: t_Z
             type(TClock) :: timer_Z
 
             ThisImage = this_image()
             call msg("Least squares fitting of Z: LDL**T linear system solver")
+            if (THCParams%THC_QuadraticMemory) then
+                  call msg("thc_Z will generate full-dimension Cholesky vecs on the fly")
+            else
+                  call msg("thc_Z will use precomputed full set of Cholesky vectors")
+            end if
             call clock_start(timer_Z)
-            NGridQR = size(Xgp, dim=1)
-            allocate(Zgk(NGridQR, Chol2Vecs%NVecs))
-            call thc_XR(Zgk, Rkpq, Xgp, NGridQR, AOBasis, THCParams%THC_QuadraticMemory, &
+            NAO = size(Xgp, dim=2)
+            NCholesky = Chol2Vecs%NVecs
+            allocate(Zgk(NGrid, NCholesky))
+            call thc_XR(Zgk, Rkpq, Xgp, NGrid, AOBasis, THCParams%THC_QuadraticMemory, &
                   Chol2Vecs, Chol2Params)
+            if (NGridReduced < NGrid) then
+                  allocate(ZgkReduced(NGridReduced, NCholesky))
+                  ZgkReduced(:, :) = Zgk(1:NGridReduced, :)
+            end if
             if (ThisImage == 1) then
-                  allocate(Sgh(NGridQR, NGridQR))
-                  call thc_S(Sgh, Xgp)
+                  allocate(Sgh(NGrid, NGrid))
+                  call thc_S(Sgh, Xgp, NGrid)
                   call real_Axb_symmetric_sysv(Zgk, Sgh)
+                  if (NGridReduced < NGrid) then
+                        deallocate(Sgh)
+                        allocate(Sgh(NGridReduced, NGridReduced))
+                        call thc_S(Sgh, Xgp, NGridReduced)
+                        call real_Axb_symmetric_sysv(ZgkReduced, Sgh)
+                  end if
             end if
             call co_broadcast(Zgk, source_image=1)
+            if (NGridReduced < NGrid) then
+                  call co_broadcast(ZgkReduced, source_image=1)
+            end if
             t_Z = clock_readwall(timer_Z)
             call msg("THC least squares completed in " // str(t_Z,d=1) // " seconds")
             call blankline()
@@ -512,15 +570,18 @@ contains
       end subroutine thc_XR
 
 
-      subroutine thc_S(Sgh, Xgp)
+      subroutine thc_S(Sgh, Xgp, NGrid)
             real(F64), dimension(:, :), intent(out) :: Sgh
             real(F64), dimension(:, :), intent(in)  :: Xgp
+            integer, intent(in)                     :: NGrid
 
-            integer :: NGrid
+            integer :: ldS, ldX, NAO
             integer :: g, h
 
-            NGrid = size(Sgh, dim=1)
-            call real_abT(Sgh, Xgp, Xgp)
+            ldS = size(Sgh, dim=1)
+            ldX = size(Xgp, dim=1)
+            NAO = size(Xgp, dim=2)
+            call real_abT_x(Sgh, ldS, Xgp, ldX, Xgp, ldX, NGrid, NGrid, NAO, ONE, ZERO)
             do h = 1, NGrid
                   do g = 1, NGrid
                         Sgh(g, h) = Sgh(g, h)**2
@@ -695,7 +756,8 @@ contains
       end subroutine thc_Xgpq_aa
 
 
-      subroutine thc_Chol_Pivots(X, Y, Z, NGrid, AOBasis, QRThresh, BlockDim)
+      subroutine thc_Chol_Pivots(X, Y, Z, NGrid, NGridReduced, AOBasis, QRThresh, &
+            QRThreshReduced, BlockDim)
             !
             ! Perform grid pruning by the Cholesky decomposition of
             !
@@ -731,12 +793,14 @@ contains
             real(F64), dimension(:), allocatable, intent(inout) :: Y
             real(F64), dimension(:), allocatable, intent(inout) :: Z
             integer, intent(inout)                              :: NGrid
+            integer, intent(out)                                :: NGridReduced            
             type(TAOBasis), intent(in)                          :: AOBasis
             real(F64), intent(in)                               :: QRThresh
+            real(F64), intent(in)                               :: QRThreshReduced
             integer, intent(in)                                 :: BlockDim
 
-            integer :: NPivots, NCandidates, NAO
-            real(F64) :: PivotThresh
+            integer :: NPivots, NCandidates, NAO, NPivotsReduced
+            real(F64) :: PivotThresh, PivotThreshReduced
             real(F64), dimension(:), allocatable :: D
             real(F64), dimension(:, :), allocatable :: Xgp
             real(F64), dimension(:), allocatable :: XhJ, YhJ, ZhJ
@@ -763,6 +827,7 @@ contains
                   call blankline()
                   call msg("Pivoted Cholesky decomposition with on-the-fly generation of matrix S", underline=.true.)
                   call msg("QR relative pivot threshold Eps=" // str(QRThresh,d=1))
+                  if (QRThreshReduced > ZERO) call msg("QR relative pivot threshold (reduced grid) Eps=" // str(QRThreshReduced,d=1))
                   call msg("Block dimension: " // str(BlockDim) // " Cholesky vectors per macro iteration")
                   call msg("Starting from Becke grid composed of " // str(NGrid) // " points")
                   !
@@ -779,7 +844,13 @@ contains
                   ! "function prune_grid" in the supplementary info of Ref. 3.
                   !
                   PivotThresh = QRThresh**2
+                  if (QRThreshReduced > ZERO) then
+                        PivotThreshReduced = QRThreshReduced**2
+                  else
+                        PivotThreshReduced = -ONE
+                  end if
                   call msg("Cholesky absolute pivot threshold Eps**2=" // str(PivotThresh,d=1))
+                  if (QRThreshReduced > ZERO) call msg("Cholesky absolute pivot threshold (reduced grid) Eps**2=" // str(PivotThreshReduced,d=1))
                   MaxIters = NCandidates / BlockDim
                   if (modulo(NCandidates, BlockDim) > 0) MaxIters = MaxIters + 1
                   allocate(XhJ(NCandidates))
@@ -791,6 +862,7 @@ contains
                   t_Compress = ZERO
                   Converged = .false.
                   NPivots = 0
+                  NPivotsReduced = 0
                   call blankline()
                   call toprule()
                   line = lfield("#", 5) // lfield("Dmax", 12) // lfield("Memory (MB)",15) //  &
@@ -810,8 +882,8 @@ contains
                         !
                         MaxJ = min(BlockDim, size(XhJ)-NPivots)
                         call clock_start(timer_NextBlock)
-                        call thc_Chol_NextBlock(V, XhJ, YhJ, ZhJ, J, D, X, Y, Z, NPivots, Xgp, &
-                              NCandidates, BlockDim, PivotThresh, NAO, MaxJ)
+                        call thc_Chol_NextBlock(V, XhJ, YhJ, ZhJ, J, NPivotsReduced, D, X, Y, Z, NPivots, Xgp, &
+                              NCandidates, BlockDim, PivotThresh, PivotThreshReduced, NAO, MaxJ)
                         t_NextBlock = t_NextBlock + clock_readwall(timer_NextBlock)
                         NPivots = NPivots + J
                         MemoryMB = (storage_size(Xgp,kind=I64)*(NCandidates*NAO+NCandidates*NPivots)) &
@@ -841,11 +913,21 @@ contains
                   if (Converged) then
                         call msg("Cholesky decomposition converged with " // str(NPivots) // " pivots")
                         call msg("Average " // str(NPivots/AOBasis%NAtoms) // " points per atom")
+                        call msg("NGridTHC/NAO=" // str(real(NPivots,F64)/NAO, d=1))
+                        if (QRThreshReduced > ZERO) then
+                              call msg("Reduced grid: " // str(NPivotsReduced) // " pivots")
+                              call msg("Reduced grid: " // "NGridTHC/NAO=" // str(real(NPivotsReduced,F64)/NAO, d=1))
+                        end if
                   else
                         call msg("Cholesky decomposistion failed to converge", MSG_ERROR)
                         error stop
                   end if
                   NGrid = NPivots
+                  if (QRThreshReduced > ZERO) then
+                        NGridReduced = NPivotsReduced
+                  else
+                        NGridReduced = NGrid
+                  end if
                   t_Chol = clock_readwall(timer_Chol)
                   call msg("Total time " // str(t_Chol,d=1) // " seconds")
                   call blankline()
@@ -872,14 +954,15 @@ contains
       end subroutine thc_Chol_Pivots
 
 
-      subroutine thc_Chol_NextBlock(V, XhJ, YhJ, ZhJ, J, D, X, Y, Z, NPivots, Xgp, &
-            NCandidates, BlockDim, PivotThresh, NAO, MaxJ)
+      subroutine thc_Chol_NextBlock(V, XhJ, YhJ, ZhJ, J, NPivotsReduced, D, X, Y, Z, NPivots, Xgp, &
+            NCandidates, BlockDim, PivotThresh, PivotThreshReduced, NAO, MaxJ)
 
             type(TCompressedVecs), dimension(:), intent(inout)          :: V
             real(F64), dimension(:), intent(inout)                      :: XhJ
             real(F64), dimension(:), intent(inout)                      :: YhJ
             real(F64), dimension(:), intent(inout)                      :: ZhJ
             integer, intent(out)                                        :: J
+            integer, intent(inout)                                      :: NPivotsReduced
             real(F64), dimension(NCandidates), intent(inout)            :: D
             real(F64), dimension(NCandidates), intent(in)               :: X
             real(F64), dimension(NCandidates), intent(in)               :: Y
@@ -889,6 +972,7 @@ contains
             integer, intent(in)                                         :: NCandidates
             integer, intent(in)                                         :: BlockDim
             real(F64), intent(in)                                       :: PivotThresh
+            real(F64), intent(in)                                       :: PivotThreshReduced
             integer, intent(in)                                         :: NAO
             integer, intent(in)                                         :: MaxJ
 
@@ -918,6 +1002,9 @@ contains
                   DhJ = D(hJ)
                   if (DhJ > PivotThresh) then
                         J = J + 1
+                        if (DhJ > PivotThreshReduced) then
+                              NPivotsReduced = NPivots + J
+                        end if
                         !
                         ! XYZ coordinates of the current pivot
                         !

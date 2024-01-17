@@ -5,6 +5,8 @@ module thc_definitions
       implicit none
 
       type TCoulTHCGrid
+            integer :: NGrid
+            integer :: NGridReduced
             !
             ! Collocation matrix: X(g, p) = Phi_p(Xg, Yg, Zg)
             ! where Phi_p is an AO orbital p evaluated at a grid point g.
@@ -41,11 +43,12 @@ module thc_definitions
             ! than NGrid.
             !
             real(F64), dimension(:, :), allocatable :: Zgk
+            real(F64), dimension(:, :), allocatable :: ZgkReduced
             real(F64), dimension(:, :), allocatable :: Zgh
             !
-            ! Transformed version of Z'(g,k) where the second
-            ! index is transformed to the basis in which the Pi(u)
-            ! matrix is represented in direct RPA (Eqs. 28 and 29 in Ref. 1)
+            ! Transformed version of Z'(g,k) where the k index
+            ! corresponds to the basis of Pi(u)
+            ! (Eqs. 28 and 29 in Ref. 1)
             ! 
             ! ZPiU(g,k) = Z'(g,l)*G(l,k)
             ! g = 1, 2, ..., NGrid
@@ -60,7 +63,8 @@ module thc_definitions
 
       type TTHCParams
             integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
-            real(F64) :: THC_QRThresh = 1.0E-3_F64
+            real(F64) :: QRThresh = 1.0E-3_F64
+            real(F64) :: QRThreshReduced = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
             logical   :: THC_QuadraticMemory = .false.
       end type TTHCParams

@@ -1102,7 +1102,6 @@ contains
             integer :: current_block
             integer :: k, z
             integer :: AtomIdx, ChargeIdx
-            type(TXCDef) :: SelfConsistentXC
             logical :: RPADefined, XYZDefined
             integer, parameter :: block_none = 0
             integer, parameter :: block_auxint = 1
@@ -1172,25 +1171,6 @@ contains
                               error stop
                         end if
                         RPADefined = .true.
-                        !
-                        ! Check if the exchange-correlation model is defined.
-                        ! Enable Cholesky decomposition by default if the xc functional is pure
-                        ! (does not include Hartree-Fock exchange)
-                        !
-                        if (SCFParams%XCFunc == XCF_XC_NONE) then
-                              call msg("Exchange-correlation model needs to be defined before the RPA block", MSG_ERROR)
-                              error stop                              
-                        else
-                              call xcf_define(SelfConsistentXC, SCFParams%XCFunc, AUX_NONE, .false.)
-                              if (.not. SelfConsistentXC%EXX > ZERO) then
-                                    !
-                                    ! Pure xc model set, enable Cholesky decomposition
-                                    ! for the SCF step
-                                    !
-                                    RPAParams%ComputeCholeskyBasis = .false.
-                                    SCFParams%UseCholeskyBasis = .true.
-                              end if
-                        end if
                         current_block = block_RPA
                         cycle lines
                   case ("SCF")
@@ -3737,7 +3717,6 @@ contains
             case ("THC_QRTHRESH")
                   read(val, *) m
                   RPAParams%THC_QRThresh = m
-                  THCParams%THC_QRThresh = m
             case ("THC_QRTHRESH_T2")
                   read(val, *) m
                   RPAParams%THC_QRThresh_T2 = m
@@ -3779,18 +3758,6 @@ contains
                         RPAParams%AC_1RDMQuad = .false.
                   case default 
                         call msg("Invalid value of AC_1RDMQuad", MSG_ERROR)
-                        error stop
-                  end select
-            case ("THC_QUADRATICMEMORY", "THC_QUADRATIC_MEMORY", "THC-QUADRATIC-MEMORY", "QUADRATIC-MEMORY", "QUADRATICMEMORY")
-                  select case (uppercase(val))
-                  case ("ENABLE", "ENABLED", "TRUE", "")
-                        THCParams%THC_QuadraticMemory = .true.
-                        SCFParams%UseTensorHypercontraction = .true.
-                  case ("DISABLE", "DISABLED", "FALSE")
-                        THCParams%THC_QuadraticMemory = .false.
-                        SCFParams%UseTensorHypercontraction = .false.
-                  case default 
-                        call msg("Invalid value of QuadraticMemory", MSG_ERROR)
                         error stop
                   end select
             case ("T1APPROX", "T1APPROXIMATION", "T1-APPROX", "T1-APPROXIMATION")
@@ -3945,18 +3912,6 @@ contains
                         RPAParams%SinglesCorrection = RPA_SINGLES_REN
                   case default
                         call msg("Invalid value of SinglesCorrection", MSG_ERROR)
-                        error stop
-                  end select
-            case ("CHOLESKY")
-                  select case (uppercase(val))
-                  case ("RPA-ONLY")
-                        RPAParams%ComputeCholeskyBasis = .true.
-                        SCFParams%UseCholeskyBasis = .false.
-                  case ("FULL")
-                        RPAParams%ComputeCholeskyBasis = .false.
-                        SCFParams%UseCholeskyBasis = .true.
-                  case default
-                        call msg("Invalid value of Cholesky", MSG_ERROR)
                         error stop
                   end select
             case ("GRIDLIMITDAI")
@@ -4131,6 +4086,18 @@ contains
                         call msg("Invalid asymptotic correction", MSG_ERROR)
                         error stop
                   end select
+            case ("ALGORITHM", "ERI_ALGORITHM", "ERI-ALGORITHM")
+                  select case (uppercase(val))
+                  case ("THC", "TENSORHYPERCONTRACTION", "TENSOR-HYPERCONTRACTION", "TENSOR_HYPERCONTRACTION")
+                        SCFParams%ERI_Algorithm = SCF_ERI_THC
+                  case ("CHOLESKY")
+                        SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+                  case ("EXACT")
+                        SCFParams%ERI_Algorithm = SCF_ERI_EXACT
+                  end select
+            case ("THC_QRTHRESH")
+                  read(val, *) a
+                  SCFParams%THC_QRThresh = a
             case ("ASYMPVXCOMEGA")
                   read(val, *) a
                   if (a > ZERO) then
