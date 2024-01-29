@@ -288,7 +288,7 @@ module scf_definitions
             ! The THC threshold for SCF calculations differs from
             ! the threshold for RPA
             !
-            real(F64) :: THC_QRThresh = 1.0E-5_F64           
+            real(F64) :: THC_QRThresh = 1.0E-6_F64
             integer :: MaxNIters = 128
             ! ----------------------------------------------------
             ! Cholesky decomposition of the Coulomb matrix
