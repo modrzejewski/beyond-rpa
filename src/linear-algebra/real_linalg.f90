@@ -503,8 +503,7 @@ contains
             N = size(A, dim=1)
             NRHS = size(b, dim=2)
             allocate(ipiv(N))
-            call dgesv("L", &
-                  N, &
+            call dgesv(N, &
                   NRHS, &
                   A, &
                   N, &
