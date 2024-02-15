@@ -182,7 +182,7 @@ contains
             call rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai(:, :, s), &
                   NVecsPiU, NOcc(s), NVirt(s), &
                   Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
-                  SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2)
+                  SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2EigenvalueThresh)
             t_T2 = clock_readwall(timer)
             ! ---------------------------------------------------------------------------------
             ! SOSEX + higher-order contributions to the correlation energy derived from

@@ -630,7 +630,7 @@ contains
 
       subroutine rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
-            GuessNVecsT2, MaxBatchDim)
+            GuessNVecsT2, MaxBatchDim, T2EigenvalueThresh)
             !
             ! Compute the dominant NVecsT2 eigenvectors and eigenvalues of the double excitation
             ! amplitudes matrix T2 in the direct-ring approximation. Use the non-iterative formula
@@ -654,6 +654,7 @@ contains
             real(F64), intent(in)                                :: SmallEigenvalsCutoffT2
             integer, intent(in)                                  :: GuessNVecsT2
             integer, intent(in)                                  :: MaxBatchDim
+            real(F64), intent(in)                                :: T2EigenvalueThresh
 
             real(F64),dimension(:,:), allocatable     :: Omega
             real(F64),dimension(:,:), allocatable     :: IOmega

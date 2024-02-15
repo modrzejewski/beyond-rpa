@@ -55,18 +55,21 @@ contains
             ! Significant eigenvalues: mu in (mu0, mu1)
             ! Note that the first eigenvalue is the one most negative
             !
+            ! mu0 = 1
+            ! call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
+            ! NVecsT2_Significant = mu1 - mu0 + 1
+            ! call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
+            ! call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
+            ! if (NVecsT2_Significant == NVecsT2) then
+            !       call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
+            ! else
+            !       call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
+            !       call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
+            !             // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
+            ! end if
             mu0 = 1
-            call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
-            NVecsT2_Significant = mu1 - mu0 + 1
-            call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
-            call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
-            if (NVecsT2_Significant == NVecsT2) then
-                  call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
-            else
-                  call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
-                  call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
-                        // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
-            end if
+            NVecsT2_Significant = NVecsT2
+            mu1 = NVecsT2_Significant
             if (Compute_1b2g) then
                   call clock_start(timer)
                   call rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
