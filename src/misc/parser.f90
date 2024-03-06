@@ -3806,9 +3806,10 @@ contains
                   RPAParams%PT_Order2 = .true.
             case ("PT3", "PT_ORDER3", "PT-ORDER3", "PT-ORDER-3")
                   RPAParams%PT_Order3 = .true.
-            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH")
+            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH", &
+                  "T2_CUTOFFTHRESH", "T2_CUTOFF_THRESH", "T2-CUTOFF-THRESH", "T2CUTOFFTHRESH")
                   read(val, *) m
-                  RPAParams%T2EigenvalueThresh = m
+                  RPAParams%T2CutoffThresh = m
             case ("T2COUPLINGSTRENGTH")
                   read(val, *) m
                   RPAParams%T2CouplingStrength = m
