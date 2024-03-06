@@ -115,8 +115,16 @@ module rpa_definitions
       integer, parameter :: RPA_SINGLES_KLIMES = 1
       integer, parameter :: RPA_SINGLES_REN = 2
       ! ---------------------------------------------------------
+      ! Algorithms used to cutoff T2 eigenvectors corresponding
+      ! to small eigenvalues
+      ! ---------------------------------------------------------
+      integer, parameter :: RPA_T2_CUTOFF_EIG = 0
+      integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_MAXEIG = 1
+      integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_NELECTRON = 2
+      integer, parameter :: RPA_T2_CUTOFF_SUM_REJECTED = 3
+      ! ---------------------------------------------------------
       !         RPA and beyond-RPA energy components
-      !----------------------------------------------------------
+      !----------------------------------------------------------      
       integer, parameter :: RPA_ENERGY_NCOMPONENTS = 100 ! includes some unused fields
       !
       ! Total energy of the SCF step preceeding RPA calculations
@@ -438,7 +446,8 @@ module rpa_definitions
             !
             ! Removal of small eigenvalues of T2
             !
-            real(F64) :: T2EigenvalueThresh = 0.0_F64
+            real(F64) :: T2CutoffThresh = 0.0_F64
+            integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
             !
             ! Coupling strength Lambda passed to the T2 solver.
             ! A value different from 1.0 should be used only

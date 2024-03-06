@@ -72,8 +72,8 @@ contains
             THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
             hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
             NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
-            MaxBatchDimT2, CumulantApprox, T2EigenvalueThresh, T2CouplingStrength, &
-            PT_Order2, PT_Order3)
+            MaxBatchDimT2, CumulantApprox, T2CutoffThresh, T2CutoffType, &
+            T2CutoffCommonThresh, T2CouplingStrength, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)       :: Energy
             real(F64), dimension(:, :), intent(in)       :: THC_Xgp
@@ -95,7 +95,9 @@ contains
             real(F64), intent(in)                        :: SmallEigenvalsCutoffT2
             integer, intent(in)                          :: MaxBatchDimT2
             integer, intent(in)                          :: CumulantApprox
-            real(F64), intent(in)                        :: T2EigenvalueThresh
+            real(F64), intent(in)                        :: T2CutoffThresh
+            integer, intent(in)                          :: T2CutoffType
+            real(F64), intent(inout)                     :: T2CutoffCommonThresh
             real(F64), intent(in)                        :: T2CouplingStrength
             logical, intent(in)                          :: PT_Order2
             logical, intent(in)                          :: PT_Order3
@@ -182,7 +184,8 @@ contains
             call rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai(:, :, s), &
                   NVecsPiU, NOcc(s), NVirt(s), &
                   Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
-                  SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2EigenvalueThresh)
+                  SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
+                  T2CutoffType, T2CutoffCommonThresh)
             t_T2 = clock_readwall(timer)
             ! ---------------------------------------------------------------------------------
             ! SOSEX + higher-order contributions to the correlation energy derived from
@@ -191,7 +194,7 @@ contains
             call clock_start(timer)
             call rpa_Corrections(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
-                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2EigenvalueThresh)
+                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2CutoffThresh)
             ! ---------------------------------------------------------------------------------
             ! Perturbation theory terms
             ! This is an extremely slow code and should be used only for debugging.
