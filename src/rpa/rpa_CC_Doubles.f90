@@ -627,6 +627,7 @@ contains
                   NVecsT2, NVirt*NOcc, NVecsT2, ONE, ZERO)
       end subroutine rpa_CC_T2_v5
 
+      
       subroutine rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
             GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh)
@@ -672,10 +673,9 @@ contains
 
             real(F64), dimension(:), allocatable   :: Anew
             integer :: NVecsT2New
-                                                          
-                                                          
+            logical, parameter :: DebugPrint = .true.
             real(F64) :: max_A, SumA
-
+            real(F64) :: K
             !
             ! Where possible, the matrices will be computed as independent batches
             ! to save memory. The last batch will have dimension 0 < Nq < MaxBatchDim.
@@ -780,19 +780,74 @@ contains
             do i = 1, NVecsT2
                   A(i) = (ONE/TWO) * (A(i) / (A(i) + ONE))
             end do
-
+            ! ------------------------------------------------------------------
+            !                   Small eigenvalues cutoff
+            ! ------------------------------------------------------------------
+            !
+            ! To guarantee size-consistent interaction energies which properly vanish
+            ! at infinite separations between subsystems, the cutoff threshold K
+            ! needs to be identical in the supermolecule (dimer, trimer, ...)
+            ! and its subsystems.
+            !
+            ! Checking if the current calculation is the supermolecule or
+            ! its subsystems
+            ! -----------------------------------------------------------
+            !
+            !           T2CutoffCommonThresh < ZERO  supermolecule
+            !           T2CutoffCommonThresh >= ZERO  one of subsystems
+            !
+            ! Supermolecule calculation
+            ! -------------------------
+            !
+            ! T2CutoffType
+            !           Method for rejecting small eigenvalues.
+            !                    
+            !           Value of T2CutoffType               Cutoff method for supermolecule
+            !
+            !           RPA_T2_CUTOFF_EIG                   K = T2CutoffThresh; reject mu if Abs(A(mu)) <= K
+            !           RPA_T2_CUTOFF_EIG_DIV_MAXEIG        K = T2CutoffThresh / Maxval(Abs(A)); reject mu if Abs(A(mu)) <= K
+            !           RPA_T2_CUTOFF_EIG_DIV_NELECTRON     K = T2CutoffThresh / NOcc; reject mu if Abs(A(mu)) <= K
+            !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) <= K
+            !                                                   reject mu if Abs(A(mu)) < K
+            !
+            !           After computing K for the supermolecule, set the common threshold
+            !
+            !           T2CutoffCommonThresh = K.
+            !
+            !           T2CutoffCommonThresh will be used in the subsystem calculations.
+            !
+            ! Subsystem calculation
+            ! ---------------------
+            !
+            !           Cutoff method for subsystems (e.g., monomers in a dimer)
+            !
+            !           K = T2CutoffCommonThresh
+            !           reject mu if Abs(A(mu)) <= K
+            ! 
+            !
             call msg("***************************** Krysia ***********************************")
+
+            ! ============= PRZYKŁAD UŻYCIA IFÓW  ====================================
+            ! T2CutoffType jest integerem zdefiniowanym przez użytkownika w inpucie
+            ! Stałe RPA_T2_CUTOFF_* są zdefiniowane w rpa_definitions.f90 i mają wartości 0, 1, ...
+            ! ale wartości numerycznych nie powinno się jawnie używać. To jest zła praktyka.
+            !
+            if (T2CutoffType == RPA_T2_CUTOFF_EIG) then
+                  K = T2CutoffThresh
+
+            end if
+            
             do i=1, NVecsT2 
                   call msg(str(i)// "   " // str(A(i)))
             end do
-            call msg("Treshord value is:   "// str(T2EigenvalueThresh))
+            call msg("Treshord value is:   "// str(T2CutoffThresh))
             call msg("***************************** Krysia odcięcie zwykłe ***********************************")
             allocate(Anew(NVecsT2))
             
             block
               
                   do i=1, NVecsT2
-                        if (abs(A(i)) > T2EigenvalueThresh) then
+                        if (abs(A(i)) > T2CutoffThresh) then
                               Anew(i) = A(i)
                               call msg(str(i) // "   " // str(Anew(i)))
                         else
@@ -813,7 +868,7 @@ contains
             !       max_A=MAXVAL(abs(A))
                   
             !       do i=1, NVecsT2
-            !             if (abs(A(i)/max_A) > T2EigenvalueThresh) then
+            !             if (abs(A(i)/max_A) > T2CutoffThresh) then
             !                   Anew(i) = A(i)
             !                   call msg(str(i) // "   " // str(Anew(i)))
             !             else
@@ -839,7 +894,7 @@ contains
             !             ! do j=i, NVecsT2
             !             !       SumA=SumA+A(j)
             !             ! end do
-            !             if (abs(SumA/(2*NOccSupermolecule)) > T2EigenvalueThresh) then
+            !             if (abs(SumA/(2*NOccSupermolecule)) > T2CutoffThresh) then
             !                   Anew(i) = A(i)
             !                   call msg(str(i) // "   " // str(Anew(i)))
             !             else
@@ -856,7 +911,7 @@ contains
 
             !       call msg(str(NVecsT2))
 	    !       do i=1, NVecsT2
-	    !     	if (abs(A(i)/(2*NOcc)) > T2EigenvalueThresh) then
+	    !     	if (abs(A(i)/(2*NOcc)) > T2CutoffThresh) then
             !                   Anew(i) = A(i)
             !                   call msg(str(i) // "   " // str(Anew(i)))
 	    !     	else
