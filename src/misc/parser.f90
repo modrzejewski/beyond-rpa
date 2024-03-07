@@ -3810,6 +3810,20 @@ contains
                   "T2_CUTOFFTHRESH", "T2_CUTOFF_THRESH", "T2-CUTOFF-THRESH", "T2CUTOFFTHRESH")
                   read(val, *) m
                   RPAParams%T2CutoffThresh = m
+            case ("T2CUTOFFTYPE", "T2_CUTOFF_TYPE", "T2-CUTOFF-TYPE")
+                  select case (uppercase(val))
+                  case ("EIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG
+                  case ("EIG/MAXEIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_MAXEIG
+                  case ("EIG/NELECTRON", "EIG/NOCC")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_NELECTRON
+                  case ("SUM-REJECTED", "SUM_REJECTED")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_SUM_REJECTED
+                  case default
+                        call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
+                        error stop
+                  end select
             case ("T2COUPLINGSTRENGTH")
                   read(val, *) m
                   RPAParams%T2CouplingStrength = m
