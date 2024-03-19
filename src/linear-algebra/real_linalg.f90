@@ -33,6 +33,42 @@ module real_linalg
 
 contains
 
+      subroutine real_Cholesky(A)
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            integer :: n, info
+            integer :: i, j
+            external :: dpotrf
+
+            n = size(A, dim=1)
+            call dpotrf("L", n, A, n, info)
+            do j = 1, n
+                  do i = 1, j - 1
+                        A(i, j) = ZERO
+                  end do
+            end do
+            if (info /= 0) then
+                  call msg("Cholesky factorization failed with exit code info=" // str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Cholesky
+
+
+      subroutine real_LowerTriangularInverse(L)
+            real(F64), dimension(:, :), intent(inout) :: L
+
+            integer :: n, info
+            external :: dtrtri
+
+            n = size(L, dim=1)
+            call dtrtri("L", "N", n, L, n, info)
+            if (info /= 0) then
+                  call msg("Lower triangular inverse failed with exit code info=" // str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_LowerTriangularInverse
+      
+            
       subroutine real_PivotedCholesky(A, P, Rank, Eps)
             !
             ! Perform pivoted Cholesky decompostion of A
@@ -450,6 +486,37 @@ contains
             end if
       end subroutine real_Axb_symmetric_sysv
 
+
+      subroutine real_Axb_nonsymmetric_gesv(b, A)
+            !
+            ! Solve a linear system Ax = b, where A is a nonsymmetric
+            ! matrix.
+            !
+            real(F64), dimension(:, :), intent(inout) :: b
+            real(F64), dimension(:, :), intent(inout) :: a
+
+            integer :: N, NRHS, info
+            integer, dimension(:), allocatable :: ipiv
+            
+            external :: dgesv
+
+            N = size(A, dim=1)
+            NRHS = size(b, dim=2)
+            allocate(ipiv(N))
+            call dgesv(N, &
+                  NRHS, &
+                  A, &
+                  N, &
+                  ipiv, &
+                  b, &
+                  N, &
+                  info)
+            if (info /= 0) then
+                  call msg("Linear system solver returned with info="//str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Axb_nonsymmetric_gesv
+      
       
       subroutine real_Pack(MPacked, MFull, NVecs)
             !

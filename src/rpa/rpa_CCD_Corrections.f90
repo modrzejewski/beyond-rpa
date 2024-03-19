@@ -4,6 +4,7 @@ module rpa_CCD_Corrections
       use rpa_definitions
       use rpa_MeanField
       use rpa_CCD_Corrections_Experimental
+      use rpa_CCS_Corrections
       use rpa_PT_Terms
       use clock
       use display
@@ -12,7 +13,7 @@ module rpa_CCD_Corrections
       
 contains
 
-      subroutine rpa_Cumulant_HalfTHC(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
+      subroutine rpa_Corrections(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
             Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox, T2EigenvalueThresh)
             
             integer, intent(in)                                    :: NOcc
@@ -38,6 +39,7 @@ contains
             integer, parameter :: BlockDim = 300
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bc = .true.
+            logical, parameter :: Compute_2mnop = .false.
 
             if (CumulantApprox == RPA_CUMULANT_LEVEL_5_HALF_THC) then
                   !
@@ -53,22 +55,26 @@ contains
             ! Significant eigenvalues: mu in (mu0, mu1)
             ! Note that the first eigenvalue is the one most negative
             !
+            ! mu0 = 1
+            ! call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
+            ! NVecsT2_Significant = mu1 - mu0 + 1
+            ! call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
+            ! call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
+            ! if (NVecsT2_Significant == NVecsT2) then
+            !       call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
+            ! else
+            !       call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
+            !       call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
+            !             // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
+            ! end if
             mu0 = 1
-            call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
-            NVecsT2_Significant = mu1 - mu0 + 1
-            call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
-            call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
-            if (NVecsT2_Significant == NVecsT2) then
-                  call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
-            else
-                  call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
-                  call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
-                        // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
-            end if
+            NVecsT2_Significant = NVecsT2
+            mu1 = NVecsT2_Significant
             if (Compute_1b2g) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
-                        Am(mu0:mu1), BlockDim, Compute_2bc, YXUggm)
+                  call rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
+                        Am(mu0:mu1), hHFai, OccEnergies, VirtEnergies, BlockDim, Compute_2bc, &
+                        Compute_2mnop, YXUggm)
                   call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             if (Compute_2bc) then
@@ -85,11 +91,12 @@ contains
             Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2B)
             Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2C)
             call msg("CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
-      end subroutine rpa_Cumulant_HalfTHC
+      end subroutine rpa_Corrections
 
       
-      subroutine rpa_CCD_corrections_1b2g(Energy, Zgh, Xgi, Yga, Uaim, &
-            Am, BlockDim, Intermediates_2bcd, YXUggm)
+      subroutine rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, &
+            Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Intermediates_2bcd, &
+            Compute_2mnop, YXUggm)
             
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(in)                 :: Zgh
@@ -97,18 +104,35 @@ contains
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :, :), intent(in)              :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
+            real(F64), dimension(:, :), intent(in)                 :: hHFai
+            real(F64), dimension(:), intent(in)                    :: OccEnergies
+            real(F64), dimension(:), intent(in)                    :: VirtEnergies
             integer, intent(in)                                    :: BlockDim
             logical, intent(in)                                    :: Intermediates_2bcd
+            logical, intent(in)                                    :: Compute_2mnop
             real(F64), dimension(:, :), allocatable, intent(out)   :: YXUggm
 
             real(F64), dimension(:, :), allocatable :: YXUgh
             real(F64), dimension(:, :), allocatable :: YUgi
+            !
+            ! -------------------- Intermediates for 2m, 2n, 2o, 2p ------------------------
+            !
+            real(F64), dimension(:, :), allocatable :: Tai
+            real(F64), dimension(:, :), allocatable :: UTab_transposed, TUij_transposed
+            real(F64), dimension(:, :), allocatable :: XZYXUXij, YZYXUYab
+            real(F64), dimension(:, :), allocatable :: ZYXUXgi, ZYXUYga
+            real(F64), dimension(:, :), allocatable :: XTUgi, YUTga
+            real(F64), dimension(:), allocatable :: XXTUg, YYUTg
+            real(F64) :: Ec2m, Ec2n, Ec2o, Ec2p
+            real(F64) :: S2m, S2n, S2o, S2p
+            ! ------------------------------------------------------------------------------
             integer :: mu, g
             real(F64) :: Ec1b, Ec2g
             real(F64) :: S1b, S2g
             integer :: NVecsT2, NGridTHC, NOcc, NVirt
             real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU            
             type(TClock) :: timer
+            logical :: CCS_T1 = .true.
 
             NGridTHC = size(Zgh, dim=1)
             NVecsT2 = size(Am)
@@ -116,8 +140,26 @@ contains
             NVirt = size(Yga, dim=2)
             allocate(YXUgh(NGridTHC, NGridTHC))
             allocate(YUgi(NGridTHC, NOcc))
-            if (Intermediates_2bcd) then
+            if (Intermediates_2bcd .or. Compute_2mnop) then
                   allocate(YXUggm(NGridTHC, NVecsT2))
+            end if
+            if (Compute_2mnop) then
+                  allocate(Tai(NVirt, NOcc))
+                  allocate(TUij_transposed(NOcc, NOcc))
+                  allocate(UTab_transposed(NVirt, NVirt))
+                  allocate(ZYXUXgi(NGridTHC, NOcc))
+                  allocate(ZYXUYga(NGridTHC, NVirt))
+                  allocate(XZYXUXij(NOcc, NOcc))
+                  allocate(YZYXUYab(NVirt, NVirt))
+                  allocate(XTUgi(NGridTHC, NOcc))
+                  allocate(YUTga(NGridTHC, NVirt))
+                  allocate(XXTUg(NGridTHC))
+                  allocate(YYUTg(NGridTHC))
+                  if (CCS_T1) then
+                        call rpa_CCS_T1(Tai, hHFai, OccEnergies, VirtEnergies, NOcc, NVirt)
+                  else
+                        call rpa_PT1_T1(Tai, hHFai, OccEnergies, VirtEnergies, NOcc, NVirt)
+                  end if
             end if
             t_YU = ZERO
             t_YXU = ZERO
@@ -125,6 +167,10 @@ contains
             t_ZYXU = ZERO
             Ec1b = ZERO
             Ec2g = ZERO
+            Ec2m = ZERO
+            Ec2n = ZERO
+            Ec2o = ZERO
+            Ec2p = ZERO
             do mu = 1, NVecsT2
                   !
                   ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)
@@ -144,12 +190,32 @@ contains
                   t_Z_YXU_YXU = t_Z_YXU_YXU + clock_readwall(timer)
                   Ec2g = Ec2g - TWO * S2g * Am(mu)**2
                   Ec1b = Ec1b - S1b * Am(mu)
-                  if (Intermediates_2bcd) then
+                  if (Intermediates_2bcd .or. Compute_2mnop) then
                         !$omp parallel do private(g)                       
                         do g = 1, NGridTHC
                               YXUggm(g, mu) = YXUgh(g, g)
                         end do
                         !$omp end parallel do
+                  end if
+                  if (Compute_2mnop) then
+                        call real_abT(UTab_transposed, Tai, Uaim(:, :, mu)) ! [UT](ab;mu) = Sum(i) U(ai,mu) T(b,i)
+                        call real_aTb(TUij_transposed, Uaim(:, :, mu), Tai) ! [TU](ij;mu) = Sum(a) T(a,i) U(aj,mu)
+                        call rpa_CCS_hadamard_Z_YXU(YXUgh, Zgh, NGridTHC)   ! [Z.YXU](g,h) = Z(g,h)*[YXU](g,h)                  
+                        associate (Z_YXUgh => YXUgh)
+                              call rpa_CCS_intermediate_WZYXUW(YZYXUYab, ZYXUYga, Z_YXUgh, Yga, NGridTHC, NVirt)
+                              call real_vw_x(S2n, YZYXUYab, UTab_transposed, NVirt**2)
+                              call rpa_CCS_intermediate_WWUT(YYUTg, YUTga, UTab_transposed, Yga, NGridTHC, NVirt)
+                              call rpa_CCS_YXU_Z_WW_UT(S2m, YXUggm(:, mu), Zgh, YYUTg, NGridTHC)
+                              !
+                              call rpa_CCS_intermediate_WZYXUW(XZYXUXij, ZYXUXgi, Z_YXUgh, Xgi, NGridTHC, NOcc)
+                              call real_vw_x(S2p, XZYXUXij, TUij_transposed, NOcc**2)
+                              call rpa_CCS_intermediate_WWUT(XXTUg, XTUgi, TUij_transposed, Xgi, NGridTHC, NOcc)
+                              call rpa_CCS_YXU_Z_WW_UT(S2o, YXUggm(:, mu), Zgh, XXTUg, NGridTHC)
+                        end associate
+                        Ec2m = Ec2m + EIGHT * Am(mu) * S2m
+                        Ec2n = Ec2n - FOUR  * Am(mu) * S2n
+                        Ec2o = Ec2o - EIGHT * Am(mu) * S2o
+                        Ec2p = Ec2p + FOUR  * Am(mu) * S2p 
                   end if
             end do
             !
@@ -165,7 +231,12 @@ contains
             !
             Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
             Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
-
+            if (Compute_2mnop) then
+                  Energy(RPA_ENERGY_CUMULANT_2M) = Ec2m
+                  Energy(RPA_ENERGY_CUMULANT_2N) = Ec2n
+                  Energy(RPA_ENERGY_CUMULANT_2O) = Ec2o
+                  Energy(RPA_ENERGY_CUMULANT_2P) = Ec2p
+            end if
             call msg("SOSEX+2g timings (seconds)", underline=.true.)
             call msg("[YU]          " // str(t_YU,d=1))
             call msg("[YXU]         " // str(t_YXU,d=1))
@@ -292,7 +363,7 @@ contains
                         S1b = S1b + Z(k) * YXU(k) * YXU_T(k)
                   end do
             end subroutine block_multiply_loop_2            
-      end subroutine rpa_CCD_corrections_1b2g
+      end subroutine rpa_CCD_corrections_1b2gmnop
 
 
       pure subroutine rpa_Cumulant_block_indices(p, q, pq, n)

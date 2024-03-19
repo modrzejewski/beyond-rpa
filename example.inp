@@ -9,11 +9,10 @@ jobtype uks rpa
 !
 basis aug-cc-pVTZ
 
-
-
 scf
      xcfunc HF
      thresh density 1.0E-6
+     TensorHypercontraction
 end
 
 rpa
@@ -22,7 +21,7 @@ rpa
  ! CCD-Corrections Default <--- SOSEX + 2g, used in the JCTC paper
  ! CCD-Corrections All <--- new experimental version
  !
- CCD-Corrections All
+ CCD-Corrections Default
 end
 
 xyz

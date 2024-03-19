@@ -8,6 +8,7 @@ module rpa
       use Auto2e
       use GaussPRNG
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use SpherGTO
       use basis_sets
       use OrbDiffHist
@@ -1715,7 +1716,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             associate ( &
@@ -1783,7 +1784,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             integer :: NSpins, NAtoms, NAO, NShells
@@ -2041,7 +2042,7 @@ contains
 
 
       subroutine rpa_THC_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-            hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid)
+            hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
 
             real(F64), dimension(:), intent(inout)                    :: Energy
             real(F64), dimension(:, :, :), intent(in)                 :: OccCoeffs
@@ -2055,6 +2056,7 @@ contains
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
+            real(F64), intent(inout)                                  :: T2CutoffCommonThresh
             
             integer :: NSpins, NAO
             integer :: MaxNOcc, MaxNVirt
@@ -2154,7 +2156,9 @@ contains
                   RPAParams%GuessNVecsT2, &
                   RPAParams%MaxBatchDimT2, &
 
-                  RPAParams%T2EigenvalueThresh, &
+                  RPAParams%T2CutoffThresh, &
+                  RPAParams%T2CutoffType, &
+                  T2CutoffCommonThresh, &
                   RPAParams%T2CouplingStrength, &
                   RPAParams%PT_Order2, &
                   RPAParams%PT_Order3)
@@ -2183,7 +2187,8 @@ contains
             THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
 
             SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
-            T2EigenvalueThresh, T2CouplingStrength, PT_Order2, PT_Order3)
+            T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh, &
+            T2CouplingStrength, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)                       :: Energy
             real(F64), dimension(:, :, :), intent(in)                    :: OccCoeffs_ao
@@ -2226,7 +2231,10 @@ contains
             real(F64), intent(in)                                        :: GuessNVecsT2
             integer, intent(in)                                          :: MaxBatchDimT2
 
-            real(F64), intent(in)                                        :: T2EigenvalueThresh
+            real(F64), intent(in)                                        :: T2CutoffThresh
+            integer, intent(in)                                          :: T2CutoffType
+            real(F64), intent(inout)                                     :: T2CutoffCommonThresh
+            
             real(F64), intent(in)                                        :: T2CouplingStrength
             logical, intent(in)                                          :: PT_Order2
             logical, intent(in)                                          :: PT_Order3
@@ -2287,8 +2295,8 @@ contains
                   Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
                   NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
                   SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox, &
-                  T2EigenvalueThresh, T2CouplingStrength, &
-                  PT_Order2, PT_Order3)
+                  T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh, &
+                  T2CouplingStrength, PT_Order2, PT_Order3)
             Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
       end subroutine rpa_THC_Ecorr_1
 end module rpa

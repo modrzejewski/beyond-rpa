@@ -13,6 +13,8 @@ module parser
       use sys_definitions
       use scf_definitions
       use rpa_definitions
+      use thc_definitions
+      use TwoStepCholesky_definitions
       use Pseudopotential, only: pp_ZNumbers
       use grid_definitions
 
@@ -1084,11 +1086,13 @@ contains
       end function isnew_element
 
 
-      subroutine read_inputfile(System, SCFParams, RPAParams, filename)
-            type(TSystem), intent(out)   :: System
-            type(TSCFParams), intent(out) :: SCFParams
-            type(TRPAParams), intent(out) :: RPAParams
-            character(len=*), intent(in) :: filename
+      subroutine read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, filename)
+            type(TSystem), intent(out)      :: System
+            type(TSCFParams), intent(out)   :: SCFParams
+            type(TRPAParams), intent(out)   :: RPAParams
+            type(TChol2Params), intent(out) :: Chol2Params
+            type(TTHCParams), intent(out)   :: THCParams
+            character(len=*), intent(in)    :: filename
 
             integer :: OldXYZFormat
             character(len=DEFLEN) :: line
@@ -1098,7 +1102,6 @@ contains
             integer :: current_block
             integer :: k, z
             integer :: AtomIdx, ChargeIdx
-            type(TXCDef) :: SelfConsistentXC
             logical :: RPADefined, XYZDefined
             integer, parameter :: block_none = 0
             integer, parameter :: block_auxint = 1
@@ -1168,25 +1171,6 @@ contains
                               error stop
                         end if
                         RPADefined = .true.
-                        !
-                        ! Check if the exchange-correlation model is defined.
-                        ! Enable Cholesky decomposition by default if the xc functional is pure
-                        ! (does not include Hartree-Fock exchange)
-                        !
-                        if (SCFParams%XCFunc == XCF_XC_NONE) then
-                              call msg("Exchange-correlation model needs to be defined before the RPA block", MSG_ERROR)
-                              error stop                              
-                        else
-                              call xcf_define(SelfConsistentXC, SCFParams%XCFunc, AUX_NONE, .false.)
-                              if (.not. SelfConsistentXC%EXX > ZERO) then
-                                    !
-                                    ! Pure xc model set, enable Cholesky decomposition
-                                    ! for the SCF step
-                                    !
-                                    RPAParams%ComputeCholeskyBasis = .false.
-                                    SCFParams%UseCholeskyBasis = .true.
-                              end if
-                        end if
                         current_block = block_RPA
                         cycle lines
                   case ("SCF")
@@ -1258,7 +1242,7 @@ contains
                               end if
                         end if
                   else if (current_block == block_RPA) then
-                        call read_block_RPA(RPAParams, SCFParams, line)
+                        call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
                   else if (current_block == block_SCF) then
                         call read_block_SCF(SCFParams, line)
                   else if (current_block == block_XYZ) then
@@ -3665,10 +3649,12 @@ contains
       end subroutine read_block_RhoSpher
 
 
-      subroutine read_block_RPA(RPAParams, SCFParams, line)
-            type(TRPAParams), intent(inout) :: RPAParams
-            type(TSCFParams), intent(inout) :: SCFParams
-            character(*), intent(in)        :: Line
+      subroutine read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
+            type(TTHCParams), intent(inout)   :: THCParams
+            character(*), intent(in)          :: Line
             
             character(:), allocatable :: key, val
             real(F64) :: m
@@ -3733,22 +3719,28 @@ contains
                   RPAParams%THC_QRThresh = m
             case ("THC_QRTHRESH_T2")
                   read(val, *) m
-                  RPAParams%THC_QRThresh_T2 = m                  
+                  RPAParams%THC_QRThresh_T2 = m
             case ("THC_BLOCKDIM")
                   read(val, *) i
                   RPAParams%THC_BlockDim = i
+                  THCParams%THC_BlockDim = i
             case ("THC_BECKEGRIDKIND")
                   select case (uppercase(val))
                   case ("SG1", "SG-1")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
                   case ("MEDIUM")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
                   case ("FINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
                   case ("XFINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
                   case ("THC")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_THC
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_THC
                   case default
                         call msg("Unknown grid kind", priority=MSG_ERROR)
                         error stop
@@ -3814,9 +3806,24 @@ contains
                   RPAParams%PT_Order2 = .true.
             case ("PT3", "PT_ORDER3", "PT-ORDER3", "PT-ORDER-3")
                   RPAParams%PT_Order3 = .true.
-            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH")
+            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH", &
+                  "T2_CUTOFFTHRESH", "T2_CUTOFF_THRESH", "T2-CUTOFF-THRESH", "T2CUTOFFTHRESH")
                   read(val, *) m
-                  RPAParams%T2EigenvalueThresh = m
+                  RPAParams%T2CutoffThresh = m
+            case ("T2CUTOFFTYPE", "T2_CUTOFF_TYPE", "T2-CUTOFF-TYPE")
+                  select case (uppercase(val))
+                  case ("EIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG
+                  case ("EIG/MAXEIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_MAXEIG
+                  case ("EIG/NELECTRON", "EIG/NOCC")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_NELECTRON
+                  case ("SUM-REJECTED", "SUM_REJECTED")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_SUM_REJECTED
+                  case default
+                        call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
+                        error stop
+                  end select
             case ("T2COUPLINGSTRENGTH")
                   read(val, *) m
                   RPAParams%T2CouplingStrength = m
@@ -3922,18 +3929,6 @@ contains
                         call msg("Invalid value of SinglesCorrection", MSG_ERROR)
                         error stop
                   end select
-            case ("CHOLESKY")
-                  select case (uppercase(val))
-                  case ("RPA-ONLY")
-                        RPAParams%ComputeCholeskyBasis = .true.
-                        SCFParams%UseCholeskyBasis = .false.
-                  case ("FULL")
-                        RPAParams%ComputeCholeskyBasis = .false.
-                        SCFParams%UseCholeskyBasis = .true.
-                  case default
-                        call msg("Invalid value of Cholesky", MSG_ERROR)
-                        error stop
-                  end select
             case ("GRIDLIMITDAI")
                   select case (uppercase(val))
                   case ("TRUE", "")
@@ -3958,6 +3953,7 @@ contains
             case ("CHOLESKYTAUTHRESH", "CHOLESKYTAUTHRESHOLD")
                   read(val, *) m
                   RPAParams%CholeskyTauThresh = m
+                  Chol2Params%CholeskyTauThresh = m
             case ("TARGETERRORFREQ")
                   read(val, *) m
                   RPAParams%TargetErrorFreq = m
@@ -3976,6 +3972,7 @@ contains
             case ("MAXBLOCKDIM")
                   read(val, *) i
                   RPAParams%MaxBlockDim = i
+                  Chol2Params%MaxBlockDim = i
             case default
                   call msg("Unknown keyword in RPA block: " // key, MSG_ERROR)
                   stop
@@ -4104,6 +4101,18 @@ contains
                         call msg("Invalid asymptotic correction", MSG_ERROR)
                         error stop
                   end select
+            case ("ALGORITHM", "ERI_ALGORITHM", "ERI-ALGORITHM")
+                  select case (uppercase(val))
+                  case ("THC", "TENSORHYPERCONTRACTION", "TENSOR-HYPERCONTRACTION", "TENSOR_HYPERCONTRACTION")
+                        SCFParams%ERI_Algorithm = SCF_ERI_THC
+                  case ("CHOLESKY")
+                        SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+                  case ("EXACT")
+                        SCFParams%ERI_Algorithm = SCF_ERI_EXACT
+                  end select
+            case ("THC_QRTHRESH")
+                  read(val, *) a
+                  SCFParams%THC_QRThresh = a
             case ("ASYMPVXCOMEGA")
                   read(val, *) a
                   if (a > ZERO) then

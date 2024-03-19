@@ -6,6 +6,12 @@ module scf_definitions
       
       implicit none
       !
+      ! Algorithm employed for the electron repulsion integrals
+      !
+      integer, parameter :: SCF_ERI_EXACT = 0
+      integer, parameter :: SCF_ERI_CHOLESKY = 1
+      integer, parameter :: SCF_ERI_THC = 2
+      !
       ! Methods of generating zeroth-iteration molecular orbitals
       ! ---
       ! Method 1: Compute eigenvectors of bare-nuclei Hamiltonian, that is,
@@ -273,12 +279,20 @@ module scf_definitions
             ! Kohn-Sham Coulomb (J) and (K) matrices.
             ! ----------------------------------------------------
             real(F64) :: ThreshFockJK = 1.0E-11_F64
-            
+            !
+            ! Algorithm for the two-electron integrals
+            !
+            integer :: ERI_Algorithm = SCF_ERI_CHOLESKY
+            !
+            ! Tensor hypercontraction of Coulomb integrals            
+            ! The THC threshold for SCF calculations differs from
+            ! the threshold for RPA
+            !
+            real(F64) :: THC_QRThresh = 1.0E-6_F64
             integer :: MaxNIters = 128
             ! ----------------------------------------------------
             ! Cholesky decomposition of the Coulomb matrix
             ! ----------------------------------------------------
-            logical :: UseCholeskyBasis = .false.
             integer :: MaxBufferDimMB = 4000
             integer :: TargetBlockDim = 100
             ! ----------------------------------------------------

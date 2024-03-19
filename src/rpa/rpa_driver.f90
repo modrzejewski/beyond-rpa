@@ -16,6 +16,7 @@ module rpa_driver
       use sys_definitions
       use ParallelCholesky
       use PostSCF
+      use TwoStepCholesky_definitions
 
       implicit none
 
@@ -36,7 +37,7 @@ contains
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TSystem), intent(inout)                              :: System
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
 
             real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB
@@ -55,6 +56,7 @@ contains
             real(F64) :: DaiMaxThresh
             real(F64), dimension(:), allocatable :: Energy, EnergyDiffs
             real(F64), dimension(:, :), allocatable :: SinglePoints
+            real(F64) :: T2CutoffCommonThresh
             type(TClock) :: timer
 
             allocate(Energy(RPA_ENERGY_NCOMPONENTS))
@@ -70,7 +72,16 @@ contains
             else ! Tetramer
                   NSystems = 15
             end if
-
+            !
+            ! Initialize the cutoff threshold for discarding the eigenvectors of T2.
+            ! To guarantee size consistent interaction energies, the same threshold
+            ! should be applied to the supermolecule and to all of its subsystems.
+            !
+            ! A value < 0 means that T2CutoffCommon threshold is
+            ! not initialized. Its value is defined during the supermolecule
+            ! calculation, i.e., the energy calculation for k=1.
+            !
+            T2CutoffCommonThresh = -ONE
             SpinUnres = .false.
             n = 0
             do k = 1, NSystems
@@ -161,7 +172,7 @@ contains
                   end if
                   if (RPAParams%TensorHypercontraction) then
                         call rpa_THC_Etot(Energy, MeanFieldStates(k), AOBasis, RPAParams, &
-                              RPAGrids, THCGrid)
+                              RPAGrids, THCGrid, T2CutoffCommonThresh)
                   else
                         if (RPAParams%CoupledClusters) then
                               call rpa_CC_Etot(Energy, SCFOutput(k), AOBasis, RPAParams, &
@@ -384,7 +395,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
 
             integer :: NMO, NSpins, MaxNOcc, MaxNVirt
             type(txcdef) :: HFonDFT
@@ -664,7 +675,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             type(TSCFParams), intent(in)                              :: SCFParams
             type(TSystem), intent(in)                                 :: System
 
@@ -744,13 +755,14 @@ contains
       end subroutine rpa_CC_Etot
 
 
-      subroutine rpa_THC_Etot(Energy, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid)
+      subroutine rpa_THC_Etot(Energy, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
             real(F64), dimension(:), intent(out)                      :: Energy
             type(TMeanField), intent(in)                              :: MeanField
             type(TAOBasis), intent(in)                                :: AOBasis
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
+            real(F64), intent(inout)                                  :: T2CutoffCommonThresh
 
             real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
             integer :: s
@@ -775,7 +787,7 @@ contains
                               VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
                         end do
                         call rpa_THC_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid)                        
+                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)                  
                   end if
             end associate
             Energy(RPA_ENERGY_HF) = MeanField%EtotHF
@@ -934,6 +946,10 @@ contains
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2M) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2N) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2O) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2P) = .true.
             end if
             DisplayedValues(RPA_ENERGY_DFT) = .true.
             DisplayedValues(RPA_ENERGY_HF) = .true.

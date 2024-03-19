@@ -3,6 +3,7 @@ module CholeskyFock
       use CholeskyCoulomb
       use CholeskyExchange
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use basis_sets
       
       implicit none
@@ -59,7 +60,7 @@ contains
             real(F64), dimension(:, :, :), intent(in)  :: Rho_ao
             real(F64), dimension(:, :, :), intent(in)  :: Cocc_ao
             real(F64), dimension(:, :, :), intent(in)  :: Rkpq
-            type(TCholeskyBasis), intent(in)           :: CholeskyBasis
+            type(TChol2Vecs), intent(in)               :: CholeskyBasis
             integer, dimension(:), intent(in)          :: NOcc
             type(TAOBasis), intent(in)                 :: AOBasis
             logical, intent(in)                        :: CoulContrib

@@ -3,6 +3,7 @@ module CholeskyExchange
       use math_constants
       use real_linalg
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use basis_sets
 
       implicit none
@@ -378,7 +379,7 @@ contains
             integer, dimension(2), intent(in)            :: NOcc
             type(TAOBasis), intent(in)                   :: AOBasis
             real(F64), dimension(:, :, :), intent(in)    :: Rkpq
-            type(TCholeskyBasis), intent(in)             :: CholeskyBasis
+            type(TChol2Vecs), intent(in)                 :: CholeskyBasis
             integer, intent(in)                          :: MaxBufferDimMB
             integer, intent(in)                          :: TargetBlockDim
             real(F64), intent(in)                        :: KScal
