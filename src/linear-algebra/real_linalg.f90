@@ -21,7 +21,7 @@ module real_linalg
       use arithmetic
       use math_constants
       use display
-      use gparam
+      use string
       use clock                              
 
       implicit none
@@ -687,6 +687,24 @@ contains
             call dger(m, n, alpha, v, 1, w, 1, a, m)
       end subroutine real_vwT
 
+
+      subroutine real_vwT_x(a, lda, v, w, m, n, alpha)
+            !
+            ! A <- alpha * v*w**T + A
+            !
+            real(F64), dimension(lda, *), intent(inout) :: a
+            integer, intent(in)                         :: lda
+            real(F64), dimension(*), intent(in)         :: v
+            real(F64), dimension(*), intent(in)         :: w
+            integer, intent(in)                         :: m
+            integer, intent(in)                         :: n
+            real(F64), intent(in)                       :: alpha
+
+            external :: dger
+
+            call dger(m, n, alpha, v, 1, w, 1, a, lda)
+      end subroutine real_vwT_x
+      
       
       subroutine real_aTba(c, a, b, scratch)
             real(F64), dimension(:, :), contiguous, intent(out) :: c
@@ -1235,7 +1253,6 @@ contains
             end if
             deallocate(work)
             deallocate(iwork)
-            TIMINGS(TIME_EIGEN) = TIMINGS(TIME_EIGEN) + clock_readwall(t_eigen)
       end subroutine symmetric_eigenproblem
       
 

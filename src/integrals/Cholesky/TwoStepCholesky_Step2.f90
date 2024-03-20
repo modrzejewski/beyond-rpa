@@ -1,14 +1,12 @@
 module TwoStepCholesky_Step2
       use arithmetic
       use math_constants
-      use io
       use Auto2e
       use real_linalg
       use clock
       use string
       use sort
       use basis_sets
-      use rpa_definitions
       use TwoStepCholesky_definitions
       
       implicit none

@@ -1,7 +1,6 @@
 module CholeskyCoulomb
       use arithmetic
       use real_linalg
-      use ParallelCholesky
       use TwoStepCholesky_definitions
       use basis_sets
       
@@ -166,7 +165,7 @@ contains
             !$omp private(pq0, pq1) &
             !$omp private(ShAB)
             do ShAB = SubsetBounds(1), SubsetBounds(2)
-                  LocAB = ShellPairLoc(SUBSET_STORAGE, ShAB)
+                  LocAB = ShellPairLoc(CHOL2_SUBSET_STORAGE, ShAB)
                   Nab = ShellPairDim(ShAB)
                   pq0 = LocAB
                   pq1 = LocAB + Nab - 1
@@ -219,7 +218,7 @@ contains
             !$omp private(pq0, pq1) &
             !$omp private(ShAB)
             do ShAB = SubsetBounds(1), SubsetBounds(2)
-                  LocAB = ShellPairLoc(SUBSET_STORAGE, ShAB)
+                  LocAB = ShellPairLoc(CHOL2_SUBSET_STORAGE, ShAB)
                   Nab = ShellPairDim(ShAB)
                   pq0 = LocAB
                   pq1 = LocAB + Nab - 1
