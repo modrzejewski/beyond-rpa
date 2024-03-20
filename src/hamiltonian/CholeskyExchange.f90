@@ -2,7 +2,6 @@ module CholeskyExchange
       use arithmetic
       use math_constants
       use real_linalg
-      use ParallelCholesky
       use TwoStepCholesky_definitions
       use basis_sets
 
@@ -145,7 +144,7 @@ contains
             integer :: i, kappa
 
             do ShAB = SubsetBounds(1), SubsetBounds(2)
-                  LocAB = ShellPairLoc(SUBSET_STORAGE, ShAB)
+                  LocAB = ShellPairLoc(CHOL2_SUBSET_STORAGE, ShAB)
 
                   ShA = ShellPairs(1, ShAB)
                   ShellParamsA = ShellParamsIdx(ShA)

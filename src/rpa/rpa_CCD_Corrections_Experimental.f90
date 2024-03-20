@@ -599,6 +599,4 @@ contains
             Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2B)
             Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2C)
       end subroutine rpa_CCD_corrections_FullSet
-     
-     
 end module rpa_CCD_Corrections_Experimental

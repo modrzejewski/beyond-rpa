@@ -28,7 +28,6 @@ module TwoStepCholesky
       !
       use arithmetic
       use math_constants
-      use io
       use Auto2e
       use real_linalg
       use clock

@@ -5,7 +5,6 @@ module TensorHypercontraction
       use GridFunctions
       use real_linalg
       use basis_sets
-      use ParallelCholesky
       use TwoStepCholesky
       use sys_definitions
       use thc_definitions
@@ -239,6 +238,11 @@ contains
 
             type(TChol2Vecs) :: Chol2Vecs
             real(F64), dimension(1, 1, 1) :: Rkpq
+
+            if (.not. THCParams%THC_QuadraticMemory) then
+                  call msg("Invalid value of QuadraticMemory", MSG_ERROR)
+                  error stop
+            end if
             !
             ! Locate pivots of the Coulomb matrix. This step is required before
             ! generating the Z matrix.
@@ -675,7 +679,7 @@ contains
             !$omp private(pq0, pq1, p0, p1, q0, q1) &
             !$omp private(ShAB)
             do ShAB = SubsetBounds(1), SubsetBounds(2)
-                  LocAB = ShellPairLoc(SUBSET_STORAGE, ShAB)
+                  LocAB = ShellPairLoc(CHOL2_SUBSET_STORAGE, ShAB)
                   Nab = ShellPairDim(ShAB)
                   pq0 = LocAB
                   pq1 = LocAB + Nab - 1
