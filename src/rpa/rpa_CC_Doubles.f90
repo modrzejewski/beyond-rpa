@@ -673,9 +673,9 @@ contains
 
             real(F64), dimension(:), allocatable   :: Anew
             integer :: NVecsT2New
-            logical, parameter :: DebugPrint = .true.
             real(F64) :: max_A, SumA
             real(F64) :: K
+            logical, parameter :: PrintEigenvalues = .false.
             !
             ! Where possible, the matrices will be computed as independent batches
             ! to save memory. The last batch will have dimension 0 < Nq < MaxBatchDim.
@@ -690,7 +690,6 @@ contains
             ! IOmega <- I*Omega
             !
             allocate(IOmega(Nocc*Nvirt, GuessNvecsT2))
-
             allocate(D(NVirt*NOcc))
             !
             ! Working arrays for the rpa_CC_IM subroutine.
@@ -805,8 +804,8 @@ contains
             !           Value of T2CutoffType               Cutoff method for supermolecule
             !
             !           RPA_T2_CUTOFF_EIG                   K = T2CutoffThresh; reject mu if Abs(A(mu)) <= K
-            !           RPA_T2_CUTOFF_EIG_DIV_MAXEIG        K = T2CutoffThresh / Maxval(Abs(A)); reject mu if Abs(A(mu)) <= K
-            !           RPA_T2_CUTOFF_EIG_DIV_NELECTRON     K = T2CutoffThresh / NOcc; reject mu if Abs(A(mu)) <= K
+            !           RPA_T2_CUTOFF_EIG_DIV_MAXEIG        K = T2CutoffThresh * Maxval(Abs(A)); reject mu if Abs(A(mu)) <= K
+            !           RPA_T2_CUTOFF_EIG_DIV_NELECTRON     K = T2CutoffThresh / (NOcc * 2); reject mu if Abs(A(mu)) <= K
             !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) <= K
             !                                                   reject mu if Abs(A(mu)) < K
             !
@@ -821,45 +820,92 @@ contains
             !
             !           Cutoff method for subsystems (e.g., monomers in a dimer)
             !
-            !           K = T2CutoffCommonThresh
+            !           K = T2CutoffCommonThresh (same as in dimer)
             !           reject mu if Abs(A(mu)) <= K
             ! 
             !
-            call msg("***************************** Krysia ***********************************")
-
-            ! ============= PRZYKŁAD UŻYCIA IFÓW  ====================================
-            ! T2CutoffType jest integerem zdefiniowanym przez użytkownika w inpucie
-            ! Stałe RPA_T2_CUTOFF_* są zdefiniowane w rpa_definitions.f90 i mają wartości 0, 1, ...
-            ! ale wartości numerycznych nie powinno się jawnie używać. To jest zła praktyka.
-            !
-            if (T2CutoffType == RPA_T2_CUTOFF_EIG) then
-                  K = T2CutoffThresh
-
+            call msg("Removing small eigenvalues of T2")
+            if (T2CutoffCommonThresh < ZERO) then
+                  !
+                  ! supersystem calculation; evaluate K
+                  !
+                  select case (T2CutoffType)
+                  case (RPA_T2_CUTOFF_EIG)
+                        K = T2CutoffThresh
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh = " // str(K,d=1))
+                  case (RPA_T2_CUTOFF_EIG_DIV_MAXEIG)
+                        K = T2CutoffThresh * MAXVAL(Abs(A))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh*Max(Abs(a(mu')) = " // str(K,d=1))
+                  case (RPA_T2_CUTOFF_EIG_DIV_NELECTRON)
+                        K = T2CutoffThresh / (NOcc * 2)
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=1))
+                  case (RPA_T2_CUTOFF_SUM_REJECTED)
+                        K = T2CutoffThresh
+                        call msg("remove mu if Sum(mu'=mu,NVecsT2) Abs(a(mu)) <= T2CutoffThresh")
+                  case default
+                        call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
+                        error stop
+                  end select
+            else
+                  !
+                  ! subsystem calculation; take K from the supersystem calculation
+                  !
+                  K = T2CutoffCommonThresh
+                  call msg("remove mu if Abs(a(mu)) <= supersystem threshold = " // str(T2CutoffCommonThresh,d=1))
             end if
-            
-            do i=1, NVecsT2 
-                  call msg(str(i)// "   " // str(A(i)))
-            end do
-            call msg("Treshord value is:   "// str(T2CutoffThresh))
-            call msg("***************************** Krysia odcięcie zwykłe ***********************************")
             allocate(Anew(NVecsT2))
-            
-            block
-              
-                  do i=1, NVecsT2
-                        if (abs(A(i)) > T2CutoffThresh) then
+            !
+            ! Initial value of NVecsT2: will be reduced to a smaller
+            ! number if any eigenvectors are rejected
+            !
+            NVecsT2New = NVecsT2
+            if (T2CutoffType == RPA_T2_CUTOFF_SUM_REJECTED) then
+                  do i = 1, NVecsT2
+                        if (i < NVecsT2) then
+                              SumA = sum(A(i+1:NVecsT2))
+                        else
+                              SumA = ZERO
+                        end if
+
+                        if (abs(SumA) > K) then
                               Anew(i) = A(i)
                               call msg(str(i) // "   " // str(Anew(i)))
                         else
-                              call msg(str(i) // "   " // str(A(i)) // "   Eigen value is too smal")
-                              NVecsT2New = i-1
-                              call msg("Wymiar nowego wektora to    " // str(NVecsT2New))
+                              call msg(str(i) //  "   The sum of eigen values is too smal   "// str(SumA))
+                              NVecsT2New = i - 1
+                              call msg("New vectror dimension is:    " // str(NVecsT2New))
                               exit
                         end if
                   end do
-
-            end block
-
+            else
+                  do i = 1, NVecsT2
+                        if (abs(A(i)) > K) then
+                              Anew(i) = A(i)
+                        else
+                              NVecsT2New = i - 1
+                              exit
+                        end if
+                  end do
+            end if
+            if (NVecsT2New < NVecsT2) then
+                  call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
+                  call msg("full set of eigenvecs:    " // str(NVecsT2))
+                  call msg("reduced set of eigenvecs: " // str(NVecsT2New))
+            else
+                  call msg("no eigenvectors removed")
+            end if
+            if (PrintEigenvalues) then
+                  call blankline()
+                  call msg("Eigenvalues of T2", underline=.true.)
+                  do i = 1, NVecsT2
+                        if (i == NVecsT2New + 1) then
+                              call msg("--- removed eigenvalues ---")
+                        end if
+                        call msg(lfield(str(i), 10) // str(A(i), d=3))                        
+                  end do
+                  call blankline()
+            end if
+  
             ! call msg("***************************** Krysia odcięcie z warością maksymalną ***********************************")
 
             
@@ -923,29 +969,24 @@ contains
             ! end block
 
             deallocate(A)
-
             allocate(A(NVecsT2New))
-
             do i=1, NVecsT2New
                   A(i) = ANew(i)
             end do
-
-            do i=1, NVecsT2New
-                  call msg(str(i) // "     " // str(A(i)))
-            end do
-            
-                     
-            deallocate(Anew)
-            
-            allocate(V(NVirt*NOcc, NVecsT2New))            !
+            deallocate(Anew)            
+            allocate(V(NVirt*NOcc, NVecsT2New))
+            !
             ! Transform matrix columns to obtain the T2 eigenvectors expressed
             ! in the basis of Cholesky/Pi(u) vectors. 
             ! V(1:NVirt*NOcc,1:NVecsT2) = T(1:NVirt*NOcc, 1:NVecsT2)*Eigenvecs(TIT)(1:NVecsT2, 1:NVecsT2)
             !
             call real_ab_x(V, NVirt*NOcc, T, NVirt*NOcc, TIT, NVecsT2,  &
                   NVirt*NOcc, NVecsT2New, NVecsT2, ONE, ZERO)
-            NVecsT2=NVecsT2New
-            
+            NVecsT2 = NVecsT2New
+            !
+            ! Store threshold value for the subsystem calculation
+            !
+            T2CutoffCommonThresh = K
       end subroutine rpa_THC_CC_T2
       
 
