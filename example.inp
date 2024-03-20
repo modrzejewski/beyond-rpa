@@ -7,12 +7,10 @@ jobtype uks rpa
 ! basis aug-cc-pQQZ
 ! etc.
 !
-basis cc-pVDZ
-
-
+basis aug-cc-pVTZ
 
 scf
-     xcfunc PBE
+     xcfunc HF
      thresh density 1.0E-6
      TensorHypercontraction
 end
