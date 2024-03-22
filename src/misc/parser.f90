@@ -3794,7 +3794,7 @@ contains
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_4_HALF_THC
                   case ("LEVEL-5-HALF-THC", "LEVEL-5-HALFTHC")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
-                  case ("DEFAULT")
+                  case ("DEFAULT", "JCTC2024")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_DEFAULT
                   case ("ALL")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
