@@ -946,10 +946,7 @@ contains
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2M) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2N) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2O) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2P) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
             end if
             DisplayedValues(RPA_ENERGY_DFT) = .true.
             DisplayedValues(RPA_ENERGY_HF) = .true.

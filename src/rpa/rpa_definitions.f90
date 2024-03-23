@@ -217,7 +217,7 @@ module rpa_definitions
       integer, parameter :: MP3_ENERGY_TOTAL        = 66
       
       integer, parameter :: RPA_CUMULANT_LEVEL_0 = 0          ! RPA
-      integer, parameter :: RPA_CUMULANT_LEVEL_DEFAULT = 10   ! RPA + 1b (SOSEX) + 2g + 2b + 2c
+      integer, parameter :: RPA_CUMULANT_LEVEL_DEFAULT = 10   ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2d
       integer, parameter :: RPA_CUMULANT_LEVEL_1_HALF_THC = 1 ! RPA + 1b (SOSEX) + 2g
       integer, parameter :: RPA_CUMULANT_LEVEL_1_FULL_THC = 2 ! RPA + 1b (SOSEX) + 2g
       integer, parameter :: RPA_CUMULANT_LEVEL_2_HALF_THC = 3 ! RPA + 1b (SOSEX) + 2g + 2m + 2n + 2o + 2p
