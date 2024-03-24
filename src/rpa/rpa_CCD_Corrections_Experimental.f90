@@ -16,22 +16,24 @@ contains
     subroutine amplitudes_aibj(Taibj, Dacij, NOcc, NVirt, NVecsT2, Uaim, Am)
 
 
-                integer, intent(in)                                         :: NOcc
-                integer, intent(in)                                         :: NVirt
-                integer, intent(in)                                         :: NVecsT2
-                real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)      :: Uaim
-                real(F64), dimension(:), intent(in)                         :: Am
+                integer, intent(in)                                             :: NOcc
+                integer, intent(in)                                             :: NVirt
+                integer, intent(in)                                             :: NVecsT2
+                real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)          :: Uaim
+                real(F64), dimension(:), intent(in)                             :: Am
+                             
+                real(F64), dimension(:, :, :), allocatable                      :: Uami
+                real(F64), dimension(:, :, :), allocatable                      :: AUmai               
+                real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent(out)     :: Taibj
+                real(F64), dimension(NVirt**2, NOcc, NOcc), intent(out)         :: Dacij
                 
-                integer :: a, i, j, mu                
-                real(F64), dimension(:, :, :), allocatable                  :: Uami
-                real(F64), dimension(:, :, :), allocatable                  :: AUmai               
-                real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent (out)              :: Taibj
-                real(F64), dimension(NVirt**2, NOcc, NOcc), intent (out)    :: Dacij
+                integer :: a, i, j, mu
                 
                 type(TClock) :: timer
                 call clock_start(timer)
                 
                 print *, "--------------------- Amplitudes calculation in progress --------------------"
+                
                 
             !------------------------- Amplitudes calculation intermediates -------------------------
             allocate(Uami(NVirt, NVecsT2, NOcc))
@@ -63,258 +65,193 @@ contains
     
     
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !--------------------------------------------------          Calculation of Vaibj integrals          --------------------------------------------------!
+    !------------------------------------------------          Calculation of ERIs intermediates          -------------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    subroutine ERI_aibj(Vaibj, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
+    subroutine ERI_intermediates(ZXXkij, ZYXkai, ZYYkab, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi)
 
 
-                integer, intent(in)                                         :: NOcc
-                integer, intent(in)                                         :: NVirt
-                integer, intent(in)                                         :: NGridTHC
-                real(F64), dimension(:, :), intent(in)                      :: Zgh
-                real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
-                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi
-                
-                integer :: a, i, j, g             
-                real(F64), dimension(:, :), allocatable                     :: ZYXgai                      
-                real(F64), dimension(:, :, :), allocatable                  :: YXgai      
-                real(F64), dimension(:, :, :), allocatable                  :: YXagi       
-                real(F64), dimension(:, :, :, :), intent(out)               :: Vaibj 
-
-                
-                type(TClock) :: timer
-                call clock_start(timer)
-                
-                print *, "------------------- ERIs (ai|bj) calculation in progress --------------------"
-                
-            !------------------------- ERIs type YX calculation intermediates -------------------------
-            allocate(YXgai(NGridTHC, NVirt, NOcc))
-            allocate(YXagi(NVirt, NGridTHC, NOcc))
-            YXgai = ZERO
-            YXagi = ZERO
-            do i = 1, NOcc    
-                do a = 1, NVirt
-                    !$omp parallel do private(g) default(shared)
-                    do g = 1, NGridTHC
-                        YXgai(g, a, i) = Yga(g, a) * Xgi(g, i)
-                    end do
-                    !$omp end parallel do
-                end do
-                YXagi(:, :, i) = transpose(YXgai(:, :, i))    
-            end do        
-            
-            !------------------------- ERIs type Vaibj(a, b, i, j) -----------------------
-            allocate(ZYXgai(NGridTHC, NVirt))
-            Vaibj = ZERO
-            do j = 1, NOcc
-                ZYXgai = ZERO
-                do i = 1, NOcc
-                    ZYXgai = matmul(Zgh, YXgai(:, :, j))
-                    Vaibj(:, :, i, j) = matmul(YXagi(:, :, i), ZYXgai) 
-                end do
-            end do
-            
-            
-            call msg("ERIs (ai|bj) computed in " // str(clock_readwall(timer),d=1) // " seconds")
-    end  subroutine ERI_aibj
-    
-    
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !-------------------------------------------          Calculation of Vijab, Vijkl, Vabcd integrals          -------------------------------------------!
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    subroutine ERI_ijab_ijkl(Vijab, Vijkl, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
-
-
-                integer, intent(in)                                         :: NOcc
-                integer, intent(in)                                         :: NVirt
-                integer, intent(in)                                         :: NGridTHC
-                real(F64), dimension(:, :), intent(in)                      :: Zgh
-                real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
-                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi
-                
-                integer :: i, j, a, b, g            
-                real(F64), dimension(:, :), allocatable                     :: ZXXgij
-                real(F64), dimension(:, :, :), allocatable                  :: ZYYgab                      
-                real(F64), dimension(:, :, :), allocatable                  :: XXgij
-                real(F64), dimension(:, :, :), allocatable                  :: XXigj
-                real(F64), dimension(:, :, :), allocatable                  :: YYgab  
-                real(F64), dimension(:, :, :), allocatable                  :: YYagb    
-                real(F64), dimension(:, :, :, :), allocatable               :: Wijab
-                real(F64), dimension(:, :, :, :), intent(out)               :: Vijab
-                real(F64), dimension(:, :, :, :), intent(out)               :: Vijkl
-
-                
-                type(TClock) :: timer
-                call clock_start(timer)
-                
-                print *, "----------- ERIs (ij|ab) (ij|kl) calculation in progress ------------"
-                
-            allocate(XXgij(NGridTHC, NOcc, NOcc))
-            allocate(XXigj(NOcc, NGridTHC, NOcc))
-            allocate(YYgab(NGridTHC, NVirt, NVirt))
-            allocate(YYagb(NVirt, NGridTHC, NVirt))
-            allocate(ZXXgij(NGridTHC, NOcc))
-            allocate(ZYYgab(NGridTHC, NVirt, NVirt))
-            allocate(Wijab(NOcc, NVirt, NVirt, NOcc))
-            
-            !------------------------- ERIs type XX calculation intermediates -------------------------
-            XXgij = ZERO
-            XXigj = ZERO
-            do j = 1, NOcc                                
-                do i = 1, NOcc
-                    !$omp parallel do private(g) default(shared)
-                    do g = 1, NGridTHC
-                        XXgij(g, i, j) = Xgi(g, i) * Xgi(g, j)
-                    end do
-                    !$omp end parallel do
-                end do
-                XXigj(:, :, j) = transpose(XXgij(:, :, j))    
-            end do        
-            
-            !------------------------- ERIs type YY calculation intermediates -------------------------
-            YYgab = ZERO
-            YYagb = ZERO
-            do b = 1, NVirt                                
-                do a = 1, NVirt
-                    !$omp parallel do private(g) default(shared)
-                    do g = 1, NGridTHC
-                        YYgab(g, a, b) = Yga(g, a) * Yga(g, b)
-                    end do
-                    !$omp end parallel do
-                end do
-                YYagb(:, :, b) = transpose(YYgab(:, :, b))    
-            end do
-            
-            !------------------------- ERIs type ZYY calculation intermediate -------------------------
-            ZYYgab = ZERO
-            !$omp parallel do private(b) default(shared)
-            do b = 1, NVirt                                
-                ZYYgab(:, :, b) = matmul(Zgh, YYgab(:, :, b))
-            end do
-            !$omp end parallel do
-            
-            !------------------------- ERIs type Vijkl(i, k, j, l) -----------------------
-            Vijkl = ZERO
-            do j = 1, NOcc
-                ZXXgij = ZERO
-                do i = 1, NOcc
-                    ZXXgij = matmul(Zgh, XXgij(:, :, j))
-                    Vijkl(:, :, i, j) = matmul(XXigj(:, :, i), ZXXgij) 
-                end do
-            end do
-            
-            !------------------------- ERIs type Vijab(a, b, i, j) -----------------------
-            Wijab = ZERO
-            Vijab = ZERO
-            !$omp parallel do collapse(2) private(j, b) default(shared)
-            do j = 1, NOcc
-                do b = 1, NVirt
-                    Wijab(:, :, b, j) = matmul(XXigj(:, :, j), ZYYgab(:, :, b)) 
-                end do
-            end do
-            !$omp end parallel do
-            
-            !$omp parallel do collapse(2) private(i, a) default(shared)
-            do i = 1, NOcc
-                do a = 1, NVirt
-                    Vijab(:, a, :, i) = transpose(Wijab(:, a, :, i))
-                end do
-            end do
-            !$omp end parallel do
-            
-            
-            call msg("ERIs (ij|ab) (ij|kl) computed in " // str(clock_readwall(timer),d=1) // " seconds")
-      end  subroutine ERI_ijab_ijkl
-
-
-
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !---------------------------------------------------          Calculation of Vabcd integral          --------------------------------------------------!
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-      subroutine ERI_abcd(Vabcd, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi)
-
-
-                real(F64), dimension(:, :, :, :), intent(out)               :: Vabcd
                 integer, intent(in)                                         :: NOcc
                 integer, intent(in)                                         :: NVirt
                 integer, intent(in)                                         :: NGridTHC
                 integer, intent(in)                                         :: NCholesky
                 real(F64), dimension(:, :), intent(in)                      :: Zgk
                 real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
-                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi                
-
-                real(F64), dimension(:), allocatable :: YYg
-                real(F64), dimension(:, :, :), allocatable :: ZYYkab
-                real(F64), dimension(:), allocatable :: VabcdBlock
-                integer :: a, b
-                integer :: ab0, ab1, cd0, cd1, Nab, Ncd
-                integer :: k, l, NBlocks
-                integer, parameter :: BlockDim = 100
+                real(F64), dimension(NGridTHC, NOcc), intent(in)            :: Xgi
+                
+                real(F64), dimension(:), allocatable                        :: XXg
+                real(F64), dimension(:), allocatable                        :: YXg
+                real(F64), dimension(:), allocatable                        :: YYg
+                real(F64), dimension(NCholesky, NOcc, NOcc), intent(out)    :: ZXXkij 
+                real(F64), dimension(NCholesky, NVirt, NOcc), intent(out)   :: ZYXkai   
+                real(F64), dimension(NCholesky, NVirt, NVirt), intent(out)  :: ZYYkab        
+                
+                integer :: i, j, a, b         
                 
                 type(TClock) :: timer
                 call clock_start(timer)
                 
-                print *, "----------- ERIs (ab|cd) calculation in progress ------------"
-
-                allocate(ZYYkab(NCholesky, NVirt, NVirt))
-                !$omp parallel private(YYg) &
-                !$omp private(a, b)
-                allocate(YYg(NGridTHC)) ! private YYk array for each thread
-                !$omp do collapse(2)
-                do b = 1, NVirt                                
-                      do a = 1, NVirt
-                            YYg(:) = Yga(:, a) * Yga(:, b) ! vector operation
-                            call real_ATv(ZYYkab(:, a, b), Zgk, YYg) ! matrix-vector multiplication w = A**T*v
-                      end do
-                end do
-                !$omp end do
-                !$omp end parallel
-
-                allocate(VabcdBlock(BlockDim**2)) ! ------------ blok zaalokowany jako jednowymiarowy pasek ----------
-                NBlocks = NVirt**2 / BlockDim
-                if (modulo(NVirt**2, BlockDim) > 0) NBlocks = NBlocks + 1 ! ------ blok na krawędzi może mieć wymiar < BlockDim
-                do l = 1, NBlocks ! ----- pętla po blokach macierzy V; granice bloku to (ab0:ab1, cd0:cd1), wymiar to Nab x Ncd -----
-                      do k = 1, NBlocks
-                            cd0 = 1 + BlockDim * (l - 1)
-                            cd1 = min(NVirt**2, BlockDim * l)
-                            ab0 = 1 + BlockDim * (k - 1) 
-                            ab1 = min(NVirt**2, BlockDim * k)
-                            Nab = ab1 - ab0 + 1
-                            Ncd = cd1 - cd0 + 1
-                            call ZYY_ZYY_Block(Vabcd, VabcdBlock(1:Nab*Ncd), ZYYkab, &
-                                  ab0, ab1, cd0, cd1, NVirt)
-                      end do
-                end do
-            call msg("ERIs (ab|cd) computed in " // str(clock_readwall(timer),d=1) // " seconds")
-          contains
-
-                subroutine ZYY_ZYY_Block(Vacbd, VabcdBlock, ZYYkab, ab0, ab1, cd0, cd1, NVirt)
-                      integer, intent(in)                                    :: ab0, ab1, cd0, cd1
-                      real(F64), dimension(:, :, :, :), intent(inout)        :: Vacbd
-                      real(F64), dimension(ab0:ab1, cd0:cd1), intent(out)    :: VabcdBlock
-                      real(F64), dimension(NCholesky, NVirt**2), intent(in)  :: ZYYkab
-                      integer, intent(in)                                    :: NVirt
-                      
-                      integer :: ab, cd, a, b, c, d
-                      
-                      call real_aTb(VabcdBlock, ZYYkab(:, ab0:ab1), ZYYkab(:, cd0:cd1)) ! sklejone indeksy ab, cd
-                      do cd = cd0, cd1
-                            do ab = ab0, ab1
-                                  !
-                                  ! ab = a + NVirt * (b - 1)
-                                  ! cd = c + NVirt * (d - 1)
-                                  !
-                                  b = (ab - 1) / NVirt + 1
-                                  a = ab - NVirt * (b - 1)
-                                  d = (cd - 1) / NVirt + 1
-                                  c = cd - NVirt * (d - 1)
-                                  Vacbd(a, c, b, d) = VabcdBlock(ab, cd)
-                            end do
-                      end do
-                end subroutine ZYY_ZYY_BLOCK
-      end subroutine ERI_abcd
-
+                print *, "---------------- ERIs intermediates calculation in progress -----------------"
+                
+                
+!            !$omp parallel do collapse(2) private(d, b) default(shared)
+!            !$omp end parallel do
+                
+            !------------------------- ZXXkij(k, i, j) calculation procedure -------------------------
             
+            !$omp parallel private(XXg) &
+            !$omp private(i, j)
+            allocate(XXg(NGridTHC))
+            !$omp do collapse(2)
+            do i = 1, NOcc                               
+                  do j = 1, NOcc
+                        XXg(:) = Xgi(:, i) * Xgi(:, j)
+                        call real_ATv(ZXXkij(:, i, j), Zgk, XXg)
+                  end do
+            end do
+            !$omp end do
+            !$omp end parallel
+                
+                
+            !------------------------- ZYXkai(k, a, i) calculation procedure -------------------------
+            
+            !$omp parallel private(YXg) &
+            !$omp private(a, i)
+            allocate(YXg(NGridTHC))
+            !$omp do collapse(2)
+            do a = 1, NVirt                                
+                  do i = 1, NOcc
+                        YXg(:) = Yga(:, a) * Xgi(:, i)
+                        call real_ATv(ZYXkai(:, a, i), Zgk, YXg)
+                  end do
+            end do
+            !$omp end do
+            !$omp end parallel
+                
+                
+            !------------------------- ZYYkab(k, a, b) calculation procedure -------------------------
+            
+            !$omp parallel private(YYg) &
+            !$omp private(a, b)
+            allocate(YYg(NGridTHC))
+            !$omp do collapse(2)
+            do a = 1, NVirt                                
+                  do b = 1, NVirt
+                        YYg(:) = Yga(:, a) * Yga(:, b)
+                        call real_ATv(ZYYkab(:, a, b), Zgk, YYg)
+                  end do
+            end do
+            !$omp end do
+            !$omp end parallel
+                
+            
+            call msg("ERIs intermediates computed in " // str(clock_readwall(timer),d=1) // " seconds")
+    end  subroutine ERI_intermediates
+    
+    
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    !--------------------------------------------------          Calculation of Vaibj integrals          --------------------------------------------------!
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    subroutine ERI_aibj(Vaibj, NOcc, NVirt, NCholesky, ZYXkai)
+
+
+                integer, intent(in)                                         :: NOcc
+                integer, intent(in)                                         :: NVirt
+                integer, intent(in)                                         :: NCholesky
+                real(F64), dimension(NCholesky, NVirt, NOcc), intent(in)    :: ZYXkai
+                   
+                real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent(out) :: Vaibj 
+                
+                integer :: i, j
+                
+                type(TClock) :: timer
+                call clock_start(timer)
+                
+                print *, "------------------- ERIs (ai|bj) calculation in progress --------------------"
+                
+                
+            !------------------------- ERIs type Vaibj(a, b, i, j) -----------------------
+            
+            !$omp parallel private(i, j)
+            !$omp do collapse(2)
+            do j = 1, NOcc
+                do i = 1, NOcc
+                    call real_aTb(Vaibj(:, :, i, j), ZYXkai(:, :, i), ZYXkai(:, :, j))      
+                end do
+            end do
+            !$omp end do
+            !$omp end parallel
+            
+            call msg("ERIs (ai|bj) computed in " // str(clock_readwall(timer),d=1) // " seconds")
+    end  subroutine ERI_aibj
+    
+    
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    !--------------------------------------------------          Calculation of Vijkl integrals          --------------------------------------------------!
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    subroutine ERI_ijkl(Vijkl, NOcc, NVirt, NCholesky, ZXXkij)
+
+
+                integer, intent(in)                                         :: NOcc
+                integer, intent(in)                                         :: NVirt
+                integer, intent(in)                                         :: NCholesky
+                real(F64), dimension(NCholesky, NOcc, NOcc), intent(in)     :: ZXXkij 
+                  
+                real(F64), dimension(NOcc, NOcc, NOcc, NOcc), intent(out)   :: Vijkl
+                
+                integer :: i, j, l    
+                
+                type(TClock) :: timer
+                call clock_start(timer)
+                
+                print *, "------------------- ERIs (ij|kl) calculation in progress --------------------"
+                
+                
+            !------------------------- ERIs type Vijkl(i, k, j, l) -----------------------
+            
+            !$omp parallel private(j, l)
+            !$omp do collapse(2)
+            do l = 1, NOcc
+                do j = 1, NOcc
+                    call real_aTb(Vijkl(:, :, j, l), ZXXkij(:, :, j), ZXXkij(:, :, l))      
+                end do
+            end do
+            !$omp end do
+            !$omp end parallel
+            
+            
+            call msg("ERIs (ij|kl) computed in " // str(clock_readwall(timer),d=1) // " seconds")
+      end  subroutine ERI_ijkl
+
+
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    !--------------------------------------------------          Calculation of Vijab integrals          --------------------------------------------------!
+    !------------------------------------------------------------------------------------------------------------------------------------------------------!
+    subroutine ERI_ijab(Vijab, NOcc, NVirt, NCholesky, ZXXkij, ZYYkab)
+
+
+                integer, intent(in)                                         :: NOcc
+                integer, intent(in)                                         :: NVirt
+                integer, intent(in)                                         :: NCholesky
+                real(F64), dimension(NCholesky, NOcc**2), intent(in)        :: ZXXkij 
+                real(F64), dimension(NCholesky, NVirt**2), intent(in)       :: ZYYkab  
+                  
+                real(F64), dimension(NVirt**2, NOcc**2), intent(out)        :: Vijab
+                
+                type(TClock) :: timer
+                call clock_start(timer)
+                
+                print *, "------------------- ERIs (ij|ab) calculation in progress --------------------"
+                
+                
+            !------------------------- ERIs type Vijab(a, b, i, j) -----------------------
+            
+            call real_aTb(Vijab, ZYYkab, ZXXkij)      
+            
+            
+            call msg("ERIs (ij|ab) computed in " // str(clock_readwall(timer),d=1) // " seconds")
+      end  subroutine ERI_ijab
+
+
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------          Calculation of Ec1b, Ec2b, Ec2c, Ec2d corrections          -----------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
@@ -325,16 +262,18 @@ contains
                 integer, intent(in)                                         :: NVirt
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
-                real(F64), dimension(:, :, :, :), intent(in)                :: Vaibj
+                real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent(in)  :: Vaibj 
                 
-                integer :: i, j, k, a, c
                 real(F64) :: Ec1b, Ec2b, Ec2c, Ec2d
                 real(F64), dimension(:, :), allocatable                     :: VTac
+                
+                integer :: i, j, k, a, c
                 
                 type(TClock) :: timer
                 call clock_start(timer)
                 
                 print *, "-------------- Ec1b, Ec2b, Ec2c, Ec2d calculation in progress ---------------"
+                
                 
             !------------------------- CCD Ec1b main calculation -------------------------
             Ec1b = ZERO
@@ -386,16 +325,18 @@ contains
                 integer, intent(in)                                         :: NVirt
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
-                real(F64), dimension(:, :, :, :), intent(in)                :: Vijab
+                real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent(in)  :: Vijab
                 
-                integer :: i, j, k, c
                 real(F64) :: Ec2g, Ec2h, Ec2i, Ec2j
                 real(F64), dimension(:, :), allocatable                     :: VTbc
+                
+                integer :: i, j, k, c
                 
                 type(TClock) :: timer
                 call clock_start(timer)
                 
                 print *, "-------------- Ec2g, Ec2h, Ec2i, Ec2j calculation in progress ---------------"
+                
                 
             !------------------------- CCD Ec2g, Ec2h, Ec2i, Ec2j main calculation -------------------------
             allocate(VTbc(NVirt, NVirt))
@@ -451,7 +392,7 @@ contains
                 integer, intent(in)                                         :: NVirt
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
-                real(F64), dimension(:, :, :, :), intent(in)                :: Vijkl
+                real(F64), dimension(NOcc, NOcc, NOcc, NOcc), intent(in)    :: Vijkl
                 
                 integer :: i, j, k, l, b
                 real(F64) :: Ec2e, Ec2f
@@ -460,6 +401,7 @@ contains
                 call clock_start(timer)
                 
                 print *, "-------------------- Ec2e, Ec2f calculation in progress ---------------------"
+                
                 
             !------------------------- CCD Ec2e, Ec2f main calculation -------------------------
             Ec2e = ZERO
@@ -488,126 +430,55 @@ contains
     
     
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !----------------------------------------------          Calculation of Ec2k, Ec2l corrections          -----------------------------------------------!
+    !----------------------------------------------          Calculation of Ec2k, Ec2k corrections          -----------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    subroutine rpa_Ec2k_corection(Energy, NOcc, NVirt, Taibj, Vabcd)
-
-
-                integer, intent(in)                                         :: NOcc
-                integer, intent(in)                                         :: NVirt
-                real(F64), dimension(:), intent(inout)                      :: Energy
-                real(F64), dimension(:, :, :, :), intent(in)                :: Taibj
-                real(F64), dimension(:, :, :, :), intent(in)                :: Vabcd
-                
-                integer :: i, j, b, c, d
-                real(F64) :: VT, Ec2k, Ec2l
-                
-                type(TClock) :: timer
-                call clock_start(timer)
-                
-                print *, "-------------------- Ec2k, Ec2l calculation in progress ---------------------"
-                
-            !------------------------- CCD Ec2k, Ec2l main calculation -------------------------
-            Ec2k = ZERO
-            Ec2l = ZERO
-            do i = 1, NOcc
-                do j = 1, NOcc
-                    do d = 1, NVirt
-                        do b = 1, NVirt
-                        VT = ZERO
-                            do c = 1, NVirt
-                            VT = VT + DOT_PRODUCT(Vabcd(:, c, b, d), Taibj(:, c, i, j))
-                            end do
-                            Ec2k = Ec2k + Taibj(b, d, i, j) * VT
-                            Ec2l = Ec2l + Taibj(b, d, j, i) * VT
-                        end do
-                    end do
-                end do
-            end do
-            
-            
-            Ec2k = TWO * Ec2k
-            Ec2l = -ONE * Ec2l
-            Energy(RPA_ENERGY_CUMULANT_2k) = Ec2k
-            Energy(RPA_ENERGY_CUMULANT_2l) = Ec2l
-            
-!            !$omp parallel do collapse(2) private(d, b) default(shared)
-!            !$omp end parallel do
-            
-            call msg("Ec2k, Ec2l corrections computed in " // str(clock_readwall(timer),d=1) // " seconds")
-    end  subroutine rpa_Ec2k_corection
-    
-    
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    !----------------------------------------------          Calculation of Ec2m, Ec2n corrections          -----------------------------------------------!
-    !------------------------------------------------------------------------------------------------------------------------------------------------------!
-    subroutine rpa_Ec2m_corection(Energy, NOcc, NVirt, Taibj, Dacij, NGridTHC, NCholesky, Zgk, Yga)
+    subroutine rpa_Ec2k_corection(Energy, NOcc, NVirt, NGridTHC, NCholesky, Taibj, Dacij, ZYYkab)
 
 
                 integer, intent(in)                                         :: NOcc
                 integer, intent(in)                                         :: NVirt
                 integer, intent(in)                                         :: NGridTHC
                 integer, intent(in)                                         :: NCholesky
-                real(F64), dimension(:, :), intent(in)                      :: Zgk
-                real(F64), dimension(NGridTHC, NVirt), intent(in)           :: Yga
                 real(F64), dimension(NVirt, NVirt, NOcc, NOcc), intent(in)  :: Taibj
                 real(F64), dimension(NVirt**2, NOcc, NOcc), intent(in)      :: Dacij
+                real(F64), dimension(NCholesky, NVirt, NVirt), intent(in)   :: ZYYkab
                 real(F64), dimension(:), intent(inout)                      :: Energy
                 
-                real(F64), dimension(:), allocatable                        :: YYg
-                real(F64), dimension(:, :, :), allocatable                  :: ZYYkab
                 real(F64), dimension(:), allocatable                        :: Vac_bd
                 
-                integer :: b, d, i, j, bd, p, q
-                real(F64) :: Ec2m, Ec2m_od, Ec2n, Ec2n_od, V_T, V_T_T_ij, V_T_T_ji
+                integer :: i, j, b, d, bd
+                real(F64) :: Ec2k, Ec2k_d, Ec2l, Ec2l_d, V_T, V_T_T_ij, V_T_T_ji
                 
                 type(TClock) :: timer
                 call clock_start(timer)
                 
-                print *, "-------------------- Ec2m, Ec2n calculation in progress ---------------------"
+                print *, "-------------------- Ec2k, Ec2l calculation in progress ---------------------"
                 
-            !------------------------- CCD Ec2m, Ec2n main calculation -------------------------
+                
+            !------------------------- CCD Ec2k, Ec2l main calculation -------------------------
             
-!            !$omp parallel do collapse(2) private(d, b) default(shared)
-!            !$omp end parallel do
-
-            allocate(ZYYkab(NCholesky, NVirt, NVirt))
-            !$omp parallel private(YYg) &
-            !$omp private(p, q)
-            allocate(YYg(NGridTHC)) ! private YYk array for each thread
-            !$omp do collapse(2)
-            do q = 1, NVirt                                
-                  do p = 1, NVirt
-                        YYg(:) = Yga(:, p) * Yga(:, q) ! vector operation
-                        call real_ATv(ZYYkab(:, p, q), Zgk, YYg) ! matrix-vector multiplication w = A**T*v
-                  end do
-            end do
-            !$omp end do
-            !$omp end parallel
-
-
             allocate(Vac_bd(NVirt**2))
             
-            Ec2m = ZERO
-            Ec2m_od = ZERO
-            Ec2n = ZERO
-            Ec2n_od = ZERO
+            Ec2k = ZERO
+            Ec2k_d = ZERO
+            Ec2l = ZERO
+            Ec2l_d = ZERO
             do bd = 1, NVirt * (NVirt + 1)/2
             call pq2p_ge_q(bd, NVirt, b, d)
             call Vac_bd_sub(Vac_bd, NVirt, b, d, ZYYkab)
             !$omp parallel do collapse(2) &
             !$omp private(i, j, V_T, V_T_T_ij, V_T_T_ji) &
-            !$omp reduction(+:Ec2m, Ec2m_od, Ec2n, Ec2n_od)
+            !$omp reduction(+:Ec2k, Ec2k_d, Ec2l, Ec2l_d)
                 do i = 1, NOcc
                     do j = 1, NOcc
                         call real_vw_x(V_T, Vac_bd, Dacij(:, i, j), NVirt**2)
                         V_T_T_ij = V_T * Taibj(b, d, i, j)
                         V_T_T_ji = V_T * Taibj(b, d, j, i)
-                        Ec2m = Ec2m + V_T_T_ij
-                        Ec2n = Ec2n + V_T_T_ji
+                        Ec2k = Ec2k + V_T_T_ij
+                        Ec2l = Ec2l + V_T_T_ji
                             if (b == d) then
-                            Ec2m_od = Ec2m_od + V_T_T_ij
-                            Ec2n_od = Ec2n_od + V_T_T_ji
+                            Ec2k_d = Ec2k_d + V_T_T_ij
+                            Ec2l_d = Ec2l_d + V_T_T_ji
                             endif
                     end do
                 end do
@@ -615,13 +486,13 @@ contains
             end do
             
             
-            Ec2m = TWO * (TWO * Ec2m - ONE * Ec2m_od)
-            Ec2n = -ONE * (TWO * Ec2n - ONE * Ec2n_od)
-            Energy(RPA_ENERGY_CUMULANT_2m) = Ec2m
-            Energy(RPA_ENERGY_CUMULANT_2n) = Ec2n
+            Ec2k = TWO * (TWO * Ec2k - ONE * Ec2k_d)
+            Ec2l = -ONE * (TWO * Ec2l - ONE * Ec2l_d)
+            Energy(RPA_ENERGY_CUMULANT_2k) = Ec2k
+            Energy(RPA_ENERGY_CUMULANT_2l) = Ec2l
             
             
-            call msg("Ec2m, Ec2n corrections computed in " // str(clock_readwall(timer),d=1) // " seconds")
+            call msg("Ec2k, Ec2l corrections computed in " // str(clock_readwall(timer),d=1) // " seconds")
             
             contains
             subroutine Vac_bd_sub(Vac_bd, NVirt, b, d, ZYYkab)
@@ -635,7 +506,7 @@ contains
             end subroutine Vac_bd_sub
 
 
-    end  subroutine rpa_Ec2m_corection
+    end  subroutine rpa_Ec2k_corection
     
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------------          Beyond RPA corrections main procedure          -----------------------------------------------!
@@ -659,37 +530,60 @@ contains
                 real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)      :: Uaim
                 real(F64), dimension(:), intent(in)                         :: Am
             
+
                 real(F64), dimension(:, :, :, :), allocatable               :: Taibj
+                real(F64), dimension(:, :, :), allocatable                  :: Dacij
+                real(F64), dimension(:, :, :), allocatable                  :: ZXXkij 
+                real(F64), dimension(:, :, :), allocatable                  :: ZYXkai   
+                real(F64), dimension(:, :, :), allocatable                  :: ZYYkab 
                 real(F64), dimension(:, :, :, :), allocatable               :: Vaibj
                 real(F64), dimension(:, :, :, :), allocatable               :: Vijab
                 real(F64), dimension(:, :, :, :), allocatable               :: Vijkl
-                real(F64), dimension(:, :, :, :), allocatable               :: Vabcd
-                real(F64), dimension(:, :, :), allocatable                  :: Dacij
+
             
             
-            
+                        print *, "NOcc      =", NOcc
+                        print *, "NVirt     =", NVirt
+                        print *, "NVecsT2   =", NVecsT2
+                        print *, "NGridTHC  =", NGridTHC
+                        print *, "NCholesky =", NCholesky
+
 !                  !$omp parallel do private(h) default(shared)
 !                  !$omp end parallel do
 
-            
+            ! T2 amplitudes calculation block
             allocate(Taibj(NVirt, NVirt, NOcc, NOcc))
             allocate(Dacij(NVirt**2, NOcc, NOcc))
-            allocate(Vaibj(NVirt, NVirt, NOcc, NOcc))
             call amplitudes_aibj(Taibj, Dacij, NOcc, NVirt, NVecsT2, Uaim, Am)
-            call ERI_aibj(Vaibj, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)
+            
+            ! ERIs intermediates calculation block
+            allocate(ZXXkij(NCholesky, NOcc, NOcc))
+            allocate(ZYXkai(NCholesky, NVirt, NOcc))
+            allocate(ZYYkab(NCholesky, NVirt, NVirt))
+            call ERI_intermediates(ZXXkij, ZYXkai, ZYYkab, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi) 
+            
+            ! Vaibj based corrections calculation block
+            allocate(Vaibj(NVirt, NVirt, NOcc, NOcc))
+            call ERI_aibj(Vaibj, NOcc, NVirt, NCholesky, ZYXkai)
+            deallocate(ZYXkai)
             call rpa_Ec2b_corection(Energy, NOcc, NVirt, Taibj, Vaibj)
             deallocate(Vaibj)
-            allocate(Vijab(NVirt, NVirt, NOcc, NOcc))
+            
+            ! Vijkl based corrections calculation block
             allocate(Vijkl(NOcc, NOcc, NOcc, NOcc))
-            call ERI_ijab_ijkl(Vijab, Vijkl, NOcc, NVirt, NGridTHC, Zgh, Yga, Xgi)     
-            call rpa_Ec2g_corection(Energy, NOcc, NVirt, Taibj, Vijab)
+            call ERI_ijkl(Vijkl, NOcc, NVirt, NCholesky, ZXXkij)
             call rpa_Ec2e_corection(Energy, NOcc, NVirt, Taibj, Vijkl)
             deallocate(Vijkl)
+            
+            ! Vijab based corrections calculation block
+            allocate(Vijab(NVirt, NVirt, NOcc, NOcc))
+            call ERI_ijab(Vijab, NOcc, NVirt, NCholesky, ZXXkij, ZYYkab)
+            deallocate(ZXXkij)
+            call rpa_Ec2g_corection(Energy, NOcc, NVirt, Taibj, Vijab)
             deallocate(Vijab)
-            allocate(Vabcd(NVirt, NVirt, NVirt, NVirt))
-            call ERI_abcd(Vabcd, NOcc, NVirt, NGridTHC, NCholesky, Zgk, Yga, Xgi)
-            call rpa_Ec2k_corection(Energy, NOcc, NVirt, Taibj, Vabcd)
-            call rpa_Ec2m_corection(Energy, NOcc, NVirt, Taibj, Dacij, NGridTHC, NCholesky, Zgk, Yga)
+            
+            ! Vabcd based corrections calculation block
+            call rpa_Ec2k_corection(Energy, NOcc, NVirt, NGridTHC, NCholesky, Taibj, Dacij, ZYYkab)    
 
             ! ----------- odkomentować 
             ! block
