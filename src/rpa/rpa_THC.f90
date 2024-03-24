@@ -146,20 +146,21 @@ contains
             call msg("2. Single excitations energy")
             call msg("3. Direct ring terms")
             call msg("4. O(N**4) second-order exchange (SOSEX)")
-            call msg("5. O(N**4) third-order exchange (2b+2c)")
+            call msg("5. O(N**4) third-order exchange (2b+2c+2d)")
             call msg("6. O(N**4) non-ring CCD (2g)")
             call midrule()
             !            
             call msg("Mean field")
             call msg(lfield("", 15) // "GMBPT hamiltonian of Bartlett et al.")
             call msg(lfield("", 15) // "J. Chem. Phys. 122, 034104 (2005); doi: 10.1063/1.1809605")
-            call msg(lfield("", 15) // "F(Lambda)=hHF(OO+VV)+Lambda*hHF(VO+OV)")
+            call msg(lfield("", 15) // "h(Lambda)=hHF(OO+VV)+Lambda*hHF(VO+OV)")
             !
             call msg("T2 amplitudes")
             call msg(lfield("", 15) // "direct ring approximation")
             call msg(lfield("", 15) // "cutoff for linear dependencies: " // str(SmallEigenvalsCutoffT2,d=1))
+            call msg(lfield("", 15) // "cutoff for eigenvalues: " // str(T2CutoffThresh,d=1))
             call msg(lfield("", 15) // "diagonalization with " // str(GuessNVecsT2) // " random guess vectors")
-            call msg(lfield("", 15) // "Chi(u) built from semicanonical orbitals of F(Lambda)")
+            call msg(lfield("", 15) // "Chi(u) built from the eigenvectors of hHF(OO+VV)")
             call midrule()
             
             EcRPA = ZERO

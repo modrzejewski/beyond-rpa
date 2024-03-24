@@ -490,7 +490,6 @@ contains
             NVirt = size(Yga, dim=2)
             allocate(YUim(NOcc, NVecsT2))
             allocate(XUam(NVirt, NVecsT2))
-            allocate(YUXUai(NVirt, NOcc))
             allocate(YUXUaig(NVirt, NOcc, NGridTHC))
             allocate(Xig(NOcc, NGridTHC))
             allocate(Yag(NVirt, NGridTHC))
