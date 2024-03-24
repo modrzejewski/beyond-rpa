@@ -302,7 +302,7 @@ module rpa_definitions
             !
             ! Type of vectors used for the effective dielectric matrix
             !
-            integer :: RWRBasisType = RPA_BASIS_RANDOM
+            integer :: RWRBasisType = RPA_BASIS_EIGEN
             !
             ! Maximum size of a block of the matrix W(pq,rs). W is partitioned into blocks,
             ! which are then passed to the matrix multiplication subroutine to compute
