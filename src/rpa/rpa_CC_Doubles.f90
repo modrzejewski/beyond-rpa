@@ -673,8 +673,9 @@ contains
 
             real(F64), dimension(:), allocatable   :: Anew
             integer :: NVecsT2New
-            real(F64) :: max_A, SumA
+            real(F64) :: SumA
             real(F64) :: K
+            real(F64) :: Ratio
             logical, parameter :: PrintEigenvalues = .false.
             !
             ! Where possible, the matrices will be computed as independent batches
@@ -866,7 +867,6 @@ contains
                         else
                               SumA = ZERO
                         end if
-
                         if (abs(SumA) > K) then
                               Anew(i) = A(i)
                               call msg(str(i) // "   " // str(Anew(i)))
@@ -889,11 +889,13 @@ contains
             end if
             if (NVecsT2New < NVecsT2) then
                   call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
-                  call msg("full set of eigenvecs:    " // str(NVecsT2))
-                  call msg("reduced set of eigenvecs: " // str(NVecsT2New))
+                  call msg(lfield("full set of eigenvecs", 25) // str(NVecsT2))
+                  call msg(lfield("final set of eigenvecs", 25) // str(NVecsT2New))
             else
                   call msg("no eigenvectors removed")
             end if
+            Ratio = real(NVecsT2New,F64)/(NOcc+NVirt)
+            call msg(lfield("NVecsT2/(NOcc+NVirt)", 25) // str(Ratio,d=1))
             if (PrintEigenvalues) then
                   call blankline()
                   call msg("Eigenvalues of T2", underline=.true.)
