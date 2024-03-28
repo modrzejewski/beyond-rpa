@@ -675,7 +675,7 @@ contains
             integer :: NVecsT2New
             real(F64) :: max_A, SumA
             real(F64) :: K
-            logical, parameter :: PrintEigenvalues = .false.
+            logical, parameter :: PrintEigenvalues = .true.
             !
             ! Where possible, the matrices will be computed as independent batches
             ! to save memory. The last batch will have dimension 0 < Nq < MaxBatchDim.
@@ -806,8 +806,8 @@ contains
             !           RPA_T2_CUTOFF_EIG                   K = T2CutoffThresh; reject mu if Abs(A(mu)) <= K
             !           RPA_T2_CUTOFF_EIG_DIV_MAXEIG        K = T2CutoffThresh * Maxval(Abs(A)); reject mu if Abs(A(mu)) <= K
             !           RPA_T2_CUTOFF_EIG_DIV_NELECTRON     K = T2CutoffThresh / (NOcc * 2); reject mu if Abs(A(mu)) <= K
-            !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) <= K
-            !                                                   reject mu if Abs(A(mu)) < K
+            !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) < TCutoffThresh
+            !                                               reject mu if Abs(A(mu)) <= K
             !
             !           After computing K for the supermolecule, set the common threshold
             !
@@ -840,8 +840,21 @@ contains
                         K = T2CutoffThresh / (NOcc * 2)
                         call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=1))
                   case (RPA_T2_CUTOFF_SUM_REJECTED)
-                        K = T2CutoffThresh
-                        call msg("remove mu if Sum(mu'=mu,NVecsT2) Abs(a(mu)) <= T2CutoffThresh")
+                        do i = 1, NVecsT2
+                              if (i < NVecsT2) then
+                                    SumA = sum(A(i+1:NVecsT2))
+                                    if (abs(SumA) < T2CutoffThresh) then
+                                          K = Abs(A(i+1))
+                                          exit
+                                    end if
+                              else
+                                    SumA = ZERO
+                                    K = ZERO
+                              end if
+                        end do
+                        call msg("remove mu if Abs(Sum(a(mu:NVecsT2))) < T2CutoffThresh = " // str(T2CutoffThresh,d=1))
+                        call msg("equivalent condition:")
+                        call msg("remove mu if Abs(a(mu)) <= " // str(K, d=1))
                   case default
                         call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
                         error stop
@@ -859,40 +872,25 @@ contains
             ! number if any eigenvectors are rejected
             !
             NVecsT2New = NVecsT2
-            if (T2CutoffType == RPA_T2_CUTOFF_SUM_REJECTED) then
-                  do i = 1, NVecsT2
-                        if (i < NVecsT2) then
-                              SumA = sum(A(i+1:NVecsT2))
-                        else
-                              SumA = ZERO
-                        end if
-
-                        if (abs(SumA) > K) then
-                              Anew(i) = A(i)
-                              call msg(str(i) // "   " // str(Anew(i)))
-                        else
-                              call msg(str(i) //  "   The sum of eigen values is too smal   "// str(SumA))
-                              NVecsT2New = i - 1
-                              call msg("New vectror dimension is:    " // str(NVecsT2New))
-                              exit
-                        end if
-                  end do
+            do i = 1, NVecsT2
+                  if (abs(A(i)) > K) then
+                        Anew(i) = A(i)
+                  else
+                        NVecsT2New = i - 1
+                        exit
+                  end if
+            end do
+            if (NVecsT2New > 0) then
+                  if (NVecsT2New < NVecsT2) then
+                        call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
+                        call msg("full set of eigenvecs:    " // str(NVecsT2))
+                        call msg("reduced set of eigenvecs: " // str(NVecsT2New))
+                  else
+                        call msg("no eigenvectors removed")
+                  end if
             else
-                  do i = 1, NVecsT2
-                        if (abs(A(i)) > K) then
-                              Anew(i) = A(i)
-                        else
-                              NVecsT2New = i - 1
-                              exit
-                        end if
-                  end do
-            end if
-            if (NVecsT2New < NVecsT2) then
-                  call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
-                  call msg("full set of eigenvecs:    " // str(NVecsT2))
-                  call msg("reduced set of eigenvecs: " // str(NVecsT2New))
-            else
-                  call msg("no eigenvectors removed")
+                  call msg("Invalid T2CutoffThresh: to eigenvectors left after cutoff", MSG_ERROR)
+                  error stop
             end if
             if (PrintEigenvalues) then
                   call blankline()
@@ -905,69 +903,6 @@ contains
                   end do
                   call blankline()
             end if
-  
-            ! call msg("***************************** Krysia odcięcie z warością maksymalną ***********************************")
-
-            
-            ! block
-                  
-            !       max_A=MAXVAL(abs(A))
-                  
-            !       do i=1, NVecsT2
-            !             if (abs(A(i)/max_A) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-            !             else
-            !                   call msg(str(i)// "   " // str(A(i)) //"   Eigen Value is too small")
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
-            ! call msg("***************************** Krysia odcięcie z sumą wartości odrzuconych ***********************************")
-
-
-            ! block
-                                    
-            !       do i=1, NVecsT2
-            !             if (i < NVecsT2) then
-            !                   SumA = sum(A(i+1:NVecsT2))
-            !             else
-            !                   SumA = ZERO
-            !             end if
-            !             ! SumA = ZERO
-            !             ! do j=i, NVecsT2
-            !             !       SumA=SumA+A(j)
-            !             ! end do
-            !             if (abs(SumA/(2*NOccSupermolecule)) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-            !             else
-            !                   call msg(str(i) //  "   The sum of eigen values is smaler then my treshold   "// str(SumA))
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
-            ! call msg("***************************** Krysia odcięcie z liczbą elektronów ***********************************")
-
-	    ! block
-
-            !       call msg(str(NVecsT2))
-	    !       do i=1, NVecsT2
-	    !     	if (abs(A(i)/(2*NOcc)) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-	    !     	else
-            !                   call msg(str(i) //  "  Eigen Value is too small   " // str(A(i)/NVecsT2))
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
             deallocate(A)
             allocate(A(NVecsT2New))
             do i=1, NVecsT2New
