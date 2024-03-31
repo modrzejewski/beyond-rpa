@@ -88,7 +88,8 @@ contains
                         THCGrid%Xgp, &
                         THCGrid%NGrid, &
                         THCGrid%NGridReduced, &
-                        THCParams%THC_BeckeGridKind, & 
+                        THCParams%THC_BeckeGridKind, &
+                        THCParams%PhiSquaredThresh, &
                         THCParams%QRThresh, &          
                         THCParams%QRThreshReduced, &
                         THCParams%THC_BlockDim, &

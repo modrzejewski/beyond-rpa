@@ -2158,6 +2158,8 @@ contains
 
                   RPAParams%T2CutoffThresh, &
                   RPAParams%T2CutoffType, &
+                  RPAParams%T2CutoffSmoothStep, &
+                  RPAParams%T2CutoffSteepness, &
                   T2CutoffCommonThresh, &
                   RPAParams%T2CouplingStrength, &
                   RPAParams%PT_Order2, &
@@ -2187,7 +2189,8 @@ contains
             THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
 
             SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
-            T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh, &
+            T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
+            T2CutoffSteepness, T2CutoffCommonThresh, &
             T2CouplingStrength, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)                       :: Energy
@@ -2233,6 +2236,8 @@ contains
 
             real(F64), intent(in)                                        :: T2CutoffThresh
             integer, intent(in)                                          :: T2CutoffType
+            logical, intent(in)                                          :: T2CutoffSmoothStep
+            real(F64), intent(in)                                        :: T2CutoffSteepness
             real(F64), intent(inout)                                     :: T2CutoffCommonThresh
             
             real(F64), intent(in)                                        :: T2CouplingStrength
@@ -2295,7 +2300,8 @@ contains
                   Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
                   NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
                   SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox, &
-                  T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh, &
+                  T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, T2CutoffSteepness, &
+                  T2CutoffCommonThresh, &
                   T2CouplingStrength, PT_Order2, PT_Order3)
             Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
       end subroutine rpa_THC_Ecorr_1

@@ -644,7 +644,8 @@ contains
       
       subroutine rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
-            GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh)
+            GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
+            T2CutoffSteepness, T2CutoffCommonThresh)
             !
             ! Compute the dominant NVecsT2 eigenvectors and eigenvalues of the double excitation
             ! amplitudes matrix T2 in the direct-ring approximation. Use the non-iterative formula
@@ -670,6 +671,8 @@ contains
             integer, intent(in)                                  :: MaxBatchDim
             real(F64), intent(in)                                :: T2CutoffThresh
             integer, intent(in)                                  :: T2CutoffType
+            logical, intent(in)                                  :: T2CutoffSmoothStep
+            real(F64), intent(in)                                :: T2CutoffSteepness
             real(F64), intent(inout)                             :: T2CutoffCommonThresh
 
             real(F64),dimension(:,:), allocatable     :: Omega
@@ -691,8 +694,6 @@ contains
             real(F64) :: K
             real(F64) :: Ratio
             logical, parameter :: PrintEigenvalues = .false.
-            logical, parameter :: SmoothCutoff = .true.
-            real(F64), parameter :: SmoothCutoffEndpoint = 0.5_F64
             real(F64) :: StepFunction
             real(F64) :: Ka, Kb
             !
@@ -851,13 +852,13 @@ contains
                   select case (T2CutoffType)
                   case (RPA_T2_CUTOFF_EIG)
                         K = T2CutoffThresh
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_EIG_DIV_MAXEIG)
                         K = T2CutoffThresh * MAXVAL(Abs(A))
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh*Max(Abs(a(mu')) = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh*Max(Abs(a(mu')) = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_EIG_DIV_NELECTRON)
                         K = T2CutoffThresh / (NOcc * 2)
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_SUM_REJECTED)
                         do i = 1, NVecsT2
                               if (i < NVecsT2) then
@@ -871,9 +872,9 @@ contains
                                     K = ZERO
                               end if
                         end do
-                        call msg("remove mu if Abs(Sum(a(mu:NVecsT2))) < T2CutoffThresh = " // str(T2CutoffThresh,d=1))
+                        call msg("remove mu if Abs(Sum(a(mu:NVecsT2))) < T2CutoffThresh = " // str(T2CutoffThresh,d=3))
                         call msg("equivalent condition:")
-                        call msg("remove mu if Abs(a(mu)) <= " // str(K, d=1))
+                        call msg("remove mu if Abs(a(mu)) <= " // str(K, d=3))
                   case default
                         call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
                         error stop
@@ -883,7 +884,7 @@ contains
                   ! subsystem calculation; take K from the supersystem calculation
                   !
                   K = T2CutoffCommonThresh
-                  call msg("remove mu if Abs(a(mu)) <= supersystem threshold = " // str(T2CutoffCommonThresh,d=1))
+                  call msg("remove mu if Abs(a(mu)) <= supersystem threshold = " // str(T2CutoffCommonThresh,d=3))
             end if
             allocate(Anew(NVecsT2))
             !
@@ -892,12 +893,14 @@ contains
             !
             NVecsT2New = NVecsT2
             NVecsT2Scaled = 0
-            if (SmoothCutoff) then
+            if (T2CutoffSmoothStep) then
                   Ka = K
-                  Kb = K * SmoothCutoffEndpoint
+                  Kb = K * T2CutoffSteepness
+                  call msg("Smooth cutoff enabled")
+                  call msg("Step function interval: (" // str(Ka,d=3) // ", " // str(Kb,d=3) // ")")
             end if
             do i = 1, NVecsT2
-                  if (SmoothCutoff) then
+                  if (T2CutoffSmoothStep) then
                         if (abs(A(i)) >= Ka) then
                               Anew(i) = A(i)
                         else if (abs(A(i)) > Kb) then
@@ -919,11 +922,14 @@ contains
             end do
             if (NVecsT2New > 0) then
                   if (NVecsT2New < NVecsT2) then
-                        call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
-                        call msg("full set of eigenvecs:    " // str(NVecsT2))
-                        call msg("reduced set of eigenvecs: " // str(NVecsT2New))
+                        call msg("Removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
+                        call msg("Full set of eigenvecs:    " // str(NVecsT2))
+                        call msg("Reduced set of eigenvecs: " // str(NVecsT2New))
+                        if (NVecsT2Scaled > 0) then
+                              call msg("Step function interval contains " // str(NVecsT2Scaled) // " eigenvals")
+                        end if
                   else
-                        call msg("no eigenvectors removed")
+                        call msg("No eigenvectors removed")
                   end if
             else
                   call msg("Invalid T2CutoffThresh: to eigenvectors left after cutoff", MSG_ERROR)
@@ -962,9 +968,10 @@ contains
                   NVirt*NOcc, NVecsT2New, NVecsT2, ONE, ZERO)
             NVecsT2 = NVecsT2New
             !
-            ! Store threshold value for the subsystem calculation
+            ! Store threshold value for the subsequent
+            ! subsystem calculations
             !
-            T2CutoffCommonThresh = K
+            if (T2CutoffCommonThresh < ZERO) T2CutoffCommonThresh = K
       end subroutine rpa_THC_CC_T2
       
 

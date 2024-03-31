@@ -3717,6 +3717,9 @@ contains
             case ("THC_QRTHRESH")
                   read(val, *) m
                   RPAParams%THC_QRThresh = m
+            case ("THC_PHISQUAREDTHRESH")
+                  read(val, *) m
+                  THCParams%PhiSquaredThresh = m
             case ("THC_QRTHRESH_T2")
                   read(val, *) m
                   RPAParams%THC_QRThresh_T2 = m
@@ -3824,6 +3827,24 @@ contains
                         call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
                         error stop
                   end select
+            case ("T2CUTOFFSMOOTHSTEP")
+                  select case (uppercase(val))
+                  case ("", "TRUE", "ENABLED")
+                        RPAParams%T2CutoffSmoothStep = .true.
+                  case ("FALSE", "DISABLED")
+                        RPAParams%T2CutoffSmoothStep = .false.
+                  case default
+                        call msg("Invalid value of T2CutoffSmoothStep", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2CUTOFFSTEEPNESS")
+                  read(val, *) m
+                  if (m >= ZERO) then 
+                        RPAParams%T2CutoffSteepness = m
+                  else
+                        call msg("Invalid value of T2CutoffSteepness", MSG_ERROR)
+                        error stop
+                  end if
             case ("T2COUPLINGSTRENGTH")
                   read(val, *) m
                   RPAParams%T2CouplingStrength = m

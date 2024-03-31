@@ -73,6 +73,7 @@ contains
             hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
             NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
             MaxBatchDimT2, CumulantApprox, T2CutoffThresh, T2CutoffType, &
+            T2CutoffSmoothStep, T2CutoffSmoothness, &
             T2CutoffCommonThresh, T2CouplingStrength, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)       :: Energy
@@ -97,6 +98,8 @@ contains
             integer, intent(in)                          :: CumulantApprox
             real(F64), intent(in)                        :: T2CutoffThresh
             integer, intent(in)                          :: T2CutoffType
+            logical, intent(in)                          :: T2CutoffSmoothStep
+            real(F64), intent(in)                        :: T2CutoffSmoothness
             real(F64), intent(inout)                     :: T2CutoffCommonThresh
             real(F64), intent(in)                        :: T2CouplingStrength
             logical, intent(in)                          :: PT_Order2
@@ -186,7 +189,7 @@ contains
                   NVecsPiU, NOcc(s), NVirt(s), &
                   Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
                   SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
-                  T2CutoffType, T2CutoffCommonThresh)
+                  T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh)
             t_T2 = clock_readwall(timer)
             ! ---------------------------------------------------------------------------------
             ! SOSEX + higher-order contributions to the correlation energy derived from

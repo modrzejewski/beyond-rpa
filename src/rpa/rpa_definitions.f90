@@ -448,6 +448,8 @@ module rpa_definitions
             !
             real(F64) :: T2CutoffThresh = 0.0_F64
             integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
+            logical :: T2CutoffSmoothStep = .true.
+            real(F64) :: T2CutoffSteepness = 0.1_F64
             !
             ! Coupling strength Lambda passed to the T2 solver.
             ! A value different from 1.0 should be used only
