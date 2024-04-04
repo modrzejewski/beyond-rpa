@@ -5,6 +5,7 @@ module rpa_CCD_Corrections
       use rpa_MeanField
       use rpa_CCD_Corrections_Experimental
       use rpa_CCS_Corrections
+      use rpa_CC_Doubles
       use rpa_PT_Terms
       use clock
       use display
@@ -14,7 +15,7 @@ module rpa_CCD_Corrections
 contains
 
       subroutine rpa_Corrections(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox, T2EigenvalueThresh)
+            Uaim, Am, Qgm, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox, T2Decomposition)
             
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
@@ -30,17 +31,19 @@ contains
             real(F64), dimension(NVirt), intent(in)                :: VirtEnergies
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
+            real(F64), dimension(:, :), intent(in)                 :: Qgm
             integer, intent(in)                                    :: CumulantApprox
-            real(F64), intent(in)                                  :: T2EigenvalueThresh
+            integer, intent(in)                                    :: T2Decomposition
 
             real(F64), dimension(:, :), allocatable :: YXUggm
-            integer :: mu0, mu1, NVecsT2_Significant
-            type(TClock) :: timer_total, timer
+            type(TClock) :: timer_total, timer            
             integer, parameter :: BlockDim = 300
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bcd = .true.
             logical, parameter :: Compute_2mnop = .false.
 
+            call msg("CCD corrections to RPA correlation energy")
+            call clock_start(timer_total)
             if (CumulantApprox == RPA_CUMULANT_LEVEL_5_HALF_THC) then
                   !
                   ! Experimental code
@@ -49,39 +52,16 @@ contains
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
                   return
             end if            
-            call msg("CCD corrections to RPA correlation energy")
-            call clock_start(timer_total)
-            !
-            ! Compute the range of significant T2 eigenvalues
-            ! Significant eigenvalues: mu in (mu0, mu1)
-            ! Note that the first eigenvalue is the one most negative
-            !
-            ! mu0 = 1
-            ! call rpa_CCD_NVecsT2(mu1, Am, T2EigenvalueThresh)
-            ! NVecsT2_Significant = mu1 - mu0 + 1
-            ! call msg("Total number of computed eigenvalues A(mu): " // str(NVecsT2))
-            ! call msg("Condition for significant A(mu): Abs(A(mu)/A(1)) > " // str(T2EigenvalueThresh,d=1))
-            ! if (NVecsT2_Significant == NVecsT2) then
-            !       call msg("All eigenvalue/eigenvector pairs have been accepted as significant")
-            ! else
-            !       call msg("Number of significant eigenvalues A(mu): " // str(mu1-mu0+1))
-            !       call msg("Fraction of eigenvectors used for the beyond-RPA terms: " &
-            !             // str(real(NVecsT2_Significant,F64)/real(NVecsT2,F64),d=2))
-            ! end if
-            mu0 = 1
-            NVecsT2_Significant = NVecsT2
-            mu1 = NVecsT2_Significant
             if (Compute_1b2g) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
-                        Am(mu0:mu1), hHFai, OccEnergies, VirtEnergies, BlockDim, Compute_2bcd, &
-                        Compute_2mnop, YXUggm)
+                  call rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, Qgm, &
+                        Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Compute_2bcd, &
+                        Compute_2mnop, T2Decomposition, YXUggm)
                   call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             if (Compute_2bcd) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_2bcd(Energy, Zgh, Xgi, Yga, Uaim(:, :, mu0:mu1), &
-                        Am(mu0:mu1), YXUggm)
+                  call rpa_CCD_corrections_2bcd(Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
                   call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             !
@@ -95,15 +75,16 @@ contains
       end subroutine rpa_Corrections
 
       
-      subroutine rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, &
+      subroutine rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, Qgm, &
             Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Intermediates_2bcd, &
-            Compute_2mnop, YXUggm)
+            Compute_2mnop, T2Decomposition, YXUggm)
             
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(in)                 :: Zgh
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :, :), intent(in)              :: Uaim
+            real(F64), dimension(:, :), intent(in)                 :: Qgm
             real(F64), dimension(:), intent(in)                    :: Am
             real(F64), dimension(:, :), intent(in)                 :: hHFai
             real(F64), dimension(:), intent(in)                    :: OccEnergies
@@ -111,8 +92,10 @@ contains
             integer, intent(in)                                    :: BlockDim
             logical, intent(in)                                    :: Intermediates_2bcd
             logical, intent(in)                                    :: Compute_2mnop
+            integer, intent(in)                                    :: T2Decomposition
             real(F64), dimension(:, :), allocatable, intent(out)   :: YXUggm
 
+            real(F64), dimension(:, :), allocatable :: Uai            
             real(F64), dimension(:, :), allocatable :: YXUgh
             real(F64), dimension(:, :), allocatable :: YUgi
             !
@@ -131,7 +114,7 @@ contains
             real(F64) :: Ec1b, Ec2g
             real(F64) :: S1b, S2g
             integer :: NVecsT2, NGridTHC, NOcc, NVirt
-            real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU            
+            real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU, t_THC_T2          
             type(TClock) :: timer
             logical :: CCS_T1 = .true.
 
@@ -139,6 +122,9 @@ contains
             NVecsT2 = size(Am)
             NOcc = size(Xgi, dim=2)
             NVirt = size(Yga, dim=2)
+            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
+                  allocate(Uai(NVirt, NOcc))
+            end if
             allocate(YXUgh(NGridTHC, NGridTHC))
             allocate(YUgi(NGridTHC, NOcc))
             if (Intermediates_2bcd .or. Compute_2mnop) then
@@ -166,6 +152,7 @@ contains
             t_YXU = ZERO
             t_Z_YXU_YXU = ZERO
             t_ZYXU = ZERO
+            t_THC_T2 = ZERO
             Ec1b = ZERO
             Ec2g = ZERO
             Ec2m = ZERO
@@ -173,6 +160,14 @@ contains
             Ec2o = ZERO
             Ec2p = ZERO
             do mu = 1, NVecsT2
+                  if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
+                        call clock_start(timer)
+                        associate (Wgi => YUgi)
+                              call rpa_THC_CC_T2_Reconstruct(Uai, Yga, Xgi, Qgm(:, mu), &
+                                    NOcc, NVirt, NGridTHC, Wgi)
+                        end associate
+                        t_THC_T2 = t_THC_T2 + clock_readwall(timer)
+                  end if
                   !
                   ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)
                   !
@@ -216,7 +211,7 @@ contains
                         Ec2m = Ec2m + EIGHT * Am(mu) * S2m
                         Ec2n = Ec2n - FOUR  * Am(mu) * S2n
                         Ec2o = Ec2o - EIGHT * Am(mu) * S2o
-                        Ec2p = Ec2p + FOUR  * Am(mu) * S2p 
+                        Ec2p = Ec2p + FOUR  * Am(mu) * S2p
                   end if
             end do
             !
@@ -242,6 +237,9 @@ contains
             call msg("[YU]          " // str(t_YU,d=1))
             call msg("[YXU]         " // str(t_YXU,d=1))
             call msg("Z*[YXU]*[YXU] " // str(t_Z_YXU_YXU,d=1))
+            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
+                  call msg("Y*X*Q         " // str(t_THC_T2,d=1))
+            end if
 
       contains
 
@@ -414,59 +412,6 @@ contains
       end subroutine rpa_Cumulant_block_indices
 
 
-      ! subroutine rpa_CCD_Intermediate_UYUXU(UYUXUmg, Xgi, Yga, Uaim, Am)
-      !       real(F64), dimension(:, :), intent(out)                :: UYUXUmg
-      !       real(F64), dimension(:, :), intent(in)                 :: Xgi
-      !       real(F64), dimension(:, :), intent(in)                 :: Yga
-      !       real(F64), dimension(:, :, :), intent(in)              :: Uaim
-      !       real(F64), dimension(:), intent(in)                    :: Am
-
-      !       integer :: mu, g
-      !       integer :: NVecsT2, NGridTHC, NOcc, NVirt
-      !       real(F64), dimension(:, :), allocatable :: YUim, XUam, YUXUai
-      !       real(F64), dimension(:, :), allocatable :: Xig, Yag
-
-      !       NGridTHC = size(Xgi, dim=1)
-      !       NVecsT2 = size(Am)
-      !       NOcc = size(Xgi, dim=2)
-      !       NVirt = size(Yga, dim=2)
-      !       allocate(YUim(NOcc, NVecsT2))
-      !       allocate(XUam(NVirt, NVecsT2))
-      !       allocate(YUXUai(NVirt, NOcc))
-      !       allocate(Xig(NOcc, NGridTHC))
-      !       allocate(Yag(NVirt, NGridTHC))
-      !       Xig = transpose(Xgi)
-      !       Yag = transpose(Yga)
-      !       do g = 1, NGridTHC
-      !             !$omp parallel do private(mu) default(shared)
-      !             do mu = 1, NVecsT2
-      !                   !
-      !                   ! [YU](i,mu;g) = Sum(a) Y(a,g)*U(a,i,mu)
-      !                   ! YU(1:NOcc,mu;g) = U(1:NVirt,1:NOcc,mu)**T Y(1:NVirt, g)
-      !                   !
-      !                   call real_aTv_x(YUim(:, mu), Uaim(:, :, mu), NVirt, Yag(:, g), NVirt, NOcc, ONE, ZERO)
-      !                   !
-      !                   ! [XU](a,mu;g) = Sum(i) X(i,g)*U(a,i,mu)
-      !                   ! [XU](1:NVirt,mu;g) = U(1:NVirt,1:NOcc,mu) X(1:NOcc, g)
-      !                   ! Note that [XU] is scaled by the eigenvalue of T2 a(mu)
-      !                   !
-      !                   call real_av_x(XUam(:, mu), Uaim(:, :, mu), NVirt, Xig(:, g), NVirt, NOcc, Am(mu), ZERO)
-      !             end do
-      !             !$omp end parallel do
-      !             !
-      !             ! [YUXU](a,i;g) = Sum(mu) [XU](a,mu;g)*[YU](i,mu;g)
-      !             !
-      !             call real_abT(YUXUai, XUam, YUim)
-      !             !
-      !             ! [UYUXU](mu,g) = Sum(ai) U(a,i,mu)*[YUXU](a,i;g)
-      !             ! This operation can be executed as a matrix-vector multiplication
-      !             ! UYUXU(1:NVecsT2,g) = U(1:NVirt*NOcc,1:NVecsT2)**T * YUXU(1:NVirt*NOcc)
-      !             !
-      !             call real_aTv_x(UYUXUmg(:, g), Uaim, NVirt*NOcc, YUXUai, NVirt*NOcc, NVecsT2, ONE, ZERO)
-      !       end do
-      ! end subroutine rpa_CCD_Intermediate_UYUXU
-
-      
       subroutine rpa_CCD_corrections_2d(Energy, UYUXUmg, Xgi, Yga, Uaim, Am, Zgh)
             real(F64), dimension(:), intent(inout)                 :: Energy
             real(F64), dimension(:, :), intent(out)                :: UYUXUmg
@@ -578,28 +523,4 @@ contains
             Energy(RPA_ENERGY_CUMULANT_2B) = -FOUR * S2b
             Energy(RPA_ENERGY_CUMULANT_2C) = -FOUR * S2b
       end subroutine rpa_CCD_corrections_2bcd
-
-      
-      subroutine rpa_CCD_NVecsT2(NVecsT2, Am, T2Thresh)
-            integer, intent(out)                :: NVecsT2
-            real(F64), dimension(:), intent(in) :: Am
-            real(F64), intent(in)               :: T2Thresh
-
-            integer :: k, NVecsT2_All
-
-            NVecsT2_All = size(Am)
-            NVecsT2 = 1
-            if (abs(Am(1)) > ZERO) then
-                  do k = 2, NVecsT2_All
-                        if (abs(Am(k)/Am(1)) > T2Thresh) then
-                              NVecsT2 = k
-                        else
-                              exit
-                        end if
-                  end do
-            else
-                  call msg("Invalid eigenvalues of T2", MSG_ERROR)
-                  error stop
-            end if
-      end subroutine rpa_CCD_NVecsT2
 end module rpa_CCD_Corrections

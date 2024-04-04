@@ -69,12 +69,13 @@ contains
       
 
       subroutine rpa_THC_MBPT3(Energy, THC_Xgp, &
-            THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
+            THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, &
             hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
             NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
             MaxBatchDimT2, CumulantApprox, T2CutoffThresh, T2CutoffType, &
             T2CutoffSmoothStep, T2CutoffSmoothness, &
-            T2CutoffCommonThresh, T2CouplingStrength, PT_Order2, PT_Order3)
+            T2CutoffCommonThresh, T2CouplingStrength, T2Decomposition, &
+            T2THCThresh, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)       :: Energy
             real(F64), dimension(:, :), intent(in)       :: THC_Xgp
@@ -83,7 +84,6 @@ contains
             real(F64), dimension(:, :), intent(in)       :: THC_ZgkFull
             real(F64), dimension(:, :), intent(in)       :: THC_ZgkPiU
             integer, intent(in)                          :: THC_BlockDim
-            real(F64), intent(in)                        :: THC_QRThresh_T2
             real(F64), dimension(:, :), intent(in)       :: hHFai
             real(F64), dimension(:), intent(in)          :: Freqs
             real(F64), dimension(:), intent(in)          :: FreqWeights
@@ -102,6 +102,8 @@ contains
             real(F64), intent(in)                        :: T2CutoffSmoothness
             real(F64), intent(inout)                     :: T2CutoffCommonThresh
             real(F64), intent(in)                        :: T2CouplingStrength
+            integer, intent(in)                          :: T2Decomposition
+            real(F64), intent(in)                        :: T2THCThresh
             logical, intent(in)                          :: PT_Order2
             logical, intent(in)                          :: PT_Order3
 
@@ -111,6 +113,7 @@ contains
             real(F64), dimension(:), allocatable :: A
             real(F64), dimension(:, :), allocatable :: V
             real(F64), dimension(:, :), allocatable :: THC_Zgh
+            real(F64), dimension(:, :), allocatable :: THC_Qgm
             integer :: s
             integer :: ThisImage
             integer :: NVecsT2
@@ -192,13 +195,23 @@ contains
                   T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh)
             t_T2 = clock_readwall(timer)
             ! ---------------------------------------------------------------------------------
+            ! Tensor hypercontraction of T2
+            ! ---------------------------------------------------------------------------------
+            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
+                  allocate(THC_Qgm(THC_NGrid, NVecsT2))
+                  call rpa_THC_CC_T2_Decompose(THC_Qgm, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                        V, A, NOcc(s), NVirt(s), NVecsT2, THC_NGrid, T2THCThresh)                  
+            else
+                  allocate(THC_Qgm(0, 0))
+            end if
+            ! ---------------------------------------------------------------------------------
             ! SOSEX + higher-order contributions to the correlation energy derived from
             ! the non-ring part of the expectation value of the hamiltonian
             ! ---------------------------------------------------------------------------------
             call clock_start(timer)
             call rpa_Corrections(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, &
-                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2CutoffThresh)
+                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, THC_Qgm, &
+                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2Decomposition)
             ! ---------------------------------------------------------------------------------
             ! Perturbation theory terms
             ! This is an extremely slow code and should be used only for debugging.

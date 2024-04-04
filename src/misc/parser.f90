@@ -3720,9 +3720,6 @@ contains
             case ("THC_PHISQUAREDTHRESH")
                   read(val, *) m
                   THCParams%PhiSquaredThresh = m
-            case ("THC_QRTHRESH_T2")
-                  read(val, *) m
-                  RPAParams%THC_QRThresh_T2 = m
             case ("THC_BLOCKDIM")
                   read(val, *) i
                   RPAParams%THC_BlockDim = i
@@ -3777,6 +3774,24 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
+            case ("T2-DECOMPOSITION", "T2-FACTORIZATION", "T2DECOMPOSITION", "T2FACTORIZATION")
+                  select case (uppercase(val))
+                  case ("EIGENVECTORS", "EIGENVECS")
+                        RPAParams%T2Decomposition = RPA_T2_DECOMPOSITION_EIGENVECS
+                  case ("THC", "TENSORHYPERCONTRACTION", "TENSOR-HYPERCONTRACTION")
+                        RPAParams%T2Decomposition = RPA_T2_DECOMPOSITION_THC
+                  case default
+                        call msg("Invalid value of T2Decomposition", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2-THC-THRESH", "T2THCTHRESH")
+                  read(val, *) m
+                  if (m > ZERO) then
+                        RPAParams%T2THCThresh = m
+                  else
+                        call msg("Invalid value of T2THCThresh", MSG_ERROR)
+                        error stop
+                  end if
             case ("CCD-CORRECTIONS", "CCDCORRECTIONS")
                   RPAParams%TensorHypercontraction = .true.
                   RPAParams%CoupledClusters = .true.

@@ -2150,7 +2150,6 @@ contains
                   THCGrid%Zgk, &
                   THCGrid%ZgkPiU, &
                   RPAParams%THC_BlockDim, &
-                  RPAParams%THC_QRThresh_T2, &
                   
                   RPAParams%SmallEigenvalCutoffT2, &
                   RPAParams%GuessNVecsT2, &
@@ -2162,6 +2161,9 @@ contains
                   RPAParams%T2CutoffSteepness, &
                   T2CutoffCommonThresh, &
                   RPAParams%T2CouplingStrength, &
+                  RPAParams%T2Decomposition, &
+                  RPAParams%T2THCThresh, &
+                  
                   RPAParams%PT_Order2, &
                   RPAParams%PT_Order3)
             !
@@ -2186,12 +2188,12 @@ contains
             
             ComputePiUVecs, &
 
-            THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
+            THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, &
 
             SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
             T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
             T2CutoffSteepness, T2CutoffCommonThresh, &
-            T2CouplingStrength, PT_Order2, PT_Order3)
+            T2CouplingStrength, T2Decomposition, T2THCThresh, PT_Order2, PT_Order3)
 
             real(F64), dimension(:), intent(inout)                       :: Energy
             real(F64), dimension(:, :, :), intent(in)                    :: OccCoeffs_ao
@@ -2228,7 +2230,6 @@ contains
             real(F64), dimension(:, :), intent(in)                       :: THC_Zgk
             real(F64), dimension(:, :), allocatable, intent(inout)       :: THC_ZgkPiU
             integer, intent(in)                                          :: THC_BlockDim
-            real(F64), intent(in)                                        :: THC_QRThresh_T2
 
             real(F64), intent(in)                                        :: SmallEigenvalsCutoffT2
             real(F64), intent(in)                                        :: GuessNVecsT2
@@ -2238,9 +2239,11 @@ contains
             integer, intent(in)                                          :: T2CutoffType
             logical, intent(in)                                          :: T2CutoffSmoothStep
             real(F64), intent(in)                                        :: T2CutoffSteepness
-            real(F64), intent(inout)                                     :: T2CutoffCommonThresh
-            
+            real(F64), intent(inout)                                     :: T2CutoffCommonThresh            
             real(F64), intent(in)                                        :: T2CouplingStrength
+            integer, intent(in)                                          :: T2Decomposition
+            real(F64), intent(in)                                        :: T2THCThresh
+            
             logical, intent(in)                                          :: PT_Order2
             logical, intent(in)                                          :: PT_Order3
 
@@ -2296,13 +2299,13 @@ contains
                   allocate(hHFai(0, 0))
             end if
             call rpa_THC_MBPT3(Energy, THC_Xgp, THC_Xga, THC_Xgi, THC_Zgk, THC_ZgkPiU, &
-                  THC_BlockDim, THC_QRThresh_T2, hHFai, &
+                  THC_BlockDim, hHFai, &
                   Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
                   NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
                   SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox, &
                   T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, T2CutoffSteepness, &
-                  T2CutoffCommonThresh, &
-                  T2CouplingStrength, PT_Order2, PT_Order3)
+                  T2CutoffCommonThresh, T2CouplingStrength, T2Decomposition, T2THCThresh, &
+                  PT_Order2, PT_Order3)
             Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
       end subroutine rpa_THC_Ecorr_1
 end module rpa

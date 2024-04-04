@@ -975,103 +975,10 @@ contains
       end subroutine rpa_THC_CC_T2
       
 
-      subroutine rpa_THC_CC_T2_Decompose(Qem, Yga, Xgi, Uaim, Ak, NOcc, NVirt, &
-            NVecsT2, NGridTHC)
+      subroutine rpa_THC_CC_T2_Decompose(Qem, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
+            NVecsT2, NGridTHC, T2THCThresh)
             
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), intent(in)                 :: Yga
-            real(F64), dimension(:, :), intent(in)                 :: Xgi
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)              :: Ak
-            integer, intent(in)                                    :: NOcc
-            integer, intent(in)                                    :: NVirt
-            integer, intent(in)                                    :: NVecsT2
-            integer, intent(in)                                    :: NGridTHC
-
-            integer :: a, i, k
-            real(F64), dimension(:, :), allocatable :: XXgh, YYgh
-            real(F64), dimension(:, :), allocatable :: YYXXgh, QYYXX, QYYXXQ
-            real(F64), dimension(:, :), allocatable :: QInvS12, InvS12
-            real(F64), dimension(:), allocatable :: Lambda
-            ! ------------------------------------------------------------------
-            ! THC decomposition of T2 eigenvectors.
-            ! At this point the THC-decomposed eigenvectors are not guaranteed
-            ! to be orthonormal.
-            ! ------------------------------------------------------------------
-            allocate(Qem(NGridTHC, NVecsT2))
-            Qem = ZERO
-            !$omp parallel do default(shared) &
-            !$omp private(k, a, i)
-            do k = 1, NVecsT2
-                  do i = 1, NOcc
-                        do a = 1, NVirt
-                              Qem(:, k) = Qem(:, k) + Yga(:, a) * Xgi(:, i) * Uaim(a, i, k)
-                        end do
-                  end do
-            end do
-            !$omp end parallel do
-            allocate(YYXXgh(NGridTHC, NGridTHC))
-            allocate(YYgh(NGridTHC, NGridTHC))
-            allocate(XXgh(NGridTHC, NGridTHC))
-            call real_abT(XXgh, Xgi, Xgi)
-            call real_abT(YYgh, Yga, Yga)            
-            YYXXgh = YYgh * XXgh            
-            call real_Axb_symmetric_sysv(Qem, YYXXgh)
-
-            ! do k = 1, NVecsT2
-            !       Qem(:, k) = Qem(:, k) * Sqrt(-Ak(k))
-            ! end do
-
-            
-            ! ------------------------------------------------
-            ! Overlap between THC-deomposed T2 eigenvectors
-            !
-            ! S(mu,nu) = Sum(ai) U(ai,mu)*U(ai,nu)
-            ! = Q**T {YYXX} Q
-            ! ------------------------------------------------
-            YYXXgh = YYgh * XXgh
-            deallocate(YYgh, XXgh)
-            allocate(QYYXX(NVecsT2, NGridTHC))
-            call real_aTb(QYYXX, Qem, YYXXgh)
-            deallocate(YYXXgh)
-            allocate(QYYXXQ(NVecsT2, NVecsT2))
-            call real_ab(QYYXXQ, QYYXX, Qem)
-            deallocate(QYYXX)
-            !
-            ! Transformation matrix S**(-1/2)
-            !
-            allocate(Lambda(NVecsT2))            
-            call symmetric_eigenproblem(Lambda, QYYXXQ, NVecsT2, .true.)
-            do k = 1, NVecsT2
-                  if (Lambda(k) > ZERO) then
-                        QYYXXQ(:, k) = QYYXXQ(:, k) * (ONE/Sqrt(Sqrt(Lambda(k))))
-                  else
-                        QYYXXQ(:, k) = ZERO
-                  end if
-            end do
-            allocate(InvS12(NVecsT2, NVecsT2))
-            call real_abT(InvS12, QYYXXQ, QYYXXQ)
-            deallocate(QYYXXQ)
-            !
-            ! Orthogonalized eigenvectors of T2
-            ! Each eigenvector is scaled by Sqrt(-A(k))
-            !
-            allocate(QInvS12(NGridTHC, NVecsT2))
-            call real_ab(QInvS12, Qem, InvS12)
-            do k = 1, NVecsT2
-                  Qem(:, k) = QInvS12(:, k) * Sqrt(-Ak(k))
-            end do
-      end subroutine rpa_THC_CC_T2_Decompose
-
-
-
-      subroutine rpa_THC_CC_T2_Decompose_v3(Qem, Yea, Xei, Pivots, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
-            NVecsT2, NGridTHC, Thresh)
-            
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Yea
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Xei
-            integer, dimension(:), allocatable, intent(out)        :: Pivots
+            real(F64), dimension(NGridTHC, NVecsT2), intent(out)   :: Qem
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
@@ -1080,175 +987,72 @@ contains
             integer, intent(in)                                    :: NVirt
             integer, intent(in)                                    :: NVecsT2
             integer, intent(in)                                    :: NGridTHC
-            real(F64), intent(in)                                  :: Thresh
+            real(F64), intent(in)                                  :: T2THCThresh
 
             real(F64), dimension(:, :), allocatable :: Sgh
-            real(F64), dimension(:, :), allocatable :: XXgh, YYgh
+            real(F64), dimension(:, :), allocatable :: XXgh
+            real(F64), dimension(:, :), allocatable :: YYgh
             type(TClock) :: timer
-            integer :: k, a, i
-            integer :: NumericalRank
-            integer :: NPivots
-
-            real(F64), dimension(:), allocatable :: NX, NY
-            real(F64), dimension(:, :), allocatable :: YgaN, XgiN
+            real(F64) :: t_total
+            integer :: mu, a, i
             integer :: g
+            integer :: Rank
+            real(F64) :: TikhonovCoeff
 
-            allocate(NX(NGridTHC))
-            allocate(NY(NGridTHC))
-            do g = 1, NGridTHC
-                  NY(g) = norm2(Yga(g, :))
-                  NX(g) = norm2(Xgi(g, :))
-            end do
-            allocate(YgaN(NGridTHC, NVirt))
-            allocate(XgiN(NGridTHC, NOcc))
-            do g = 1, NGridTHC
-                  YgaN(g, :) = Yga(g, :) / NY(g)
-                  XgiN(g, :) = Xgi(g, :) / NX(g)
-            end do
-
-            call msg("Performing pivoted QR for the least-squares THC fit of T2")
-            call msg("Pivoted Cholesky threshold: " // str(Thresh,d=1))
+            call msg("Tensor hypercontraction of T2")
+            call msg("NOT WORKING PROPERLY --- STILL UNDER DEVELOPMENT")
             call clock_start(timer)
+            TikhonovCoeff = T2THCThresh
+            call msg("Tikhonov parameter Lambda: " // str(TikhonovCoeff))
             allocate(Sgh(NGridTHC, NGridTHC))
             allocate(XXgh(NGridTHC, NGridTHC))
             allocate(YYgh(NGridTHC, NGridTHC))
-            call real_abT(XXgh, XgiN, XgiN)
-            call real_abT(YYgh, YgaN, YgaN)
+            call real_abT(XXgh, Xgi, Xgi)
+            call real_abT(YYgh, Yga, Yga)
             Sgh = XXgh * YYgh
-            allocate(Qem(NGridTHC, NVecsT2))
             Qem = ZERO
             !$omp parallel do default(shared) &
-            !$omp private(k, a, i)
-            do k = 1, NVecsT2
+            !$omp private(mu, a, i)
+            do mu = 1, NVecsT2
                   do i = 1, NOcc
                         do a = 1, NVirt
-                              Qem(:, k) = Qem(:, k) + YgaN(:, a) * XgiN(:, i) * Uaim(a, i, k)
+                              Qem(:, mu) = Qem(:, mu) + Yga(:, a) * Xgi(:, i) * Uaim(a, i, mu)
                         end do
                   end do
             end do
             !$omp end parallel do
-            call real_LeastSquares(Qem, NumericalRank, Sgh, Thresh)
-            allocate(Pivots(NGridTHC))
-            NPivots = NGridTHC
-            do k = 1, NGridTHC
-                  Pivots(k) = k
-            end do
-            allocate(Yea(NGridTHC, NVirt))
-            allocate(Xei(NGridTHC, NOcc))
-            Yea = Yga
-            Xei = Xgi
-            do k= 1, NVecsT2
-                  Qem(:, k) = Qem(:, k) * Sqrt(-Am(k))
-            end do
             do g = 1, NGridTHC
-                  Qem(g, :) = Qem(g, :) / (NX(g) * NY(g))
+                  Sgh(g, g) = XXgh(g, g)*YYgh(g, g) + TikhonovCoeff**2
             end do
-      end subroutine rpa_THC_CC_T2_Decompose_v3
+            call real_Axb_symmetric_sysv(Qem, Sgh)
+            t_total = clock_readwall(timer)
+            call msg("T2 decomposed in " // str(t_total,d=1) // " seconds")
+      end subroutine rpa_THC_CC_T2_Decompose
 
 
-      subroutine rpa_THC_CC_T2_Decompose_v2(Qem, Yea, Xei, Pivots, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
-            NVecsT2, NGridTHC, QRThresh)
-            
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Yea
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Xei
-            integer, dimension(:), allocatable, intent(out)        :: Pivots
-            real(F64), dimension(:, :), intent(in)                 :: Yga
-            real(F64), dimension(:, :), intent(in)                 :: Xgi
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)              :: Am
-            integer, intent(in)                                    :: NOcc
-            integer, intent(in)                                    :: NVirt
-            integer, intent(in)                                    :: NVecsT2
-            integer, intent(in)                                    :: NGridTHC
-            real(F64), intent(in)                                  :: QRThresh
+      subroutine rpa_THC_CC_T2_Reconstruct(Uaim, Yga, Xgi, Qgm, NOcc, NVirt, NGridTHC, Wgi)
+            real(F64), dimension(NVirt, NOcc), intent(out)      :: Uaim
+            real(F64), dimension(NGridTHC, NVirt), intent(in)   :: Yga
+            real(F64), dimension(NGridTHC, NOcc), intent(in)    :: Xgi
+            real(F64), dimension(NGridTHC), intent(in)          :: Qgm
+            integer, intent(in)                                 :: NOcc
+            integer, intent(in)                                 :: NVirt
+            integer, intent(in)                                 :: NGridTHC
+            real(F64), dimension(NGridTHC, NOcc), intent(out)   :: Wgi
 
-            integer :: NPivots
-            type(TClock) :: timer
-            real(F64) :: t_decomp
+            integer :: i
 
-            real(F64), dimension(:), allocatable :: NX, NY
-            real(F64), dimension(:, :), allocatable :: YgaN, XgiN
-            integer :: g, e
-
-            allocate(NX(NGridTHC))
-            allocate(NY(NGridTHC))
-            do g = 1, NGridTHC
-                  NY(g) = norm2(Yga(g, :))
-                  NX(g) = norm2(Xgi(g, :))
-            end do
-            allocate(YgaN(NGridTHC, NVirt))
-            allocate(XgiN(NGridTHC, NOcc))
-            do g = 1, NGridTHC
-                  YgaN(g, :) = Yga(g, :) / NY(g)
-                  XgiN(g, :) = Xgi(g, :) / NX(g)
-            end do
-
-            call clock_start(timer)
-            call msg("Performing pivoted QR for the least-squares THC fit of T2")
-            call msg("Pivoted Cholesky threshold: " // str(QRThresh,d=1))
-            call rpa_THC_T2_Grid(Yea, Xei, NPivots, Pivots, YgaN, XgiN, QRThresh)
-            call msg("Base grid: " // str(NGridTHC) // " points")
-            call msg("T2 pivots: " // str(NPivots)  // " points selected via pivoted Cholesky")
-            call rpa_THC_CC_T2_Decompose(Qem, Yea, Xei, Uaim, Am, NOcc, NVirt, &
-                  NVecsT2, NPivots)
-            t_decomp = clock_readwall(timer)
-            call msg("Decomposisition of T2 done in " // str(t_decomp,d=1) // " seconds")
-            
-            do e = 1, NPivots
-                  g = Pivots(e)
-                  Qem(e, :) = Qem(e, :) / (NX(g) * NY(g))
-                  Yea(e, :) = Yea(e, :) * NY(g)
-                  Xei(e, :) = Xei(e, :) * NX(g)
-            end do
-      end subroutine rpa_THC_CC_T2_Decompose_v2
-      
-
-      subroutine rpa_THC_T2_Grid(Y2ga, X2gi, NPivots, Pivots, Yga, Xgi, QRThresh)
-            real(F64), dimension(:, :), allocatable, intent(out) :: Y2ga
-            real(F64), dimension(:, :), allocatable, intent(out) :: X2gi
-            integer, intent(out)                                 :: NPivots
-            integer, dimension(:), allocatable, intent(out)      :: Pivots
-            real(F64), dimension(:, :), intent(in)               :: Yga
-            real(F64), dimension(:, :), intent(in)               :: Xgi
-            real(F64), intent(in)                                :: QRThresh
-
-            real(F64), dimension(:, :), allocatable :: YYXX, XX
-            integer :: g, a, i, NOcc, NVirt
-            real(F64) :: CholThresh, MaxDiag
-            integer :: NGridTHC
-
-            NOcc = size(Xgi, dim=2)
-            NVirt = size(Yga, dim=2)
-            NGridTHC = size(Yga, dim=1)
-            allocate(YYXX(NGridTHC, NGridTHC))
-            allocate(XX(NGridTHC, NGridTHC))
-            allocate(Pivots(NGridTHC))
-            call real_abT(YYXX, Yga, Yga)
-            call real_abT(XX, Xgi, Xgi)
-            YYXX = YYXX * XX
-            MaxDiag = ZERO
-            do g = 1, NGridTHC
-                  MaxDiag = max(MaxDiag, YYXX(g, g))
-            end do
-            CholThresh = MaxDiag * QRThresh**2
-            call real_PivotedCholesky(YYXX, Pivots, NPivots, CholThresh)
-            allocate(Y2ga(NPivots, NVirt), X2gi(NPivots, NOcc))
-            do a = 1, NVirt
-                  do g = 1, NPivots
-                        Y2ga(g, a) = Yga(Pivots(g), a)
-                  end do
-            end do
+            !$omp parallel do private(i)
             do i = 1, NOcc
-                  do g = 1, NPivots
-                        X2gi(g, i) = Xgi(Pivots(g), i)
-                  end do
+                  Wgi(:, i) = Xgi(:, i) * Qgm(:)
             end do
-      end subroutine rpa_THC_T2_Grid
+            !$omp end parallel do
+            call real_aTb(Uaim, Yga, Wgi)
+      end subroutine rpa_THC_CC_T2_Reconstruct
       
       
-      subroutine rpa_THC_CC_T2_Decompose_Test(Zgk, Yga, Xgi, Uaim, Ak, NOcc, NVirt, NVecsT2, NGridTHC)
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
+      subroutine rpa_THC_CC_T2_Decompose_Test(Qgm, Yga, Xgi, Uaim, Ak, NOcc, NVirt, NVecsT2, NGridTHC)
+            real(F64), dimension(:, :), intent(in)                 :: Qgm
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
@@ -1263,6 +1067,7 @@ contains
             real(F64), dimension(:), allocatable :: Vaik, Vbjk
             real(F64), dimension(:), allocatable :: XaiGamma, XbjDelta
             real(F64), dimension(:), allocatable :: XaiZ, XbjZ
+            real(F64) :: MaxAbsError, MaxRelError
 
             allocate(Vaik(NVecsT2))
             allocate(Vbjk(NVecsT2))
@@ -1270,6 +1075,11 @@ contains
             allocate(XbjDelta(NGridTHC))
             allocate(XaiZ(NVecsT2))
             allocate(XbjZ(NVecsT2))
+            call msg("NGridTHC   = " // str(NGridTHC))
+            call msg("NVirt*NOcc = " // str(NVirt*NOcc))
+            call msg("NVecsT2    = " // str(NVecsT2))
+            MaxAbsError = ZERO
+            MaxRelError = ZERO
             do j = 1, NOcc
                   do b = 1, NVirt
                         do i = 1, NOcc
@@ -1282,16 +1092,22 @@ contains
                                     end do
                                     XaiGamma(:) = Yga(:, a) * Xgi(:, i)
                                     XbjDelta(:) = Yga(:, b) * Xgi(:, j)
-                                    T2Exact = dot_product(Vaik, Vbjk)
-                                    XaiZ = matmul(XaiGamma, Zgk)
-                                    XbjZ = matmul(XbjDelta, Zgk)
-                                    T2Approx = dot_product(XaiZ, XbjZ)
+                                    T2Exact = -dot_product(Vaik, Vbjk)
+                                    XaiZ = matmul(XaiGamma, Qgm)
+                                    XbjZ = matmul(XbjDelta, Qgm)
+                                    T2Approx = ZERO
+                                    do k = 1, NVecsT2
+                                          T2Approx = T2Approx + XaiZ(k) * XbjZ(k) * Ak(k)
+                                    end do
                                     if (abs(T2Exact) > 1.0E-3_F64) then
-                                          print *, T2Exact, T2Approx, Abs(T2Exact-T2Approx)
+                                          MaxAbsError = max(MaxAbsError, Abs(T2Exact-T2Approx))
+                                          MaxRelError = max(MaxRelError, Abs(T2Exact-T2Approx)/Abs(T2Exact))
                                     end if
                               end do
                         end do
                   end do
             end do
+            call msg("MaxAbsError = " // str(MaxAbsError,d=1))
+            call msg("MaxRelError = " // str(MaxRelError,d=1))
       end subroutine rpa_THC_CC_T2_Decompose_Test
 end module rpa_CC_Doubles

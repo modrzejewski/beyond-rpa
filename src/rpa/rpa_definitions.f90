@@ -4,6 +4,12 @@ module rpa_definitions
       
       implicit none
       !
+      ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
+      ! or tensor hypercontraction matrices. 
+      !
+      integer, parameter :: RPA_T2_DECOMPOSITION_EIGENVECS = 0
+      integer, parameter :: RPA_T2_DECOMPOSITION_THC = 1
+      !
       ! Mean-field part of the adiabatic connection hamiltonian
       ! ---
       !
@@ -429,7 +435,6 @@ module rpa_definitions
             ! from the THC threshold for the SCF step.
             !            
             real(F64) :: THC_QRThresh = 1.0E-3_F64
-            real(F64) :: THC_QRThresh_T2 = 1.0E-5_F64
             integer   :: THC_BlockDim = 500
             integer :: CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
             !
@@ -450,6 +455,11 @@ module rpa_definitions
             integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
             logical :: T2CutoffSmoothStep = .true.
             real(F64) :: T2CutoffSteepness = 0.1_F64
+            !
+            ! Storage form of T2
+            !
+            integer :: T2Decomposition = RPA_T2_DECOMPOSITION_EIGENVECS
+            real(F64) :: T2THCThresh = 0.01_F64
             !
             ! Coupling strength Lambda passed to the T2 solver.
             ! A value different from 1.0 should be used only
