@@ -68,16 +68,16 @@ contains
       end subroutine rpa_THC_CompareRkai
       
 
-      subroutine rpa_THC_MBPT3(Energy, THC_Xgp, &
+      subroutine rpa_THC_MBPT3(RPAOutput, THC_Xgp, &
             THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, &
             hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
-            NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
+            OccCoeffs, VirtCoeffs, NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
             MaxBatchDimT2, CumulantApprox, T2CutoffThresh, T2CutoffType, &
             T2CutoffSmoothStep, T2CutoffSmoothness, &
-            T2CutoffCommonThresh, T2CouplingStrength, T2Decomposition, &
-            T2THCThresh, PT_Order2, PT_Order3)
+            T2CutoffCommonThresh, T2CouplingStrength, &
+            PT_Order2, PT_Order3)
 
-            real(F64), dimension(:), intent(inout)       :: Energy
+            type(TRPAOutput), intent(inout)              :: RPAOutput
             real(F64), dimension(:, :), intent(in)       :: THC_Xgp
             real(F64), dimension(:, :, :), intent(in)    :: THC_Xga
             real(F64), dimension(:, :, :), intent(in)    :: THC_Xgi
@@ -90,6 +90,8 @@ contains
             integer, intent(in)                          :: NFreqs
             real(F64), dimension(:, :), intent(in)       :: OccEnergies
             real(F64), dimension(:, :), intent(in)       :: VirtEnergies
+            real(F64), dimension(:, :, :), intent(in)    :: OccCoeffs
+            real(F64), dimension(:, :, :), intent(in)    :: VirtCoeffs
             integer, dimension(2), intent(in)            :: NOcc
             integer, dimension(2), intent(in)            :: NVirt
             integer, intent(in)                          :: GuessNVecsT2
@@ -102,18 +104,15 @@ contains
             real(F64), intent(in)                        :: T2CutoffSmoothness
             real(F64), intent(inout)                     :: T2CutoffCommonThresh
             real(F64), intent(in)                        :: T2CouplingStrength
-            integer, intent(in)                          :: T2Decomposition
-            real(F64), intent(in)                        :: T2THCThresh
             logical, intent(in)                          :: PT_Order2
             logical, intent(in)                          :: PT_Order3
 
             real(F64), dimension(:, :, :), allocatable :: PiUEigenvecs
             real(F64), dimension(:, :), allocatable :: PiUEigenvals
             real(F64), dimension(:, :, :), allocatable :: Rkai
-            real(F64), dimension(:), allocatable :: A
-            real(F64), dimension(:, :), allocatable :: V
+            real(F64), dimension(:), allocatable :: Am
+            real(F64), dimension(:, :), allocatable :: Uaim
             real(F64), dimension(:, :), allocatable :: THC_Zgh
-            real(F64), dimension(:, :), allocatable :: THC_Qgm
             integer :: s
             integer :: ThisImage
             integer :: NVecsT2
@@ -121,7 +120,7 @@ contains
             type(tclock) :: timer, timer_total
             real(F64) :: t_T2, t_Cumulant, t_PiU, t_PiUDiag
             real(F64) :: EcRPA
-            integer :: NMO
+            integer :: NMO, NAO
             integer :: THC_NGrid, NCholesky, NVecsPiU
             integer :: MaxNai
             integer, parameter :: NSpins = 1
@@ -133,6 +132,7 @@ contains
             THC_NGrid = size(THC_ZgkFull, dim=1)
             MaxNai = max(NOcc(1)*NVirt(1), NOcc(2)*NVirt(2))
             NMO = NOcc(1) + NVirt(1)
+            NAO = size(OccCoeffs, dim=1)
             s = 1
             t_PiU = ZERO
             t_PiUDiag = ZERO
@@ -148,25 +148,23 @@ contains
             call msg(cfield("Correlation energy", 80))
             call msg(cfield("Random-phase approximation with MBPT3 corrections", 80))
             call midrule()
-            call msg("1. Semicanonical basis of the GMBPT mean-field hamiltonian")
-            call msg("2. Single excitations energy")
-            call msg("3. Direct ring terms")
-            call msg("4. O(N**4) second-order exchange (SOSEX)")
-            call msg("5. O(N**4) third-order exchange (2b+2c+2d)")
-            call msg("6. O(N**4) non-ring CCD (2g)")
+            call msg("Genuine correlation terms (semicanonical basis):")
+            call msg("1. Direct ring terms (EcRPA)")
+            call msg("2. O(N**4) second-orcder exchange (EcSOSEX)")
+            call msg("3. O(N**4) non-ring CCD correction (Ec2g)")
+            call msg("Total energy includes mean-field singles contribution (Ec1RDM)")
             call midrule()
             !            
             call msg("Mean field")
             call msg(lfield("", 15) // "GMBPT hamiltonian of Bartlett et al.")
             call msg(lfield("", 15) // "J. Chem. Phys. 122, 034104 (2005); doi: 10.1063/1.1809605")
-            call msg(lfield("", 15) // "h(Lambda)=hHF(OO+VV)+Lambda*hHF(VO+OV)")
+            call msg(lfield("", 15) // "h=hHF(OO+VV)+Lambda*hHF(VO+OV)")
             !
             call msg("T2 amplitudes")
             call msg(lfield("", 15) // "direct ring approximation")
             call msg(lfield("", 15) // "cutoff for linear dependencies: " // str(SmallEigenvalsCutoffT2,d=1))
             call msg(lfield("", 15) // "cutoff for eigenvalues: " // str(T2CutoffThresh,d=1))
             call msg(lfield("", 15) // "diagonalization with " // str(GuessNVecsT2) // " random guess vectors")
-            call msg(lfield("", 15) // "Chi(u) built from the eigenvectors of hHF(OO+VV)")
             call midrule()
             
             EcRPA = ZERO
@@ -188,45 +186,39 @@ contains
             call rpa_CC_Diagonalize_PiU(PiUEigenvals, PiUEigenvecs, t_PiUDiag, NVecsPiU, NFreqs)
             call clock_start(timer)
             Lambda = T2CouplingStrength
-            call rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai(:, :, s), &
+            call rpa_THC_CC_T2(Am, Uaim, RPAOutput%EigRPA, NVecsT2, PiUEigenvecs, &
+                  PiUEigenvals, Rkai(:, :, s), &
                   NVecsPiU, NOcc(s), NVirt(s), &
                   Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
                   SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
-                  T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh)
+                  T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh)            
             t_T2 = clock_readwall(timer)
-            ! ---------------------------------------------------------------------------------
-            ! Tensor hypercontraction of T2
-            ! ---------------------------------------------------------------------------------
-            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
-                  allocate(THC_Qgm(THC_NGrid, NVecsT2))
-                  call rpa_THC_CC_T2_Decompose(THC_Qgm, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                        V, A, NOcc(s), NVirt(s), NVecsT2, THC_NGrid, T2THCThresh)                  
-            else
-                  allocate(THC_Qgm(0, 0))
-            end if
             ! ---------------------------------------------------------------------------------
             ! SOSEX + higher-order contributions to the correlation energy derived from
             ! the non-ring part of the expectation value of the hamiltonian
             ! ---------------------------------------------------------------------------------
             call clock_start(timer)
-            call rpa_Corrections(Energy, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), V, A, THC_Qgm, &
-                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox, T2Decomposition)
+            call rpa_Corrections(RPAOutput, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), Uaim, Am, &
+                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
+            call move_alloc(from=Am, to=RPAOutput%Am)
+            RPAOutput%NVecsT2 = NVecsT2
             ! ---------------------------------------------------------------------------------
             ! Perturbation theory terms
-            ! This is an extremely slow code and should be used only for debugging.
+            ! This is an extremely slow code and should be used only for debugging
             ! ---------------------------------------------------------------------------------
-            if (PT_Order2) call rpa_PT_Order2(Energy, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+            if (PT_Order2) call rpa_PT_Order2(RPAOutput%Energy, &
+                  THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
-            if (PT_Order3) call rpa_PT_Order3(Energy, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+            if (PT_Order3) call rpa_PT_Order3(RPAOutput%Energy, &
+                  THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
             t_Cumulant = clock_readwall(timer)
-            Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
+            RPAOutput%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
             call blankline()
             call msg("Memory allocation (in gigabytes, per image):")
-            call msg("Rkai             " // str(io_size_byte(Rkai)/(1024.0_F64**3),d=1))
-            call msg("Pi(u) eigenvecs  " // str(io_size_byte(PiUEigenvecs)/(1024.0_F64**3),d=1))
-            call msg("T2 eigenvecs     " // str(io_size_byte(V)/(1024.0_F64**3),d=1))
+            call msg(lfield("Rkai", 50) // str(io_size_byte(Rkai)/(1024.0_F64**3),d=1))
+            call msg(lfield("Pi(u) eigenvecs", 50) // str(io_size_byte(PiUEigenvecs)/(1024.0_F64**3),d=1))
             call blankline()
             call msg(lfield("Total time", 50) // str(clock_readwall(timer_total),d=1))
             call msg(lfield("T2 amplitudes", 50) // str(t_T2,d=1))

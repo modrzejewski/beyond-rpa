@@ -50,19 +50,20 @@ contains
             type(TRPABasis) :: RPABasis
             type(TMeanField), dimension(:), allocatable :: MeanFieldStates
             real(F64), dimension(:, :, :), allocatable :: RPABasisVecs[:]
-            integer :: m, n, k, s
+            integer :: m, n, k, s, i
             integer :: NSpins, NSystems
             logical :: SpinUnres
             real(F64) :: DaiMaxThresh
-            real(F64), dimension(:), allocatable :: Energy, EnergyDiffs
+            real(F64), dimension(:), allocatable :: EnergyDiffs
             real(F64), dimension(:, :), allocatable :: SinglePoints
             real(F64) :: T2CutoffCommonThresh
+            logical :: FinishMacroLoop
             type(TClock) :: timer
+            type(TRPAOutput), dimension(:), allocatable :: RPAOutput
+            integer, parameter :: MaxMacroIters = 6
 
-            allocate(Energy(RPA_ENERGY_NCOMPONENTS))
             allocate(EnergyDiffs(RPA_ENERGY_NCOMPONENTS))
             allocate(SinglePoints(RPA_ENERGY_NCOMPONENTS, MaxNSubsystems))
-
             if (System%SystemKind == SYS_MOLECULE) then
                   NSystems = 1
             else if (System%SystemKind == SYS_DIMER) then
@@ -72,6 +73,7 @@ contains
             else ! Tetramer
                   NSystems = 15
             end if
+            allocate(RPAOutput(NSystems))
             !
             ! Initialize the cutoff threshold for discarding the eigenvectors of T2.
             ! To guarantee size consistent interaction energies, the same threshold
@@ -158,37 +160,53 @@ contains
                         m = m + 1
                   end do
             end do
-
-            do k = 1, NSystems
-                  call sys_Init(System, k)
-                  call toprule()
-                  call msg(cfield("RPA for " // sys_ChemicalFormula(System), 76))
-                  call midrule()
-                  call blankline()
-                  if (SpinUnres) then
-                        call msg("Using spin-unrestricted open-shell Kohn-Sham reference")
-                  else
-                        call msg("Using spin-restricted closed-shell Kohn-Sham reference")
-                  end if
-                  if (RPAParams%TensorHypercontraction) then
-                        call rpa_THC_Etot(Energy, MeanFieldStates(k), AOBasis, RPAParams, &
-                              RPAGrids, THCGrid, T2CutoffCommonThresh)
-                  else
-                        if (RPAParams%CoupledClusters) then
-                              call rpa_CC_Etot(Energy, SCFOutput(k), AOBasis, RPAParams, &
-                                    RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, &
-                                    SCFParams, System)
+            MacroIteration: do i = 1, MaxMacroIters
+                  do k = 1, NSystems
+                        call sys_Init(System, k)
+                        call toprule()
+                        call msg(cfield("RPA for " // sys_ChemicalFormula(System), 76))
+                        call midrule()
+                        call blankline()
+                        if (SpinUnres) then
+                              call msg("Using spin-unrestricted open-shell Kohn-Sham reference")
                         else
-                              call rpa_Etot(Energy, SCFOutput(k), SCFParams, AOBasis, System, RPAParams, &
-                                    RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis)
+                              call msg("Using spin-restricted closed-shell Kohn-Sham reference")
                         end if
+                        if (RPAParams%TensorHypercontraction) then
+                              call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+                                    RPAGrids, THCGrid, T2CutoffCommonThresh)
+                        else
+                              if (RPAParams%CoupledClusters) then
+                                    call rpa_CC_Etot(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
+                                          RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, &
+                                          SCFParams, System)
+                              else
+                                    call rpa_Etot(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, System, RPAParams, &
+                                          RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis)
+                              end if
+                        end if
+                  end do
+                  if (RPAParams%TensorHypercontraction) then
+                        call rpa_EstimateErrors(FinishMacroLoop, RPAOutput, RPAParams, &
+                              System, T2CutoffCommonThresh, NSystems)
+                        if (.not. FinishMacroLoop .and. i < MaxMacroIters .and. RPAParams%T2AdaptiveCutoff) then
+                                    T2CutoffCommonThresh = T2CutoffCommonThresh / 10
+                                    call blankline()
+                                    call msg("Restarting RPA calculations with T2CutoffThresh = " // str(T2CutoffCommonThresh,d=1))
+                                    call blankline()
+                        end if
+                  else
+                        FinishMacroLoop = .true.
                   end if
-                  EtotRPA(k) = Energy(RPA_ENERGY_TOTAL)
-                  EtotHF(k) = Energy(RPA_ENERGY_HF)
-                  EcSingles(k) = Energy(RPA_ENERGY_SINGLES)
-                  EcRPA(k) = Energy(RPA_ENERGY_CORR)
-                  EcExchange(k) = Energy(RPA_ENERGY_EXCHANGE)
-                  SinglePoints(:, k) = Energy
+                  if (FinishMacroLoop) exit MacroIteration
+            end do MacroIteration
+            do k = 1, NSystems
+                  EtotRPA(k) = RPAOutput(k)%Energy(RPA_ENERGY_TOTAL)
+                  EtotHF(k) = RPAOutput(k)%Energy(RPA_ENERGY_HF)
+                  EcSingles(k) = RPAOutput(k)%Energy(RPA_ENERGY_SINGLES)
+                  EcRPA(k) = RPAOutput(k)%Energy(RPA_ENERGY_CORR)
+                  EcExchange(k) = RPAOutput(k)%Energy(RPA_ENERGY_EXCHANGE)
+                  SinglePoints(:, k) = RPAOutput(k)%Energy
                   SinglePoints(RPA_ENERGY_DFT, k) = EtotDFT(k)
             end do
             if (System%SystemKind == SYS_MOLECULE) then
@@ -755,19 +773,21 @@ contains
       end subroutine rpa_CC_Etot
 
 
-      subroutine rpa_THC_Etot(Energy, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
-            real(F64), dimension(:), intent(out)                      :: Energy
+      subroutine rpa_THC_Etot(RPAOutput, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, &
+            T2CutoffCommonThresh)
+            
+            type(TRPAOutput), intent(out)                             :: RPAOutput
             type(TMeanField), intent(in)                              :: MeanField
             type(TAOBasis), intent(in)                                :: AOBasis
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
             real(F64), intent(inout)                                  :: T2CutoffCommonThresh
-
+            
             real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
             integer :: s
 
-            Energy = ZERO
+            RPAOutput%Energy = ZERO
             associate ( &
                   NOcc => MeanField%NOcc, &
                   NVirt => MeanField%NVirt, &
@@ -786,51 +806,193 @@ contains
                               OccEnergies(1:NOcc(s), s) = OrbEnergies(1:NOcc(s), s)
                               VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
                         end do
-                        call rpa_THC_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)                  
+                        call rpa_THC_Ecorr_2(RPAOutput, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
+                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh) 
                   end if
             end associate
-            Energy(RPA_ENERGY_HF) = MeanField%EtotHF
-            Energy(RPA_ENERGY_1RDM_LINEAR) = MeanField%Ec1RDM_Linear
-            Energy(RPA_ENERGY_1RDM_QUADRATIC) = MeanField%Ec1RDM_Quadratic
-            Energy(RPA_ENERGY_SINGLES) = Energy(RPA_ENERGY_1RDM_LINEAR) + Energy(RPA_ENERGY_1RDM_QUADRATIC)
-            Energy(RPA_ENERGY_TOTAL) = &
-                  Energy(RPA_ENERGY_HF) + &
-                  Energy(RPA_ENERGY_1RDM_LINEAR) + &
-                  Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
-                  Energy(RPA_ENERGY_CORR)
-            call msg("Single-Point Energies (a.u.)", underline=.true.)
-            if (RPAParams%PT_Order2) then
-                  call msg(lfield("MP2 singlet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
-                  call msg(lfield("MP2 triplet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_TRIPLET_PAIR), d=8), 20))
-                  call msg(lfield("direct MP2", 40) //           rfield(str(Energy(MP2_ENERGY_DIRECT), d=8), 20))
-                  call msg(lfield("total MP2", 40) //            rfield(str(Energy(MP2_ENERGY_TOTAL), d=8), 20))
-            end if
-            if (RPAParams%PT_Order3) then
-                  call msg(lfield("MP3 A", 40) // rfield(str(Energy(MP3_ENERGY_A), d=8), 20))
-                  call msg(lfield("MP3 B", 40) // rfield(str(Energy(MP3_ENERGY_B), d=8), 20))
-                  call msg(lfield("MP3 C", 40) // rfield(str(Energy(MP3_ENERGY_C), d=8), 20))
-                  call msg(lfield("MP3 D", 40) // rfield(str(Energy(MP3_ENERGY_D), d=8), 20))
-                  call msg(lfield("MP3 E", 40) // rfield(str(Energy(MP3_ENERGY_E), d=8), 20))
-                  call msg(lfield("MP3 F", 40) // rfield(str(Energy(MP3_ENERGY_F), d=8), 20))
-                  call msg(lfield("MP3 G", 40) // rfield(str(Energy(MP3_ENERGY_G), d=8), 20))
-                  call msg(lfield("MP3 H", 40) // rfield(str(Energy(MP3_ENERGY_H), d=8), 20))
-                  call msg(lfield("MP3 I", 40) // rfield(str(Energy(MP3_ENERGY_I), d=8), 20))
-                  call msg(lfield("MP3 J", 40) // rfield(str(Energy(MP3_ENERGY_J), d=8), 20))
-                  call msg(lfield("MP3 K", 40) // rfield(str(Energy(MP3_ENERGY_K), d=8), 20))
-                  call msg(lfield("MP3 L", 40) // rfield(str(Energy(MP3_ENERGY_L), d=8), 20))
-                  call msg(lfield("total MP3", 40) // rfield(str(Energy(MP3_ENERGY_TOTAL), d=8), 20))
-            end if
-            call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
-            call msg(lfield("1-RDM linear", 40) //      rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
-            call msg(lfield("1-RDM quadratic", 40) //   rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
-            call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
-            call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
-            call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
-            call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
-            call blankline()            
-            call co_broadcast(Energy, source_image=1)
+            associate (Energy => RPAOutput%Energy)
+                  Energy(RPA_ENERGY_HF) = MeanField%EtotHF
+                  Energy(RPA_ENERGY_1RDM_LINEAR) = MeanField%Ec1RDM_Linear
+                  Energy(RPA_ENERGY_1RDM_QUADRATIC) = MeanField%Ec1RDM_Quadratic
+                  Energy(RPA_ENERGY_SINGLES) = Energy(RPA_ENERGY_1RDM_LINEAR) + Energy(RPA_ENERGY_1RDM_QUADRATIC)
+                  Energy(RPA_ENERGY_TOTAL) = &
+                        Energy(RPA_ENERGY_HF) + &
+                        Energy(RPA_ENERGY_1RDM_LINEAR) + &
+                        Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
+                        Energy(RPA_ENERGY_CORR)
+                  call msg("Single-Point Energies (a.u.)", underline=.true.)
+                  if (RPAParams%PT_Order2) then
+                        call msg(lfield("MP2 singlet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
+                        call msg(lfield("MP2 triplet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_TRIPLET_PAIR), d=8), 20))
+                        call msg(lfield("direct MP2", 40) //           rfield(str(Energy(MP2_ENERGY_DIRECT), d=8), 20))
+                        call msg(lfield("total MP2", 40) //            rfield(str(Energy(MP2_ENERGY_TOTAL), d=8), 20))
+                  end if
+                  if (RPAParams%PT_Order3) then
+                        call msg(lfield("MP3 A", 40) // rfield(str(Energy(MP3_ENERGY_A), d=8), 20))
+                        call msg(lfield("MP3 B", 40) // rfield(str(Energy(MP3_ENERGY_B), d=8), 20))
+                        call msg(lfield("MP3 C", 40) // rfield(str(Energy(MP3_ENERGY_C), d=8), 20))
+                        call msg(lfield("MP3 D", 40) // rfield(str(Energy(MP3_ENERGY_D), d=8), 20))
+                        call msg(lfield("MP3 E", 40) // rfield(str(Energy(MP3_ENERGY_E), d=8), 20))
+                        call msg(lfield("MP3 F", 40) // rfield(str(Energy(MP3_ENERGY_F), d=8), 20))
+                        call msg(lfield("MP3 G", 40) // rfield(str(Energy(MP3_ENERGY_G), d=8), 20))
+                        call msg(lfield("MP3 H", 40) // rfield(str(Energy(MP3_ENERGY_H), d=8), 20))
+                        call msg(lfield("MP3 I", 40) // rfield(str(Energy(MP3_ENERGY_I), d=8), 20))
+                        call msg(lfield("MP3 J", 40) // rfield(str(Energy(MP3_ENERGY_J), d=8), 20))
+                        call msg(lfield("MP3 K", 40) // rfield(str(Energy(MP3_ENERGY_K), d=8), 20))
+                        call msg(lfield("MP3 L", 40) // rfield(str(Energy(MP3_ENERGY_L), d=8), 20))
+                        call msg(lfield("total MP3", 40) // rfield(str(Energy(MP3_ENERGY_TOTAL), d=8), 20))
+                  end if
+                  call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+                  call msg(lfield("1-RDM linear", 40) //      rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+                  call msg(lfield("1-RDM quadratic", 40) //   rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+                  call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+                  call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
+                  call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
+                  call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))                  
+                  call blankline()            
+            end associate
       end subroutine rpa_THC_Etot
+
+
+      subroutine rpa_EstimateErrors(T2SatisfiedAccuracyTarget, RPAOutput, RPAParams, System, CutoffThresh, NSystems)
+            logical, intent(out)                          :: T2SatisfiedAccuracyTarget
+            type(TRPAOutput), dimension(:), intent(in)    :: RPAOutput
+            type(TRPAParams), intent(in)                  :: RPAParams
+            type(TSystem), intent(in)                     :: System
+            real(F64), intent(in)                         :: CutoffThresh
+            integer, intent(in)                           :: NSystems
+            
+            real(F64), dimension(15) :: EcRPA, Ec2g, EcSOSEX
+            real(F64) :: DintRPA, Dint2g, DintSOSEX
+            real(F64) :: RelDintRPA, RelDint2g, RelDintSOSEX
+            real(F64) :: EintRPA_Reference
+            integer, parameter :: NAltCutoffs = 10
+            real(F64), dimension(0:NAltCutoffs) :: EintRPA, Eint2g, EintSOSEX
+            integer, parameter :: MaxNSystems = 15
+            integer :: k, i
+            real(F64), parameter :: CutoffScaling = 1.1_F64
+            real(F64), dimension(0:NAltCutoffs) :: AltCutoffs
+            real(F64) :: Delta
+            character(:), allocatable :: line
+
+            Delta = CutoffThresh * (CutoffScaling - ONE) / NAltCutoffs
+            AltCutoffs(0) = CutoffThresh
+            do i = 1, NAltCutoffs
+                  AltCutoffs(i) = CutoffThresh * CutoffScaling - (i - 1) * Delta
+            end do
+            T2SatisfiedAccuracyTarget = .true.
+            if ( &
+                  System%SystemKind == SYS_DIMER .or. &
+                  System%SystemKind == SYS_TRIMER .or. &
+                  System%SystemKind == SYS_TETRAMER &
+                  ) then
+                  call msg("Sensitivity of Ec to the perturbation of T2CutoffThresh")
+                  call msg("All values in kcal/mol")
+                  call midrule()
+                  if (System%SystemKind == SYS_DIMER) then
+                        line = lfield("T2CutoffThresh", 17) // lfield("Eint(direct ring)", 20) &
+                              // lfield("Eint(2g)", 20) // lfield("Eint(SOSEX)", 20)
+                  else
+                        line = lfield("T2CutoffThresh", 17) // lfield("EintNadd(direct ring)", 20) &
+                              // lfield("EintNadd(2g)", 20) // lfield("EintNadd(SOSEX)", 20)
+                  end if
+                  call msg(line)
+                  call midrule()
+                  do k = 1, NSystems
+                        EcRPA(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                  end do
+                  select case (System%SystemKind)
+                  case (SYS_DIMER)
+                        call rpa_Eint2Body(EintRPA_Reference, EcRPA)
+                  case (SYS_TRIMER)
+                        call rpa_EintNadd(EintRPA_Reference, EcRPA)
+                  case (SYS_TETRAMER)
+                        call rpa_EintNadd4Body(EintRPA_Reference, EcRPA)
+                  end select
+                  line = lfield("accurate", 17) // lfield(str(tokcal(EintRPA_Reference),d=6), 20) &
+                        // lfield("", 20) // lfield("", 20)
+                  call msg(line)
+                  do i = NAltCutoffs, 0, -1                        
+                        call E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, NSystems, AltCutoffs(i))
+                        select case (System%SystemKind)
+                        case (SYS_DIMER)
+                              call rpa_Eint2Body(EintRPA(i), EcRPA)
+                              call rpa_Eint2Body(Eint2g(i), Ec2g)
+                              call rpa_Eint2Body(EintSOSEX(i), EcSOSEX)
+                        case (SYS_TRIMER)
+                              call rpa_EintNadd(EintRPA(i), EcRPA)
+                              call rpa_EintNadd(Eint2g(i), Ec2g)
+                              call rpa_EintNadd(EintSOSEX(i), EcSOSEX)
+                        case (SYS_TETRAMER)
+                              call rpa_EintNadd4Body(EintRPA(i), EcRPA)
+                              call rpa_EintNadd4Body(Eint2g(i), Ec2g)
+                              call rpa_EintNadd4Body(EintSOSEX(i), EcSOSEX)
+                        end select
+                        line = lfield(str(AltCutoffs(i),d=3), 17) // lfield(str(tokcal(EintRPA(i)),d=6), 20) &
+                              // lfield(str(tokcal(Eint2g(i)),d=6), 20) // lfield(str(tokcal(EintSOSEX(i)),d=6), 20)
+                        call msg(line)
+                  end do
+                  call midrule()
+                  DintRPA = max(abs(EintRPA(0) - EintRPA_Reference), abs(maxval(EintRPA) - minval(EintRPA)))
+                  Dint2g = abs(maxval(Eint2g) - minval(Eint2g))
+                  DintSOSEX = abs(maxval(EintSOSEX) - minval(EintSOSEX))
+                  RelDintRPA = DintRPA / abs(EintRPA_Reference)
+                  RelDint2g = Dint2g / abs(Eint2g(0))
+                  RelDintSOSEX = DintSOSEX / abs(EintSOSEX(0))
+                  line = lfield("abs error", 17) // lfield(str(tokcal(DintRPA),d=1), 20) &
+                        // lfield(str(tokcal(Dint2g),d=1), 20) // lfield(str(tokcal(DintSOSEX),d=1), 20)
+                  call msg(line)
+                  line = lfield("rel error", 17) // lfield(str(RelDintRPA,d=1), 20) &
+                        // lfield(str(RelDint2g,d=1), 20) // lfield(str(RelDintSOSEX,d=1), 20)
+                  call msg(line)
+                  if (RPAParams%T2AdaptiveCutoff) then
+                        if ( &
+                              tokcal(max(DintRPA, Dint2g, DintSOSEX)) < RPAParams%T2AdaptiveCutoffTargetKcal) then
+                              T2SatisfiedAccuracyTarget = .true.
+                              call msg("Error is within the acceptable range of " // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
+                        else
+                              T2SatisfiedAccuracyTarget = .false.
+                              call msg("Error exceeds the target range of " // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
+                        end if
+                  else
+                        T2SatisfiedAccuracyTarget = .true.
+                  end if
+                  call blankline()
+            end if
+
+      contains
+
+            subroutine E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, NSystems, CutoffThresh)
+                  real(F64), dimension(:), intent(out)        :: EcRPA
+                  real(F64), dimension(:), intent(out)        :: Ec2g
+                  real(F64), dimension(:), intent(out)        :: EcSOSEX
+                  type(TRPAOutput), dimension(:), intent(in)  :: RPAOutput
+                  integer, intent(in)                         :: NSystems
+                  real(F64), intent(in)                       :: CutoffThresh
+
+                  integer, dimension(MaxNSystems) :: NVecsT2
+                  integer :: k, mu
+
+                  EcRPA = ZERO
+                  Ec2g = ZERO
+                  EcSOSEX = ZERO
+                  NVecsT2 = 0
+                  do k = 1, NSystems
+                        do mu = 1, RPAOutput(k)%NVecsT2
+                              if (Abs(RPAOutput(k)%Am(mu)) > CutoffThresh) then
+                                    NVecsT2(k) = mu
+                              else
+                                    exit
+                              end if
+                        end do
+                        if (NVecsT2(k) > 0) then
+                              EcRPA(k) = sum(RPAOutput(k)%EigRPA(1:NVecsT2(k)))
+                              Ec2g(k) = sum(RPAOutput(k)%Eig2g(1:NVecsT2(k)))
+                              EcSOSEX(k) = sum(RPAOutput(k)%EigSOSEX(1:NVecsT2(k)))
+                        end if
+                  end do
+            end subroutine E_AltCutoff
+      end subroutine rpa_EstimateErrors
 
 
       subroutine rpa_PrintEnergies(Energies, RPAParams, NSystems)

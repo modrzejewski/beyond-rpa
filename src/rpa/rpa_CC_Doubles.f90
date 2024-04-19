@@ -642,7 +642,7 @@ contains
       end subroutine rpa_CC_T2_v5
 
       
-      subroutine rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
+      subroutine rpa_THC_CC_T2(A, V, EigRPA, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
             GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
             T2CutoffSteepness, T2CutoffCommonThresh)
@@ -653,6 +653,7 @@ contains
             !
             real(F64), dimension(:), allocatable, intent(out)    :: A
             real(F64), dimension(:, :), allocatable, intent(out) :: V
+            real(F64), dimension(:), allocatable, intent(out)    :: EigRPA
             integer,intent(inout)                                :: NVecsT2
             real(F64), dimension(:, :, :), intent(in)            :: PiUEigenvecs
             real(F64), dimension(:, :), intent(in)               :: PiUEigenvals
@@ -967,12 +968,39 @@ contains
             call real_ab_x(V, NVirt*NOcc, T, NVirt*NOcc, TIT, NVecsT2,  &
                   NVirt*NOcc, NVecsT2New, NVecsT2, ONE, ZERO)
             NVecsT2 = NVecsT2New
+            allocate(EigRPA(NVecsT2))
+            call rpa_T2_EigRPA(EigRPA, V, A, Rkai, NOcc, NVirt, NVecsT2, NVecsChol)
             !
             ! Store threshold value for the subsequent
             ! subsystem calculations
             !
             if (T2CutoffCommonThresh < ZERO) T2CutoffCommonThresh = K
       end subroutine rpa_THC_CC_T2
+
+
+      subroutine rpa_T2_EigRPA(EigRPA, Uaim, Am, Rkai, NOcc, NVirt, NVecsT2, NCholesky)
+            real(F64), dimension(NVecsT2), intent(out)              :: EigRPA
+            real(F64), dimension(NVirt*NOcc, NVecsT2), intent(in)   :: Uaim
+            real(F64), dimension(NVecsT2), intent(in)               :: Am
+            real(F64), dimension(NCholesky, NVirt*NOcc), intent(in) :: Rkai
+            integer, intent(in)                                     :: NOcc
+            integer, intent(in)                                     :: NVirt
+            integer, intent(in)                                     :: NVecsT2
+            integer, intent(in)                                     :: NCholesky
+
+            real(F64), dimension(:, :), allocatable :: RUkm
+            integer :: mu
+            real(F64) :: t
+
+            allocate(RUkm(NCholesky, NVecsT2))
+            call real_ab(RUkm, Rkai, Uaim)
+            !$omp parallel do private(mu, t)
+            do mu = 1, NVecsT2
+                  call real_vw_x(t, RUkm(:, mu), RUkm(:, mu), NCholesky)
+                  EigRPA(mu) = TWO * t * Am(mu)
+            end do
+            !$omp end parallel do
+      end subroutine rpa_T2_EigRPA
       
 
       subroutine rpa_THC_CC_T2_Decompose(Qem, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
@@ -996,7 +1024,6 @@ contains
             real(F64) :: t_total
             integer :: mu, a, i
             integer :: g
-            integer :: Rank
             real(F64) :: TikhonovCoeff
 
             call msg("Tensor hypercontraction of T2")

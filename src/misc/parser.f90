@@ -3774,24 +3774,6 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
-            case ("T2-DECOMPOSITION", "T2-FACTORIZATION", "T2DECOMPOSITION", "T2FACTORIZATION")
-                  select case (uppercase(val))
-                  case ("EIGENVECTORS", "EIGENVECS")
-                        RPAParams%T2Decomposition = RPA_T2_DECOMPOSITION_EIGENVECS
-                  case ("THC", "TENSORHYPERCONTRACTION", "TENSOR-HYPERCONTRACTION")
-                        RPAParams%T2Decomposition = RPA_T2_DECOMPOSITION_THC
-                  case default
-                        call msg("Invalid value of T2Decomposition", MSG_ERROR)
-                        error stop
-                  end select
-            case ("T2-THC-THRESH", "T2THCTHRESH")
-                  read(val, *) m
-                  if (m > ZERO) then
-                        RPAParams%T2THCThresh = m
-                  else
-                        call msg("Invalid value of T2THCThresh", MSG_ERROR)
-                        error stop
-                  end if
             case ("CCD-CORRECTIONS", "CCDCORRECTIONS")
                   RPAParams%TensorHypercontraction = .true.
                   RPAParams%CoupledClusters = .true.
@@ -3812,7 +3794,7 @@ contains
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_4_HALF_THC
                   case ("LEVEL-5-HALF-THC", "LEVEL-5-HALFTHC")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
-                  case ("DEFAULT", "JCTC2024")
+                  case ("DEFAULT", "JCTC2023")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_DEFAULT
                   case ("ALL")
                         RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
@@ -3842,7 +3824,7 @@ contains
                         call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
                         error stop
                   end select
-            case ("T2CUTOFFSMOOTHSTEP")
+            case ("T2CUTOFFSMOOTHSTEP", "T2-CUTOFF-SMOOTH-STEP")
                   select case (uppercase(val))
                   case ("", "TRUE", "ENABLED")
                         RPAParams%T2CutoffSmoothStep = .true.
@@ -3911,6 +3893,24 @@ contains
                         call msg("Invalid value of T2Interp", MSG_ERROR)
                         error stop
                   end select
+            case ("T2ADAPTIVECUTOFF")
+                  select case (uppercase(val))
+                  case ("TRUE", "ENABLE", "ENABLED", "")
+                        RPAParams%T2AdaptiveCutoff = .true.
+                  case ("FALSE", "DISABLE", "DISABLED")
+                        RPAParams%T2AdaptiveCutoff = .false.                        
+                  case default
+                        call msg("Invalid value of T2AdaptiveCutoff", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2ADAPTIVECUTOFFTARGETKCAL")
+                  read(val, *) m
+                  if (m >= ZERO) then 
+                        RPAParams%T2AdaptiveCutoffTargetKcal = m
+                  else
+                        call msg("Invalid value of T2AdaptiveCutoffTargetKcal", MSG_ERROR)
+                        error stop
+                  end if
             case ("EC1RDMAPPROX", "EC1RDM-APPROX", "EC1RDM-APPROXIMATION")
                   select case (uppercase(val))
                   case ("LINEAR")

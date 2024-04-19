@@ -98,7 +98,7 @@ contains
                         call GRAND(G, NCholesky*NCholesky)
                         do q = 1, NSubspaceIters
                               call real_ab_x(RWRG, NCholesky, RWR, NCholesky, G, NCholesky, NCholesky, NCholesky, NCholesky)
-                              call real_QR(RWRG, NCholesky, NCholesky, NCholesky, QRWork, LQRWork)
+                              call real_QR_x(RWRG, NCholesky, NCholesky, NCholesky, QRWork, LQRWork)
                               G = RWRG
                         end do
                         call real_ab_x(RWRG, NCholesky, RWR, NCholesky, G, NCholesky, NCholesky, NCholesky, NCholesky)
@@ -2041,10 +2041,10 @@ contains
       end subroutine rpa_Ecorr_1
 
 
-      subroutine rpa_THC_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
+      subroutine rpa_THC_Ecorr_2(RPAOutput, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
             hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
 
-            real(F64), dimension(:), intent(inout)                    :: Energy
+            type(TRPAOutput), intent(inout)                           :: RPAOutput
             real(F64), dimension(:, :, :), intent(in)                 :: OccCoeffs
             real(F64), dimension(:, :, :), intent(in)                 :: VirtCoeffs
             real(F64), dimension(:, :), intent(in)                    :: OccEnergies
@@ -2122,7 +2122,7 @@ contains
             ! 1. ring approximation of the correlation energy
             ! 2. MBPT3 corrections
             !
-            call rpa_THC_Ecorr_1(Energy, OccActCoeffs, VirtActCoeffs, Ei, Ea, &
+            call rpa_THC_Ecorr_1(RPAOutput, OccActCoeffs, VirtActCoeffs, Ei, Ea, &
                   hHF_ao, NOccAct, NVirt, NSpins, &
                   
                   RPAParams%TargetErrorLaplace, &
@@ -2161,11 +2161,10 @@ contains
                   RPAParams%T2CutoffSteepness, &
                   T2CutoffCommonThresh, &
                   RPAParams%T2CouplingStrength, &
-                  RPAParams%T2Decomposition, &
-                  RPAParams%T2THCThresh, &
                   
                   RPAParams%PT_Order2, &
-                  RPAParams%PT_Order3)
+                  RPAParams%PT_Order3 &
+                  )
             !
             ! Prevent recomputation of quadrature grids. The frequency grid is computed only
             ! once for the combined system and shared between its subsystems to retain
@@ -2177,7 +2176,7 @@ contains
       end subroutine rpa_THC_Ecorr_2
 
       
-      subroutine rpa_THC_Ecorr_1(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
+      subroutine rpa_THC_Ecorr_1(RPAOutput, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
             hHF_ao, NOcc, NVirt, NSpins, &
 
             TargetErrorLaplace, TargetRelErrorLaplace, TargetErrorRandom, TargetErrorFreq, &
@@ -2193,9 +2192,9 @@ contains
             SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
             T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
             T2CutoffSteepness, T2CutoffCommonThresh, &
-            T2CouplingStrength, T2Decomposition, T2THCThresh, PT_Order2, PT_Order3)
+            T2CouplingStrength, PT_Order2, PT_Order3)
 
-            real(F64), dimension(:), intent(inout)                       :: Energy
+            type(TRPAOutput), intent(inout)                              :: RPAOutput
             real(F64), dimension(:, :, :), intent(in)                    :: OccCoeffs_ao
             real(F64), dimension(:, :, :), intent(in)                    :: VirtCoeffs_ao
             real(F64), dimension(:, :), intent(in)                       :: OccEnergies
@@ -2239,10 +2238,8 @@ contains
             integer, intent(in)                                          :: T2CutoffType
             logical, intent(in)                                          :: T2CutoffSmoothStep
             real(F64), intent(in)                                        :: T2CutoffSteepness
-            real(F64), intent(inout)                                     :: T2CutoffCommonThresh            
+            real(F64), intent(inout)                                     :: T2CutoffCommonThresh
             real(F64), intent(in)                                        :: T2CouplingStrength
-            integer, intent(in)                                          :: T2Decomposition
-            real(F64), intent(in)                                        :: T2THCThresh
             
             logical, intent(in)                                          :: PT_Order2
             logical, intent(in)                                          :: PT_Order3
@@ -2268,7 +2265,7 @@ contains
             THC_NGrid = size(THC_Zgk, dim=1)
             allocate(THC_Xga(THC_NGrid, max(NVirt(1), NVirt(2)), NSpins))
             allocate(THC_Xgi(THC_NGrid, max(NOcc(1), NOcc(2)), NSpins))
-            call rpa_THC_MOTransf(THC_Xga, THC_Xgi, THC_Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)
+            call rpa_THC_MOTransf(THC_Xga, THC_Xgi, THC_Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)            
             if (ComputePiUVecs) then
                   !
                   ! Generate basis for the Pi(u) matrix. In all tests NVecsPiU was just
@@ -2298,14 +2295,14 @@ contains
             else
                   allocate(hHFai(0, 0))
             end if
-            call rpa_THC_MBPT3(Energy, THC_Xgp, THC_Xga, THC_Xgi, THC_Zgk, THC_ZgkPiU, &
+            call rpa_THC_MBPT3(RPAOutput, THC_Xgp, THC_Xga, THC_Xgi, THC_Zgk, THC_ZgkPiU, &
                   THC_BlockDim, hHFai, &
-                  Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
+                  Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, OccCoeffs_ao, VirtCoeffs_ao, &
                   NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
                   SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox, &
                   T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, T2CutoffSteepness, &
-                  T2CutoffCommonThresh, T2CouplingStrength, T2Decomposition, T2THCThresh, &
+                  T2CutoffCommonThresh, T2CouplingStrength, &
                   PT_Order2, PT_Order3)
-            Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
+            RPAOutput%Energy(RPA_ENERGY_CORR) = sum(RPAOutput%Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
       end subroutine rpa_THC_Ecorr_1
 end module rpa

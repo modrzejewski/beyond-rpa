@@ -453,19 +453,16 @@ module rpa_definitions
             !
             real(F64) :: T2CutoffThresh = 0.0_F64
             integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
-            logical :: T2CutoffSmoothStep = .true.
+            logical :: T2CutoffSmoothStep = .false.
             real(F64) :: T2CutoffSteepness = 0.1_F64
-            !
-            ! Storage form of T2
-            !
-            integer :: T2Decomposition = RPA_T2_DECOMPOSITION_EIGENVECS
-            real(F64) :: T2THCThresh = 0.01_F64
             !
             ! Coupling strength Lambda passed to the T2 solver.
             ! A value different from 1.0 should be used only
             ! for debugging.
             !
             real(F64) :: T2CouplingStrength = 1.0_F64
+            logical :: T2AdaptiveCutoff = .false.
+            real(F64) :: T2AdaptiveCutoffTargetKcal = 0.05_F64
       end type TRPAParams
 
       type TRPAGrids
@@ -508,6 +505,28 @@ module rpa_definitions
             integer, dimension(2) :: NOcc = 0
             integer, dimension(2) :: NVirt = 0
       end type TMeanField
+
+      type TRPAOutput
+            !
+            ! Single-point energy components
+            !
+            real(F64), dimension(RPA_ENERGY_NCOMPONENTS) :: Energy
+            !
+            ! Energy components resolved into contributions from
+            ! the eigenvectors of
+            !
+            ! T2(ai,bj) = Sum(mu=1,...,NVecsT2) U(ai,mu) * U(bj,mu) * A(mu)
+            !
+            ! For example,
+            !
+            ! EigRPA(mu) = 2 * Sum(ai,bj) U(ai,mu) (ai|bj) U(bj,mu) A(mu)
+            !
+            integer :: NVecsT2
+            real(F64), dimension(:), allocatable :: Am
+            real(F64), dimension(:), allocatable :: EigRPA
+            real(F64), dimension(:), allocatable :: EigSOSEX
+            real(F64), dimension(:), allocatable :: Eig2g
+      end type TRPAOutput
       
 contains
 
@@ -515,6 +534,7 @@ contains
             type(TRPAParams), intent(inout) :: p
 
             p%TargetErrorRandom = min(sqrt(1.0E-5_F64), p%TargetErrorRandom)
+            p%T2AdaptiveCutoffTargetKcal = 0.05_F64
       end subroutine rpa_Params_Default
 
       
@@ -522,6 +542,7 @@ contains
             type(TRPAParams), intent(inout) :: p
 
             p%TargetErrorRandom = min(sqrt(1.0E-7_F64), p%TargetErrorRandom)
+            p%T2AdaptiveCutoffTargetKcal = 0.005_F64
       end subroutine rpa_Params_Tight
 
 
@@ -529,5 +550,6 @@ contains
             type(TRPAParams), intent(inout) :: p
 
             p%TargetErrorRandom = min(1.0E-5_F64, p%TargetErrorRandom)
+            p%T2AdaptiveCutoffTargetKcal = 0.0005_F64
       end subroutine rpa_Params_Ludicrous
 end module rpa_definitions

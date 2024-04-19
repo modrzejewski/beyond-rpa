@@ -14,14 +14,14 @@ module rpa_CCD_Corrections
       
 contains
 
-      subroutine rpa_Corrections(Energy, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
-            Uaim, Am, Qgm, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox, T2Decomposition)
+      subroutine rpa_Corrections(RPAOutput, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
+            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox)
             
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
             integer, intent(in)                                    :: NVecsT2
             integer, intent(in)                                    :: NGridTHC
-            real(F64), dimension(:), intent(inout)                 :: Energy
+            type(TRPAOutput), intent(inout)                        :: RPAOutput
             real(F64), dimension(:, :), intent(in)                 :: Zgh
             real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
@@ -31,9 +31,7 @@ contains
             real(F64), dimension(NVirt), intent(in)                :: VirtEnergies
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
-            real(F64), dimension(:, :), intent(in)                 :: Qgm
             integer, intent(in)                                    :: CumulantApprox
-            integer, intent(in)                                    :: T2Decomposition
 
             real(F64), dimension(:, :), allocatable :: YXUggm
             type(TClock) :: timer_total, timer            
@@ -48,43 +46,42 @@ contains
                   !
                   ! Experimental code
                   !
-                  call rpa_CCD_corrections_FullSet(Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
+                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
                   return
             end if            
             if (Compute_1b2g) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, Qgm, &
+                  call rpa_CCD_corrections_1b2gmnop(RPAOutput, Zgh, Xgi, Yga, Uaim, &
                         Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Compute_2bcd, &
-                        Compute_2mnop, T2Decomposition, YXUggm)
+                        Compute_2mnop, YXUggm)
                   call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             if (Compute_2bcd) then
                   call clock_start(timer)
-                  call rpa_CCD_corrections_2bcd(Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+                  call rpa_CCD_corrections_2bcd(RPAOutput%Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
                   call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             !
             ! Rescale the energy terms to get the correct MBPT prefactors.
             ! After scaling by 1/2, the 1b term is equivalent to SOSEX.
             !
-            Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_1B)
-            Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2B)
-            Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2C)
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B)
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
             call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
       end subroutine rpa_Corrections
 
       
-      subroutine rpa_CCD_corrections_1b2gmnop(Energy, Zgh, Xgi, Yga, Uaim, Qgm, &
+      subroutine rpa_CCD_corrections_1b2gmnop(RPAOutput, Zgh, Xgi, Yga, Uaim, &
             Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Intermediates_2bcd, &
-            Compute_2mnop, T2Decomposition, YXUggm)
+            Compute_2mnop, YXUggm)
             
-            real(F64), dimension(:), intent(inout)                 :: Energy
+            type(TRPAOutput), intent(inout)                        :: RPAOutput
             real(F64), dimension(:, :), intent(in)                 :: Zgh
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :, :), intent(in)              :: Uaim
-            real(F64), dimension(:, :), intent(in)                 :: Qgm
             real(F64), dimension(:), intent(in)                    :: Am
             real(F64), dimension(:, :), intent(in)                 :: hHFai
             real(F64), dimension(:), intent(in)                    :: OccEnergies
@@ -92,10 +89,8 @@ contains
             integer, intent(in)                                    :: BlockDim
             logical, intent(in)                                    :: Intermediates_2bcd
             logical, intent(in)                                    :: Compute_2mnop
-            integer, intent(in)                                    :: T2Decomposition
             real(F64), dimension(:, :), allocatable, intent(out)   :: YXUggm
 
-            real(F64), dimension(:, :), allocatable :: Uai            
             real(F64), dimension(:, :), allocatable :: YXUgh
             real(F64), dimension(:, :), allocatable :: YUgi
             !
@@ -122,9 +117,8 @@ contains
             NVecsT2 = size(Am)
             NOcc = size(Xgi, dim=2)
             NVirt = size(Yga, dim=2)
-            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
-                  allocate(Uai(NVirt, NOcc))
-            end if
+            allocate(RPAOutput%EigSOSEX(NVecsT2))
+            allocate(RPAOutput%Eig2g(NVecsT2))
             allocate(YXUgh(NGridTHC, NGridTHC))
             allocate(YUgi(NGridTHC, NOcc))
             if (Intermediates_2bcd .or. Compute_2mnop) then
@@ -160,14 +154,6 @@ contains
             Ec2o = ZERO
             Ec2p = ZERO
             do mu = 1, NVecsT2
-                  if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
-                        call clock_start(timer)
-                        associate (Wgi => YUgi)
-                              call rpa_THC_CC_T2_Reconstruct(Uai, Yga, Xgi, Qgm(:, mu), &
-                                    NOcc, NVirt, NGridTHC, Wgi)
-                        end associate
-                        t_THC_T2 = t_THC_T2 + clock_readwall(timer)
-                  end if
                   !
                   ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)
                   !
@@ -186,6 +172,12 @@ contains
                   t_Z_YXU_YXU = t_Z_YXU_YXU + clock_readwall(timer)
                   Ec2g = Ec2g - TWO * S2g * Am(mu)**2
                   Ec1b = Ec1b - S1b * Am(mu)
+                  ! ------------------------------------------------------------
+                  ! Contributions to EcSOSEX and Ec2g originaing from A(mu).
+                  ! ------------------------------------------------------------
+                  RPAOutput%Eig2g(mu) = -TWO * TWO * S2g * Am(mu)**2
+                  RPAOutput%EigSOSEX(mu) = -S1b * Am(mu)
+                  !
                   if (Intermediates_2bcd .or. Compute_2mnop) then
                         !$omp parallel do private(g)                       
                         do g = 1, NGridTHC
@@ -225,21 +217,18 @@ contains
             Ec2g = TWO * Ec2g
             Ec1b = TWO * Ec1b
             !
-            Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
-            Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
             if (Compute_2mnop) then
-                  Energy(RPA_ENERGY_CUMULANT_2M) = Ec2m
-                  Energy(RPA_ENERGY_CUMULANT_2N) = Ec2n
-                  Energy(RPA_ENERGY_CUMULANT_2O) = Ec2o
-                  Energy(RPA_ENERGY_CUMULANT_2P) = Ec2p
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2M) = Ec2m
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2N) = Ec2n
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2O) = Ec2o
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2P) = Ec2p
             end if
             call msg("SOSEX+2g timings (seconds)", underline=.true.)
             call msg("[YU]          " // str(t_YU,d=1))
             call msg("[YXU]         " // str(t_YXU,d=1))
             call msg("Z*[YXU]*[YXU] " // str(t_Z_YXU_YXU,d=1))
-            if (T2Decomposition == RPA_T2_DECOMPOSITION_THC) then
-                  call msg("Y*X*Q         " // str(t_THC_T2,d=1))
-            end if
 
       contains
 
