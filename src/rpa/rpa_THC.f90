@@ -13,69 +13,15 @@ module rpa_THC
 
 contains
 
-      subroutine rpa_THC_CompareRkai(RkaiExact, RkaiTHC, PiUExact, PiUTHC, NVecsPiU, NOcc, NVirt, NFreqs)
-            real(F64), dimension(NVecsPiU, NVirt, NOcc), intent(in) :: RkaiExact
-            real(F64), dimension(NVecsPiU, NVirt, NOcc), intent(in) :: RkaiTHC
-            real(F64), dimension(NVecsPiU, NVecsPiU, NFreqs), intent(in) :: PiUExact
-            real(F64), dimension(NVecsPiU, NVecsPiU, NFreqs), intent(in) :: PiUTHC
-            integer, intent(in)                                      :: NVecsPiU
-            integer, intent(in)                                      :: NOcc
-            integer, intent(in)                                      :: NVirt
-            integer, intent(in)                                      :: NFreqs
-            
-            integer :: k, l, a, i, u
-            real(F64) :: MaxError, MaxRkaiExact, MaxRkaiTHC, Delta
-            real(F64) :: MaxPiUExact, MaxPiUTHC
-
-            MaxError = ZERO
-            MaxRkaiExact = ZERO
-            MaxRkaiTHC = ZERO
-            do i = 1, NOcc
-                  do a = 1, NVirt
-                        do k = 1, NVecsPiU
-                              Delta = abs(RkaiExact(k, a, i)-RkaiTHC(k, a, i))
-                              if (Delta > MaxError) then
-                                    MaxError = Delta
-                                    MaxRkaiExact = RkaiExact(k, a, i)
-                                    MaxRkaiTHC = RkaiTHC(k, a, i)
-                              end if
-                        end do
-                  end do
-            end do
-            print *, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-            print *, "MaxErrorRkai ", MaxError
-            print *, "MaxRkaiExact ", MaxRkaiExact
-            print *, "MaxRkaiTHC   ", MaxRkaiTHC
-
-            MaxError = ZERO
-            MaxPiUExact = ZERO
-            MaxPiUTHC = ZERO
-            do u = 1, NFreqs
-                  do l = 1, NVecsPiU
-                        do k = 1, NVecsPiU
-                              Delta = abs(PiUExact(k, l, u) - PiUTHC(k, l, u))
-                              if (Delta > MaxError) then
-                                    MaxError = Delta
-                                    MaxPiUExact = PiUExact(k, l, u)
-                                    MaxPiUTHC = PiUTHC(k, l, u)
-                              end if
-                        end do
-                  end do
-            end do
-            call msg(lfield("MaxErrorPiU", 40) // str(MaxError,d=1))
-            call msg(lfield("MaxPiUExact", 40) // str(MaxPiUExact,d=1))
-            call msg(lfield("MaxPiUTHC", 40) // str(MaxPiUTHC,d=1))
-      end subroutine rpa_THC_CompareRkai
-      
-
       subroutine rpa_THC_MBPT3(RPAOutput, THC_Xgp, &
             THC_Xga, THC_Xgi, THC_ZgkFull, THC_ZgkPiU, THC_BlockDim, &
-            hHFai, Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
-            OccCoeffs, VirtCoeffs, NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
-            MaxBatchDimT2, CumulantApprox, T2CutoffThresh, T2CutoffType, &
+            Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, FermiEnergy, &
+            OccCoeffs, VirtCoeffs, hHF_ao, NOcc, NVirt, GuessNVecsT2, SmallEigenvalsCutoffT2, &
+            MaxBatchDimT2, T2CutoffThresh, T2CutoffType, &
             T2CutoffSmoothStep, T2CutoffSmoothness, &
             T2CutoffCommonThresh, T2CouplingStrength, &
-            PT_Order2, PT_Order3)
+            T2AuxOrbitals, T2AuxNOCutoffThresh, T2AuxLOCutoffThresh, &
+            PT_Order2, PT_Order3, NaturalOrbitals, NVirtNO, RPAParams, AOBasis)
 
             type(TRPAOutput), intent(inout)              :: RPAOutput
             real(F64), dimension(:, :), intent(in)       :: THC_Xgp
@@ -84,28 +30,35 @@ contains
             real(F64), dimension(:, :), intent(in)       :: THC_ZgkFull
             real(F64), dimension(:, :), intent(in)       :: THC_ZgkPiU
             integer, intent(in)                          :: THC_BlockDim
-            real(F64), dimension(:, :), intent(in)       :: hHFai
             real(F64), dimension(:), intent(in)          :: Freqs
             real(F64), dimension(:), intent(in)          :: FreqWeights
             integer, intent(in)                          :: NFreqs
             real(F64), dimension(:, :), intent(in)       :: OccEnergies
             real(F64), dimension(:, :), intent(in)       :: VirtEnergies
+            real(F64), dimension(:), intent(in)          :: FermiEnergy
             real(F64), dimension(:, :, :), intent(in)    :: OccCoeffs
             real(F64), dimension(:, :, :), intent(in)    :: VirtCoeffs
+            real(F64), dimension(:, :, :), intent(in)    :: hHF_ao
             integer, dimension(2), intent(in)            :: NOcc
             integer, dimension(2), intent(in)            :: NVirt
             integer, intent(in)                          :: GuessNVecsT2
             real(F64), intent(in)                        :: SmallEigenvalsCutoffT2
             integer, intent(in)                          :: MaxBatchDimT2
-            integer, intent(in)                          :: CumulantApprox
             real(F64), intent(in)                        :: T2CutoffThresh
             integer, intent(in)                          :: T2CutoffType
             logical, intent(in)                          :: T2CutoffSmoothStep
             real(F64), intent(in)                        :: T2CutoffSmoothness
             real(F64), intent(inout)                     :: T2CutoffCommonThresh
             real(F64), intent(in)                        :: T2CouplingStrength
+            integer, intent(in)                          :: T2AuxOrbitals
+            real(F64), intent(in)                        :: T2AuxNOCutoffThresh
+            real(F64), intent(in)                        :: T2AuxLOCutoffThresh
             logical, intent(in)                          :: PT_Order2
             logical, intent(in)                          :: PT_Order3
+            real(F64), dimension(:, :, :), allocatable, intent(out) :: NaturalOrbitals
+            integer, dimension(2), intent(out)                      :: NVirtNO
+            type(TRPAParams), intent(in)                         :: RPAParams
+            type(TAOBasis), intent(in)                           :: AOBasis
 
             real(F64), dimension(:, :, :), allocatable :: PiUEigenvecs
             real(F64), dimension(:, :), allocatable :: PiUEigenvals
@@ -113,15 +66,18 @@ contains
             real(F64), dimension(:), allocatable :: Am
             real(F64), dimension(:, :), allocatable :: Uaim
             real(F64), dimension(:, :), allocatable :: THC_Zgh
-            integer :: s
+            real(F64), dimension(:, :), allocatable :: NOCoeffs_mo
+            real(F64), dimension(:, :), allocatable :: NOCoeffs_ao
+            real(F64), dimension(:), allocatable :: NOVirtEnergies
+            integer :: s, i
             integer :: ThisImage
             integer :: NVecsT2
             real(F64) :: Lambda
             type(tclock) :: timer, timer_total
-            real(F64) :: t_T2, t_Cumulant, t_PiU, t_PiUDiag
+            real(F64) :: t_T2, t_RPA, t_Corrections, t_NO, t_PiUDiag
             real(F64) :: EcRPA
             integer :: NMO, NAO
-            integer :: THC_NGrid, NCholesky, NVecsPiU
+            integer :: NGridTHC, NCholesky, NVecsPiU
             integer :: MaxNai
             integer, parameter :: NSpins = 1
 
@@ -129,14 +85,17 @@ contains
             ThisImage = this_image()
             NCholesky = size(THC_ZgkFull, dim=2)
             NVecsPiU = size(THC_ZgkPiU, dim=2)            
-            THC_NGrid = size(THC_ZgkFull, dim=1)
+            NGridTHC = size(THC_ZgkFull, dim=1)
             MaxNai = max(NOcc(1)*NVirt(1), NOcc(2)*NVirt(2))
             NMO = NOcc(1) + NVirt(1)
             NAO = size(OccCoeffs, dim=1)
+            NVirtNO = 0
             s = 1
-            t_PiU = ZERO
-            t_PiUDiag = ZERO
-            allocate(THC_Zgh(THC_NGrid, THC_NGrid))
+            t_T2 = ZERO
+            t_RPA = ZERO
+            t_Corrections = ZERO
+            t_NO = ZERO
+            allocate(THC_Zgh(NGridTHC, NGridTHC))
             allocate(PiUEigenvecs(NVecsPiU, NVecsPiU, NFreqs))
             allocate(PiUEigenvals(NVecsPiU, NFreqs))
             allocate(Rkai(NVecsPiU, MaxNai, NSpins))
@@ -177,57 +136,81 @@ contains
             call rpa_THC_PiU(PiUEigenvecs, Rkai, THC_Xga, THC_Xgi, THC_ZgkPiU, NOcc, NVirt, &
                   Freqs, OccEnergies, VirtEnergies, THC_BlockDim, .true.)
             call rpa_CC_EcRPA_Analytic(EcRPA, PiUEigenvecs, Freqs, FreqWeights, NFreqs, NVecsPiU)
-            t_PiU = t_PiU + clock_readwall(timer)
-            !
-            ! T2 amplitudes. The T2 amplitudes are computed at full coupling strength, Lambda=1,
-            ! unless the T2CouplingStrength parameter has a non-default value. This should be
-            ! used only for debugging, e.g., verifying  the beyond-RPA terms against PT terms.
-            !
-            call rpa_CC_Diagonalize_PiU(PiUEigenvals, PiUEigenvecs, t_PiUDiag, NVecsPiU, NFreqs)
-            call clock_start(timer)
-            Lambda = T2CouplingStrength
-            call rpa_THC_CC_T2(Am, Uaim, RPAOutput%EigRPA, NVecsT2, PiUEigenvecs, &
-                  PiUEigenvals, Rkai(:, :, s), &
-                  NVecsPiU, NOcc(s), NVirt(s), &
-                  Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
-                  SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
-                  T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh)            
-            t_T2 = clock_readwall(timer)
-            ! ---------------------------------------------------------------------------------
-            ! SOSEX + higher-order contributions to the correlation energy derived from
-            ! the non-ring part of the expectation value of the hamiltonian
-            ! ---------------------------------------------------------------------------------
-            call clock_start(timer)
-            call rpa_Corrections(RPAOutput, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                  hHFai(:, s), OccEnergies(:, s), VirtEnergies(:, s), Uaim, Am, &
-                  NOcc(s), NVirt(s), NVecsT2, THC_NGrid, CumulantApprox)
-            call move_alloc(from=Am, to=RPAOutput%Am)
-            RPAOutput%NVecsT2 = NVecsT2
+            RPAOutput%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
+            t_RPA = clock_readwall(timer)
+            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING .or. RPAParams%ComputeNaturalOrbitals) then
+                  !
+                  ! T2 amplitudes. The T2 amplitudes are computed at full coupling strength, Lambda=1,
+                  ! unless the T2CouplingStrength parameter has a non-default value. This should be
+                  ! used only for debugging, e.g., verifying  the beyond-RPA terms against PT terms.
+                  !
+                  call clock_start(timer)
+                  call rpa_CC_Diagonalize_PiU(PiUEigenvals, PiUEigenvecs, t_PiUDiag, NVecsPiU, NFreqs)
+                  Lambda = T2CouplingStrength
+                  call rpa_THC_CC_T2(Am, Uaim, RPAOutput%EigRPA, NVecsT2, PiUEigenvecs, &
+                        PiUEigenvals, Rkai(:, :, s), NVecsPiU, NOcc(s), NVirt(s), &
+                        Freqs, FreqWeights, NFreqs, Lambda, OccEnergies(:, s), VirtEnergies(:, s), &
+                        SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
+                        T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh, &
+                        RPAParams)
+                  deallocate(Rkai)
+                  t_T2 = clock_readwall(timer)
+                  if (RPAParams%ComputeNaturalOrbitals) then
+                        call blankline()
+                        call msg("Computing natural orbitals by diagonalization of the vv block of 1-RDM")
+                        call msg("1-RDM: Table S2 in Ref. 2")
+                        call msg("1. Ramberger, Sukurma, Schäfer, J. Chem. Phys. 151, 214106 (2019); doi: 10.1063/1.5128415")
+                        call msg("2. Cieśliński, Tucholska, Modrzejewski, " &
+                              // "J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496")
+                        call clock_start(timer)
+                        call rpa_VirtualNO(NOCoeffs_mo, NVirtNO(s), Uaim, Am, NVecsT2, NOcc(s), &
+                              NVirt(s), RPAParams%T2AuxNOCutoffThresh)
+                        allocate(NaturalOrbitals(NAO, maxval(NVirtNO), NSpins))
+                        call real_ab(NaturalOrbitals(:, 1:NVirtNO(s), s), &
+                              VirtCoeffs(:, 1:NVirt(s), s), NOCoeffs_mo)
+                        t_NO = clock_readwall(timer)
+                  end if
+                  if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING) then
+                        ! ---------------------------------------------------------------------------------
+                        ! SOSEX + higher-order contributions to the correlation energy derived from
+                        ! the non-ring part of the expectation value of the hamiltonian
+                        !
+                        ! Variant with T's in the full canonical orbital basis
+                        ! ---------------------------------------------------------------------------------
+                        call clock_start(timer)
+                        call rpa_Corrections(RPAOutput, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                              Uaim, Am, NOcc(s), NVirt(s), NVecsT2, NGridTHC, RPAParams)
+                        t_Corrections = clock_readwall(timer)
+                  end if
+                  call move_alloc(from=Am, to=RPAOutput%Am)
+                  RPAOutput%NVecsT2 = NVecsT2
+            end if
             ! ---------------------------------------------------------------------------------
             ! Perturbation theory terms
             ! This is an extremely slow code and should be used only for debugging
             ! ---------------------------------------------------------------------------------
             if (PT_Order2) call rpa_PT_Order2(RPAOutput%Energy, &
                   THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
+                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), NGridTHC)
             if (PT_Order3) call rpa_PT_Order3(RPAOutput%Energy, &
                   THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), THC_NGrid)
-            t_Cumulant = clock_readwall(timer)
-            RPAOutput%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
+                  OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), NGridTHC)
             call blankline()
-            call msg("Memory allocation (in gigabytes, per image):")
-            call msg(lfield("Rkai", 50) // str(io_size_byte(Rkai)/(1024.0_F64**3),d=1))
-            call msg(lfield("Pi(u) eigenvecs", 50) // str(io_size_byte(PiUEigenvecs)/(1024.0_F64**3),d=1))
-            call blankline()
-            call msg(lfield("Total time", 50) // str(clock_readwall(timer_total),d=1))
-            call msg(lfield("T2 amplitudes", 50) // str(t_T2,d=1))
-            call msg(lfield("Pi(u)+Rkpq->Rkai transform", 50) // str(t_PiU,d=1))
-            call msg(lfield("Diagonalization of Pi(u)", 50) // str(t_PiUDiag,d=1))
-            call msg(lfield("Cumulant terms", 50) // str(t_Cumulant,d=1))
+            call msg(lfield("Total time", 50)     // str(clock_readwall(timer_total),d=1))
+            call msg(lfield("RPA", 50)           // str(t_RPA,d=1))
+            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING .or. &
+                  RPAParams%ComputeNaturalOrbitals) then
+                  call msg(lfield("T2 amplitudes", 50)  // str(t_T2,d=1))
+            end if
+            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING) then
+                  call msg(lfield("beyond-RPA corrections", 50) // str(t_Corrections,d=1))
+            end if
+            if (RPAParams%ComputeNaturalOrbitals) then
+                  call msg(lfield("natural orbitals", 50) // str(t_NO,d=1))
+            end if
             call blankline()
       end subroutine rpa_THC_MBPT3
-      
+
 
       subroutine rpa_THC_MOTransf(Xga, Xgi, Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)
             !
@@ -445,4 +428,27 @@ contains
             call real_aTb_x(Rkab, NCholesky, Zgk, NGridTHC, Xgab, &
                   NGridTHC, NCholesky, BlockDim, NGridTHC, ONE, ZERO)
       end subroutine rpa_THC_Rkab
+
+
+      subroutine rpa_THC_Rkai(Rkai, YXgai, i, Yga, Xgi, Zgk, NOcc, NVirt, NCholesky, NGridTHC)        
+            integer, intent(in)                                    :: NOcc
+            integer, intent(in)                                    :: NVirt
+            integer, intent(in)                                    :: NCholesky
+            integer, intent(in)                                    :: NGridTHC
+            real(F64), dimension(NCholesky, NVirt), intent(out)    :: Rkai
+            real(F64), dimension(NGridTHC, NVirt), intent(out)     :: YXgai
+            integer, intent(in)                                    :: i
+            real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
+            real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
+            real(F64), dimension(NGridTHC, NCholesky), intent(in)  :: Zgk
+
+            integer :: a
+            
+            !$omp parallel do private(a) default(shared)                  
+            do a = 1, NVirt
+                  YXgai(:, a) = Yga(:, a) * Xgi(:, i)
+            end do
+            !$omp end parallel do
+            call real_aTb(Rkai, Zgk, YXgai)
+      end subroutine rpa_THC_Rkai
 end module rpa_THC

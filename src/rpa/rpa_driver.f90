@@ -34,7 +34,7 @@ contains
             type(TSCFOutput), dimension(:), intent(in)                :: SCFOutput
             type(TSCFParams), intent(in)                              :: SCFParams
             type(TAOBasis), intent(in)                                :: AOBasis
-            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TRPAParams), intent(inout)                           :: RPAParams
             type(TSystem), intent(inout)                              :: System
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
             type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
@@ -46,6 +46,9 @@ contains
             real(F64) :: EtotDFT_Nadd, EtotHF_Nadd, EtotRPA_Nadd, EcSingles_Nadd, EcRPA_Nadd, EcExchange_Nadd
             integer, parameter :: MaxNSubsystems = 15
             real(F64), dimension(MaxNSubsystems) :: EtotDFT, EtotRPA, EtotHF, EcSingles, EcRPA, EcExchange
+            real(F64), dimension(MaxNSubsystems) :: EcRPA_FullBasis, EcRPA_NOBasis
+            integer :: TheoryLevel_NOBasis
+            real(F64), dimension(:, :, :), allocatable :: NOBasis
             type(TRPAGrids) :: RPAGrids
             type(TRPABasis) :: RPABasis
             type(TMeanField), dimension(:), allocatable :: MeanFieldStates
@@ -74,6 +77,7 @@ contains
                   NSystems = 15
             end if
             allocate(RPAOutput(NSystems))
+            TheoryLevel_NOBasis = RPAParams%TheoryLevel
             !
             ! Initialize the cutoff threshold for discarding the eigenvectors of T2.
             ! To guarantee size consistent interaction energies, the same threshold
@@ -159,7 +163,7 @@ contains
                         !
                         m = m + 1
                   end do
-            end do
+            end do            
             MacroIteration: do i = 1, MaxMacroIters
                   do k = 1, NSystems
                         call sys_Init(System, k)
@@ -173,8 +177,33 @@ contains
                               call msg("Using spin-restricted closed-shell Kohn-Sham reference")
                         end if
                         if (RPAParams%TensorHypercontraction) then
+                              if ( &
+                                    RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
+                                    RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+                                    RPAParams%ComputeNaturalOrbitals = .true.
+                                    if (RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS .and. k > 1) then
+                                          RPAParams%ComputeNaturalOrbitals = .false.
+                                    end if                                    
+                                    RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
+                                    call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+                                          RPAGrids, THCGrid, T2CutoffCommonThresh)
+                                    EcRPA_FullBasis(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                                    if (RPAParams%ComputeNaturalOrbitals) then
+                                          call move_alloc(from=RPAOutput(k)%NaturalOrbitals, to=NOBasis)
+                                    end if
+                                    call rpa_ChangeOrbitalSpace(MeanFieldStates(k), NOBasis(:, :, 1))
+                                    RPAParams%ComputeNaturalOrbitals = .false.
+                                    RPAParams%TheoryLevel = TheoryLevel_NOBasis
+                              end if
                               call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                     RPAGrids, THCGrid, T2CutoffCommonThresh)
+                              if ( &
+                                    RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
+                                    RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+                                    EcRPA_NOBasis(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                                    RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA_FullBasis(k)
+                                    call rpa_THC_GatherEnergyContribs(RPAOutput(k)%Energy, MeanFieldStates(k))
+                              end if
                         else
                               if (RPAParams%CoupledClusters) then
                                     call rpa_CC_Etot(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
@@ -187,7 +216,13 @@ contains
                         end if
                   end do
                   if (RPAParams%TensorHypercontraction) then
-                        call rpa_EstimateErrors(FinishMacroLoop, RPAOutput, RPAParams, &
+                        if ( &
+                              RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
+                              RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+                              call rpa_EstimateNOCutoffError(EcRPA_FullBasis, EcRPA_NOBasis, &
+                                    RPAParams, System)
+                        end if
+                        call rpa_EstimateT2EigenvalueError(FinishMacroLoop, RPAOutput, RPAParams, &
                               System, T2CutoffCommonThresh, NSystems)
                         if (.not. FinishMacroLoop .and. i < MaxMacroIters .and. RPAParams%T2AdaptiveCutoff) then
                                     T2CutoffCommonThresh = T2CutoffCommonThresh / 10
@@ -807,19 +842,12 @@ contains
                               VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
                         end do
                         call rpa_THC_Ecorr_2(RPAOutput, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh) 
+                              F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, &
+                              T2CutoffCommonThresh)
                   end if
             end associate
+            call rpa_THC_GatherEnergyContribs(RPAOutput%Energy, MeanField)
             associate (Energy => RPAOutput%Energy)
-                  Energy(RPA_ENERGY_HF) = MeanField%EtotHF
-                  Energy(RPA_ENERGY_1RDM_LINEAR) = MeanField%Ec1RDM_Linear
-                  Energy(RPA_ENERGY_1RDM_QUADRATIC) = MeanField%Ec1RDM_Quadratic
-                  Energy(RPA_ENERGY_SINGLES) = Energy(RPA_ENERGY_1RDM_LINEAR) + Energy(RPA_ENERGY_1RDM_QUADRATIC)
-                  Energy(RPA_ENERGY_TOTAL) = &
-                        Energy(RPA_ENERGY_HF) + &
-                        Energy(RPA_ENERGY_1RDM_LINEAR) + &
-                        Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
-                        Energy(RPA_ENERGY_CORR)
                   call msg("Single-Point Energies (a.u.)", underline=.true.)
                   if (RPAParams%PT_Order2) then
                         call msg(lfield("MP2 singlet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
@@ -854,21 +882,40 @@ contains
       end subroutine rpa_THC_Etot
 
 
-      subroutine rpa_EstimateErrors(T2SatisfiedAccuracyTarget, RPAOutput, RPAParams, System, CutoffThresh, NSystems)
-            logical, intent(out)                          :: T2SatisfiedAccuracyTarget
+      subroutine rpa_THC_GatherEnergyContribs(Energy, MeanField)
+            real(F64), dimension(:), intent(inout) :: Energy
+            type(TMeanField), intent(in)           :: MeanField
+
+            Energy(RPA_ENERGY_HF) = MeanField%EtotHF
+            Energy(RPA_ENERGY_1RDM_LINEAR) = MeanField%Ec1RDM_Linear
+            Energy(RPA_ENERGY_1RDM_QUADRATIC) = MeanField%Ec1RDM_Quadratic
+            Energy(RPA_ENERGY_SINGLES) = Energy(RPA_ENERGY_1RDM_LINEAR) + Energy(RPA_ENERGY_1RDM_QUADRATIC)
+            Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
+            Energy(RPA_ENERGY_TOTAL) = &
+                  Energy(RPA_ENERGY_HF) + &
+                  Energy(RPA_ENERGY_1RDM_LINEAR) + &
+                  Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
+                  Energy(RPA_ENERGY_CORR)
+      end subroutine rpa_THC_GatherEnergyContribs
+
+
+      subroutine rpa_EstimateT2EigenvalueError(SatisfiedAccuracyTarget, RPAOutput, RPAParams, &
+            System, CutoffThresh, NSystems)
+            
+            logical, intent(out)                          :: SatisfiedAccuracyTarget
             type(TRPAOutput), dimension(:), intent(in)    :: RPAOutput
             type(TRPAParams), intent(in)                  :: RPAParams
             type(TSystem), intent(in)                     :: System
             real(F64), intent(in)                         :: CutoffThresh
             integer, intent(in)                           :: NSystems
-            
-            real(F64), dimension(15) :: EcRPA, Ec2g, EcSOSEX
+
+            integer, parameter :: MaxNSystems = 15
+            real(F64), dimension(MaxNSystems) :: EcRPA, Ec2g, EcSOSEX
             real(F64) :: DintRPA, Dint2g, DintSOSEX
             real(F64) :: RelDintRPA, RelDint2g, RelDintSOSEX
             real(F64) :: EintRPA_Reference
             integer, parameter :: NAltCutoffs = 10
             real(F64), dimension(0:NAltCutoffs) :: EintRPA, Eint2g, EintSOSEX
-            integer, parameter :: MaxNSystems = 15
             integer :: k, i
             real(F64), parameter :: CutoffScaling = 1.1_F64
             real(F64), dimension(0:NAltCutoffs) :: AltCutoffs
@@ -880,7 +927,7 @@ contains
             do i = 1, NAltCutoffs
                   AltCutoffs(i) = CutoffThresh * CutoffScaling - (i - 1) * Delta
             end do
-            T2SatisfiedAccuracyTarget = .true.
+            SatisfiedAccuracyTarget = .true.
             if ( &
                   System%SystemKind == SYS_DIMER .or. &
                   System%SystemKind == SYS_TRIMER .or. &
@@ -948,14 +995,16 @@ contains
                   if (RPAParams%T2AdaptiveCutoff) then
                         if ( &
                               tokcal(max(DintRPA, Dint2g, DintSOSEX)) < RPAParams%T2AdaptiveCutoffTargetKcal) then
-                              T2SatisfiedAccuracyTarget = .true.
-                              call msg("Error is within the acceptable range of " // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
+                              SatisfiedAccuracyTarget = .true.
+                              call msg("Error due to T2 eigenvalue cutoff is within the acceptable range of " &
+                                    // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
                         else
-                              T2SatisfiedAccuracyTarget = .false.
-                              call msg("Error exceeds the target range of " // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
+                              SatisfiedAccuracyTarget = .false.
+                              call msg("Error due to T2 eigenvalue cutoff exceeds the target range of " &
+                                    // str(RPAParams%T2AdaptiveCutoffTargetKcal,d=1) // " kcal/mol")
                         end if
                   else
-                        T2SatisfiedAccuracyTarget = .true.
+                        SatisfiedAccuracyTarget = .true.
                   end if
                   call blankline()
             end if
@@ -992,7 +1041,67 @@ contains
                         end if
                   end do
             end subroutine E_AltCutoff
-      end subroutine rpa_EstimateErrors
+      end subroutine rpa_EstimateT2EigenvalueError
+
+
+      subroutine rpa_EstimateNOCutoffError(EcRPA_FullBasis, EcRPA_NOBasis, &
+            RPAParams, System)
+            
+            real(F64), dimension(:), intent(in)           :: EcRPA_FullBasis
+            real(F64), dimension(:), intent(in)           :: EcRPA_NOBasis
+            type(TRPAParams), intent(in)                  :: RPAParams
+            type(TSystem), intent(in)                     :: System
+            
+            real(F64) :: DintRPA
+            real(F64) :: RelDintRPA
+            real(F64) :: EintRPA_Reference, EintRPA_Approx        
+            character(:), allocatable :: line
+
+            if ( &
+                  System%SystemKind == SYS_DIMER .or. &
+                  System%SystemKind == SYS_TRIMER .or. &
+                  System%SystemKind == SYS_TETRAMER &
+                  ) then
+                  call msg("Error in Ec due to natural orbitals cutoff")
+                  call msg("All values in kcal/mol")
+                  call midrule()
+                  if (System%SystemKind == SYS_DIMER) then
+                        line = lfield("virtual orbital space", 25) // lfield("Eint(direct ring)", 20)
+                  else
+                        line = lfield("virtual orbital space", 25) // lfield("EintNadd(direct ring)", 20)
+                  end if
+                  call msg(line)
+                  call midrule()
+                  select case (System%SystemKind)
+                  case (SYS_DIMER)
+                        call rpa_Eint2Body(EintRPA_Reference, EcRPA_FullBasis)
+                  case (SYS_TRIMER)
+                        call rpa_EintNadd(EintRPA_Reference, EcRPA_FullBasis)
+                  case (SYS_TETRAMER)
+                        call rpa_EintNadd4Body(EintRPA_Reference, EcRPA_FullBasis)
+                  end select
+                  line = lfield("all virtual orbitals", 25) // lfield(str(tokcal(EintRPA_Reference),d=6), 20)
+                  call msg(line)
+                  select case (System%SystemKind)
+                  case (SYS_DIMER)
+                        call rpa_Eint2Body(EintRPA_Approx, EcRPA_NOBasis)
+                  case (SYS_TRIMER)
+                        call rpa_EintNadd(EintRPA_Approx, EcRPA_NOBasis)
+                  case (SYS_TETRAMER)
+                        call rpa_EintNadd4Body(EintRPA_Approx, EcRPA_NOBasis)
+                  end select
+                  line = lfield("natural orbitals", 25) // lfield(str(tokcal(EintRPA_Approx),d=6), 20)                  
+                  call msg(line)
+                  call midrule()
+                  DintRPA = abs(EintRPA_Reference - EintRPA_Approx)
+                  RelDintRPA = DintRPA / abs(EintRPA_Reference)
+                  line = lfield("abs error", 25) // lfield(str(tokcal(DintRPA),d=1), 20)
+                  call msg(line)
+                  line = lfield("rel error", 25) // lfield(str(RelDintRPA,d=1), 20) 
+                  call msg(line)
+                  call blankline()
+            end if
+      end subroutine rpa_EstimateNOCutoffError
 
 
       subroutine rpa_PrintEnergies(Energies, RPAParams, NSystems)
@@ -1076,39 +1185,28 @@ contains
                   ]
 
             DisplayedValues = .false.
-            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_1_HALF_THC) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
-            end if
-            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_2_HALF_THC) then
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2M) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2N) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2O) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2P) = .true.
-            end if
-            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_3_HALF_THC) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
             end if
-            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_4_HALF_THC) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
+                  !
                   DisplayedValues(RPA_ENERGY_CUMULANT_2E) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2H) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2K) = .true.
-            end if
-            if (RPAParams%CumulantApprox >= RPA_CUMULANT_LEVEL_5_HALF_THC) then
+                  !
                   DisplayedValues(RPA_ENERGY_CUMULANT_2F) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2I) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2J) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2L) = .true.
-            end if
-            if (RPAParams%CumulantApprox == RPA_CUMULANT_LEVEL_DEFAULT) then
-                  DisplayedValues = .false.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2L) = .true.                  
             end if
             DisplayedValues(RPA_ENERGY_DFT) = .true.
             DisplayedValues(RPA_ENERGY_HF) = .true.

@@ -645,36 +645,37 @@ contains
       subroutine rpa_THC_CC_T2(A, V, EigRPA, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
             GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
-            T2CutoffSteepness, T2CutoffCommonThresh)
+            T2CutoffSteepness, T2CutoffCommonThresh, RPAParams)
             !
             ! Compute the dominant NVecsT2 eigenvectors and eigenvalues of the double excitation
             ! amplitudes matrix T2 in the direct-ring approximation. Use the non-iterative formula
             ! based the frequency integral of Chi(Lambda)-Chi(0).
             !
-            real(F64), dimension(:), allocatable, intent(out)    :: A
-            real(F64), dimension(:, :), allocatable, intent(out) :: V
-            real(F64), dimension(:), allocatable, intent(out)    :: EigRPA
-            integer,intent(inout)                                :: NVecsT2
-            real(F64), dimension(:, :, :), intent(in)            :: PiUEigenvecs
-            real(F64), dimension(:, :), intent(in)               :: PiUEigenvals
-            real(F64), dimension(:, :), intent(in)               :: Rkai
-            integer, intent(in)                                  :: NVecsChol
-            integer, intent(in)                                  :: NOcc
-            integer, intent(in)                                  :: NVirt
-            real(F64), dimension(:), intent(in)                  :: Freqs
-            real(F64), dimension(:), intent(in)                  :: FreqWeights
-            integer, intent(in)                                  :: NFreqs
-            real(F64), intent(in)                                :: Lambda
-            real(F64), dimension(:), intent(in)                  :: OccEnergies
-            real(F64), dimension(:), intent(in)                  :: VirtEnergies
-            real(F64), intent(in)                                :: SmallEigenvalsCutoffT2
-            integer, intent(in)                                  :: GuessNVecsT2
-            integer, intent(in)                                  :: MaxBatchDim
-            real(F64), intent(in)                                :: T2CutoffThresh
-            integer, intent(in)                                  :: T2CutoffType
-            logical, intent(in)                                  :: T2CutoffSmoothStep
-            real(F64), intent(in)                                :: T2CutoffSteepness
-            real(F64), intent(inout)                             :: T2CutoffCommonThresh
+            integer, intent(in)                                     :: NVecsChol
+            integer, intent(in)                                     :: NOcc
+            integer, intent(in)                                     :: NVirt
+            real(F64), dimension(:), allocatable, intent(out)       :: A
+            real(F64), dimension(:, :), allocatable, intent(out)    :: V
+            real(F64), dimension(:), allocatable, intent(out)       :: EigRPA
+            integer,intent(inout)                                   :: NVecsT2
+            real(F64), dimension(:, :, :), intent(in)               :: PiUEigenvecs
+            real(F64), dimension(:, :), intent(in)                  :: PiUEigenvals
+            real(F64), dimension(NVecsChol, NVirt*NOcc), intent(in) :: Rkai
+            real(F64), dimension(:), intent(in)                     :: Freqs
+            real(F64), dimension(:), intent(in)                     :: FreqWeights
+            integer, intent(in)                                     :: NFreqs
+            real(F64), intent(in)                                   :: Lambda
+            real(F64), dimension(:), intent(in)                     :: OccEnergies
+            real(F64), dimension(:), intent(in)                     :: VirtEnergies
+            real(F64), intent(in)                                   :: SmallEigenvalsCutoffT2
+            integer, intent(in)                                     :: GuessNVecsT2
+            integer, intent(in)                                     :: MaxBatchDim
+            real(F64), intent(in)                                   :: T2CutoffThresh
+            integer, intent(in)                                     :: T2CutoffType
+            logical, intent(in)                                     :: T2CutoffSmoothStep
+            real(F64), intent(in)                                   :: T2CutoffSteepness
+            real(F64), intent(inout)                                :: T2CutoffCommonThresh
+            type(TRPAParams), intent(in)                            :: RPAParams
 
             real(F64),dimension(:,:), allocatable     :: Omega
             real(F64),dimension(:,:), allocatable     :: IOmega
@@ -766,7 +767,7 @@ contains
             call symmetric_eigenproblem(SEigenValues, S, GuessNVecsT2, .true. )
             NVecsT2 = 0
             do i = GuessNVecsT2, 1, -1
-                  if (SEigenvalues(i)>SmallEigenvalsCutoffT2) then
+                  if (SEigenvalues(i) > SmallEigenvalsCutoffT2) then
                         NVecsT2 = NVecsT2 + 1
                   else
                         exit

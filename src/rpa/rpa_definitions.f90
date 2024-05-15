@@ -4,6 +4,13 @@ module rpa_definitions
       
       implicit none
       !
+      ! Auxiliary orbital basis used to transform the RPA amplitudes
+      !
+      integer, parameter :: RPA_AUX_MOLECULAR_ORBITALS = 0
+      integer, parameter :: RPA_AUX_NATURAL_ORBITALS = 1
+      integer, parameter :: RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS = 2
+      integer, parameter :: RPA_AUX_LOCALIZED_ORBITALS = 3
+      !
       ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
       ! or tensor hypercontraction matrices. 
       !
@@ -222,16 +229,9 @@ module rpa_definitions
       integer, parameter :: MP3_ENERGY_L            = 65
       integer, parameter :: MP3_ENERGY_TOTAL        = 66
       
-      integer, parameter :: RPA_CUMULANT_LEVEL_0 = 0          ! RPA
-      integer, parameter :: RPA_CUMULANT_LEVEL_DEFAULT = 10   ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2d
-      integer, parameter :: RPA_CUMULANT_LEVEL_1_HALF_THC = 1 ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_CUMULANT_LEVEL_1_FULL_THC = 2 ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_CUMULANT_LEVEL_2_HALF_THC = 3 ! RPA + 1b (SOSEX) + 2g + 2m + 2n + 2o + 2p
-      integer, parameter :: RPA_CUMULANT_LEVEL_3_HALF_THC = 4 ! RPA + 1b (SOSEX) + 2g + 2b + 2c
-      integer, parameter :: RPA_CUMULANT_LEVEL_3_FULL_THC = 5 ! RPA + 1b (SOSEX) + 2g + 2b + 2c
-      integer, parameter :: RPA_CUMULANT_LEVEL_4_HALF_THC = 6 ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2e + 2h + 2k
-      integer, parameter :: RPA_CUMULANT_LEVEL_4_FULL_THC = 7 ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2e + 2h + 2k
-      integer, parameter :: RPA_CUMULANT_LEVEL_5_HALF_THC = 8
+      integer, parameter :: RPA_THEORY_DIRECT_RING = 0        ! RPA
+      integer, parameter :: RPA_THEORY_JCTC2023 = 1           ! RPA + 1b (SOSEX) + 2g
+      integer, parameter :: RPA_THEORY_JCTC2024 = 2           ! RPA + full set of quadratic corrections
       
       type TRPAParams
             logical :: MOAlgorithm = .true.
@@ -436,7 +436,7 @@ module rpa_definitions
             !            
             real(F64) :: THC_QRThresh = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
-            integer :: CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+            integer :: TheoryLevel = RPA_THEORY_JCTC2023
             !
             ! Use numerical integration to evaluate Ec1RDMQuad.
             ! If false, the integrand is evaluated only at Lambda=1
@@ -463,6 +463,14 @@ module rpa_definitions
             real(F64) :: T2CouplingStrength = 1.0_F64
             logical :: T2AdaptiveCutoff = .false.
             real(F64) :: T2AdaptiveCutoffTargetKcal = 0.05_F64
+            !
+            ! Transformation of the RPA amplitudes to an auxiliary basis
+            !
+            integer :: T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+            real(F64) :: T2AuxNOCutoffThresh = 0.0_F64
+            real(F64) :: T2AuxLOCutoffThresh = 0.0_F64
+            real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
+            logical :: ComputeNaturalOrbitals = .false.
       end type TRPAParams
 
       type TRPAGrids
@@ -526,6 +534,7 @@ module rpa_definitions
             real(F64), dimension(:), allocatable :: EigRPA
             real(F64), dimension(:), allocatable :: EigSOSEX
             real(F64), dimension(:), allocatable :: Eig2g
+            real(F64), dimension(:, :, :), allocatable :: NaturalOrbitals
       end type TRPAOutput
       
 contains

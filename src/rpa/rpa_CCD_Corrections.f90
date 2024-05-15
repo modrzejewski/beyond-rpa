@@ -6,6 +6,7 @@ module rpa_CCD_Corrections
       use rpa_CCD_Corrections_Experimental
       use rpa_CCS_Corrections
       use rpa_CC_Doubles
+      use rpa_Orbitals
       use rpa_PT_Terms
       use clock
       use display
@@ -14,8 +15,9 @@ module rpa_CCD_Corrections
       
 contains
 
-      subroutine rpa_Corrections(RPAOutput, Zgh, Zgk, Yga, Xgi, hHFai, OccEnergies, VirtEnergies, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, CumulantApprox)
+
+      subroutine rpa_Corrections(RPAOutput, Zgh, Zgk, Yga, Xgi, &
+            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams)
             
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
@@ -26,56 +28,53 @@ contains
             real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
             real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
-            real(F64), dimension(NVirt, NOcc), intent(in)          :: hHFai
-            real(F64), dimension(NOcc), intent(in)                 :: OccEnergies
-            real(F64), dimension(NVirt), intent(in)                :: VirtEnergies
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
-            integer, intent(in)                                    :: CumulantApprox
+            type(TRPAParams), intent(in)                           :: RPAParams
 
             real(F64), dimension(:, :), allocatable :: YXUggm
             type(TClock) :: timer_total, timer            
             integer, parameter :: BlockDim = 300
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bcd = .true.
-            logical, parameter :: Compute_2mnop = .false.
 
-            call msg("CCD corrections to RPA correlation energy")
-            call clock_start(timer_total)
-            if (CumulantApprox == RPA_CUMULANT_LEVEL_5_HALF_THC) then
+            select case (RPAParams%TheoryLevel)
+            case (RPA_THEORY_DIRECT_RING)
+                  continue
+            case (RPA_THEORY_JCTC2024)
                   !
                   ! Experimental code
                   !
-                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, &
+                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
-                  return
-            end if            
-            if (Compute_1b2g) then
-                  call clock_start(timer)
-                  call rpa_CCD_corrections_1b2gmnop(RPAOutput, Zgh, Xgi, Yga, Uaim, &
-                        Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Compute_2bcd, &
-                        Compute_2mnop, YXUggm)
-                  call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
-            end if
-            if (Compute_2bcd) then
-                  call clock_start(timer)
-                  call rpa_CCD_corrections_2bcd(RPAOutput%Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
-                  call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
-            end if
-            !
-            ! Rescale the energy terms to get the correct MBPT prefactors.
-            ! After scaling by 1/2, the 1b term is equivalent to SOSEX.
-            !
-            RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B)
-            RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
-            RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
-            call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
+            case (RPA_THEORY_JCTC2023)
+                  call msg("CCD corrections to RPA correlation energy")
+                  call clock_start(timer_total)
+                  if (Compute_1b2g) then
+                        call clock_start(timer)
+                        call rpa_CCD_corrections_1b2g(RPAOutput, Zgh, Xgi, Yga, Uaim, &
+                              Am, BlockDim, Compute_2bcd, YXUggm)
+                        call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  end if
+                  if (Compute_2bcd) then
+                        call clock_start(timer)
+                        call rpa_CCD_corrections_2bcd(RPAOutput%Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+                        call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  end if
+                  !
+                  ! Rescale the energy terms to get the correct MBPT prefactors.
+                  ! After scaling by 1/2, the 1b term is equivalent to SOSEX.
+                  !
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B)
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
+                  call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
+            end select
       end subroutine rpa_Corrections
 
       
-      subroutine rpa_CCD_corrections_1b2gmnop(RPAOutput, Zgh, Xgi, Yga, Uaim, &
-            Am, hHFai, OccEnergies, VirtEnergies, BlockDim, Intermediates_2bcd, &
-            Compute_2mnop, YXUggm)
+      subroutine rpa_CCD_corrections_1b2g(RPAOutput, Zgh, Xgi, Yga, Uaim, &
+            Am, BlockDim, Intermediates_2bcd, YXUggm)
             
             type(TRPAOutput), intent(inout)                        :: RPAOutput
             real(F64), dimension(:, :), intent(in)                 :: Zgh
@@ -83,35 +82,18 @@ contains
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :, :), intent(in)              :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
-            real(F64), dimension(:, :), intent(in)                 :: hHFai
-            real(F64), dimension(:), intent(in)                    :: OccEnergies
-            real(F64), dimension(:), intent(in)                    :: VirtEnergies
             integer, intent(in)                                    :: BlockDim
             logical, intent(in)                                    :: Intermediates_2bcd
-            logical, intent(in)                                    :: Compute_2mnop
             real(F64), dimension(:, :), allocatable, intent(out)   :: YXUggm
 
             real(F64), dimension(:, :), allocatable :: YXUgh
             real(F64), dimension(:, :), allocatable :: YUgi
-            !
-            ! -------------------- Intermediates for 2m, 2n, 2o, 2p ------------------------
-            !
-            real(F64), dimension(:, :), allocatable :: Tai
-            real(F64), dimension(:, :), allocatable :: UTab_transposed, TUij_transposed
-            real(F64), dimension(:, :), allocatable :: XZYXUXij, YZYXUYab
-            real(F64), dimension(:, :), allocatable :: ZYXUXgi, ZYXUYga
-            real(F64), dimension(:, :), allocatable :: XTUgi, YUTga
-            real(F64), dimension(:), allocatable :: XXTUg, YYUTg
-            real(F64) :: Ec2m, Ec2n, Ec2o, Ec2p
-            real(F64) :: S2m, S2n, S2o, S2p
-            ! ------------------------------------------------------------------------------
             integer :: mu, g
             real(F64) :: Ec1b, Ec2g
             real(F64) :: S1b, S2g
             integer :: NVecsT2, NGridTHC, NOcc, NVirt
             real(F64) :: t_YU, t_YXU, t_Z_YXU_YXU, t_ZYXU, t_THC_T2          
             type(TClock) :: timer
-            logical :: CCS_T1 = .true.
 
             NGridTHC = size(Zgh, dim=1)
             NVecsT2 = size(Am)
@@ -121,26 +103,8 @@ contains
             allocate(RPAOutput%Eig2g(NVecsT2))
             allocate(YXUgh(NGridTHC, NGridTHC))
             allocate(YUgi(NGridTHC, NOcc))
-            if (Intermediates_2bcd .or. Compute_2mnop) then
+            if (Intermediates_2bcd) then
                   allocate(YXUggm(NGridTHC, NVecsT2))
-            end if
-            if (Compute_2mnop) then
-                  allocate(Tai(NVirt, NOcc))
-                  allocate(TUij_transposed(NOcc, NOcc))
-                  allocate(UTab_transposed(NVirt, NVirt))
-                  allocate(ZYXUXgi(NGridTHC, NOcc))
-                  allocate(ZYXUYga(NGridTHC, NVirt))
-                  allocate(XZYXUXij(NOcc, NOcc))
-                  allocate(YZYXUYab(NVirt, NVirt))
-                  allocate(XTUgi(NGridTHC, NOcc))
-                  allocate(YUTga(NGridTHC, NVirt))
-                  allocate(XXTUg(NGridTHC))
-                  allocate(YYUTg(NGridTHC))
-                  if (CCS_T1) then
-                        call rpa_CCS_T1(Tai, hHFai, OccEnergies, VirtEnergies, NOcc, NVirt)
-                  else
-                        call rpa_PT1_T1(Tai, hHFai, OccEnergies, VirtEnergies, NOcc, NVirt)
-                  end if
             end if
             t_YU = ZERO
             t_YXU = ZERO
@@ -149,10 +113,6 @@ contains
             t_THC_T2 = ZERO
             Ec1b = ZERO
             Ec2g = ZERO
-            Ec2m = ZERO
-            Ec2n = ZERO
-            Ec2o = ZERO
-            Ec2p = ZERO
             do mu = 1, NVecsT2
                   !
                   ! [YU](gamma,i,mu) = Sum(a) Y(gamma,a)*U(a,i,mu)
@@ -178,32 +138,12 @@ contains
                   RPAOutput%Eig2g(mu) = -TWO * TWO * S2g * Am(mu)**2
                   RPAOutput%EigSOSEX(mu) = -S1b * Am(mu)
                   !
-                  if (Intermediates_2bcd .or. Compute_2mnop) then
+                  if (Intermediates_2bcd) then
                         !$omp parallel do private(g)                       
                         do g = 1, NGridTHC
                               YXUggm(g, mu) = YXUgh(g, g)
                         end do
                         !$omp end parallel do
-                  end if
-                  if (Compute_2mnop) then
-                        call real_abT(UTab_transposed, Tai, Uaim(:, :, mu)) ! [UT](ab;mu) = Sum(i) U(ai,mu) T(b,i)
-                        call real_aTb(TUij_transposed, Uaim(:, :, mu), Tai) ! [TU](ij;mu) = Sum(a) T(a,i) U(aj,mu)
-                        call rpa_CCS_hadamard_Z_YXU(YXUgh, Zgh, NGridTHC)   ! [Z.YXU](g,h) = Z(g,h)*[YXU](g,h)                  
-                        associate (Z_YXUgh => YXUgh)
-                              call rpa_CCS_intermediate_WZYXUW(YZYXUYab, ZYXUYga, Z_YXUgh, Yga, NGridTHC, NVirt)
-                              call real_vw_x(S2n, YZYXUYab, UTab_transposed, NVirt**2)
-                              call rpa_CCS_intermediate_WWUT(YYUTg, YUTga, UTab_transposed, Yga, NGridTHC, NVirt)
-                              call rpa_CCS_YXU_Z_WW_UT(S2m, YXUggm(:, mu), Zgh, YYUTg, NGridTHC)
-                              !
-                              call rpa_CCS_intermediate_WZYXUW(XZYXUXij, ZYXUXgi, Z_YXUgh, Xgi, NGridTHC, NOcc)
-                              call real_vw_x(S2p, XZYXUXij, TUij_transposed, NOcc**2)
-                              call rpa_CCS_intermediate_WWUT(XXTUg, XTUgi, TUij_transposed, Xgi, NGridTHC, NOcc)
-                              call rpa_CCS_YXU_Z_WW_UT(S2o, YXUggm(:, mu), Zgh, XXTUg, NGridTHC)
-                        end associate
-                        Ec2m = Ec2m + EIGHT * Am(mu) * S2m
-                        Ec2n = Ec2n - FOUR  * Am(mu) * S2n
-                        Ec2o = Ec2o - EIGHT * Am(mu) * S2o
-                        Ec2p = Ec2p + FOUR  * Am(mu) * S2p
                   end if
             end do
             !
@@ -211,20 +151,13 @@ contains
             ! and the cumulant.
             !
             ! The second-order exchange term 1b is scaled by 2 due to the permutation
-            ! symmetry. If only T(Lambda=1) amplitudes are used, Ec1b should be rescaled
-            ! by 1/2 afterwards to get a formula equivalent to SOSEX.
+            ! symmetry. Ec1b should be rescaled by 1/2 afterwards to get the SOSEX energy
             !
             Ec2g = TWO * Ec2g
             Ec1b = TWO * Ec1b
             !
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = Ec1b
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_2G) = Ec2g
-            if (Compute_2mnop) then
-                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2M) = Ec2m
-                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2N) = Ec2n
-                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2O) = Ec2o
-                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2P) = Ec2p
-            end if
             call msg("SOSEX+2g timings (seconds)", underline=.true.)
             call msg("[YU]          " // str(t_YU,d=1))
             call msg("[YXU]         " // str(t_YXU,d=1))
@@ -351,7 +284,7 @@ contains
                         S1b = S1b + Z(k) * YXU(k) * YXU_T(k)
                   end do
             end subroutine block_multiply_loop_2            
-      end subroutine rpa_CCD_corrections_1b2gmnop
+      end subroutine rpa_CCD_corrections_1b2g
 
 
       pure subroutine rpa_Cumulant_block_indices(p, q, pq, n)

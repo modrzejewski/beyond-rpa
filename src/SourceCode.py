@@ -544,7 +544,8 @@ FileList += [("DFT", ["rpa/GaussPRNG.f90",
                       "rpa/OrbDiffHist.f90"])]
 FileList += [("DFT", ["rpa/rpa_core.f90",
                       "rpa/rpa_core_SpinUnres.f90",
-                      "rpa/rpa_core_MO.f90"])]
+                      "rpa/rpa_core_MO.f90",
+                      "rpa/rpa_Orbitals.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC_Singles.f90",
                       "rpa/rpa_CC_Doubles.f90",
                       "rpa/rpa_CC_Exchange.f90",
