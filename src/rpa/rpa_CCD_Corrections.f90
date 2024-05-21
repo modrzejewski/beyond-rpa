@@ -38,16 +38,17 @@ contains
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bcd = .true.
 
-            select case (RPAParams%TheoryLevel)
-            case (RPA_THEORY_DIRECT_RING)
+            if (RPAParams%TheoryLevel==RPA_THEORY_DIRECT_RING) then
                   continue
-            case (RPA_THEORY_JCTC2024)
-                  !
-                  ! Experimental code
-                  !
-                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
-                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
-            case (RPA_THEORY_JCTC2023)
+            else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024 .or. &
+                  RPAParams%TheoryLevel==RPA_THEORY_JCTC2023) then
+                  if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
+                        !
+                        ! Experimental code
+                        !
+                        call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
+                              Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
+                  end if
                   call msg("CCD corrections to RPA correlation energy")
                   call clock_start(timer_total)
                   if (Compute_1b2g) then
@@ -69,7 +70,7 @@ contains
                   RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
                   RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
                   call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
-            end select
+            end if
       end subroutine rpa_Corrections
 
       

@@ -181,7 +181,8 @@ contains
                                     RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
                                     RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
                                     RPAParams%ComputeNaturalOrbitals = .true.
-                                    if (RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS .and. k > 1) then
+                                    if (RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS &
+                                          .and. k > 1) then
                                           RPAParams%ComputeNaturalOrbitals = .false.
                                     end if                                    
                                     RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
@@ -210,8 +211,9 @@ contains
                                           RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, &
                                           SCFParams, System)
                               else
-                                    call rpa_Etot(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, System, RPAParams, &
-                                          RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis)
+                                    call rpa_Etot(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, &
+                                          System, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+                                          CholeskyVecs, CholeskyBasis)
                               end if
                         end if
                   end do

@@ -127,7 +127,7 @@ module scf_definitions
             ! Transformation matrices for transforming the AO indices from the orthogonal AO basis
             ! (OAO) to the basis of Cartesian atomic orbitals (CAO) and spherical atomic orbitals (SAO):
             ! C_cao <- MOBasisVecsCart*C_oao
-            ! C_sao <- MOBasisVecsSpher*C_sao
+            ! C_sao <- MOBasisVecsSpher*C_oao
             ! MOBasisVecsSpher is defined only if the atomic basis set definition has spherical
             ! harmonics enabled.
             !
