@@ -5,6 +5,7 @@
 #
 from subprocess import Popen
 import datetime
+from datetime import timezone
 import argparse
 from os import path
 import os
@@ -84,7 +85,7 @@ f = open(DefaultModules, "w")
 f.write(",".join(sorted(CompiledModules)) + "\n")
 f.close()
 
-datetime_start = datetime.datetime.utcnow()
+datetime_start = datetime.datetime.now(timezone.utc)
 
 def move_files(BaseName, DstDir):
     ObjFileFrom = BaseName + ".o"
@@ -231,7 +232,7 @@ error_code = p.wait()
 if error_code != 0:
     sys.exit(error_code)
 
-datetime_finish = datetime.datetime.utcnow()
+datetime_finish = datetime.datetime.now(timezone.utc)
 td = datetime_finish - datetime_start
 dateformat = "%a %b %d %H:%M:%S UTC %Y"
 datestr_finish = datetime_finish.strftime(dateformat)

@@ -22,7 +22,7 @@ contains
       subroutine task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
             type(TSystem), intent(inout)    :: System
             type(TSCFParams), intent(in)    :: SCFParams
-            type(TRPAParams), intent(in)    :: RPAParams
+            type(TRPAParams), intent(inout) :: RPAParams
             type(TChol2Params), intent(in)  :: Chol2Params
             type(TTHCParams), intent(inout) :: THCParams
             
@@ -88,7 +88,8 @@ contains
                         THCGrid%Xgp, &
                         THCGrid%NGrid, &
                         THCGrid%NGridReduced, &
-                        THCParams%THC_BeckeGridKind, & 
+                        THCParams%THC_BeckeGridKind, &
+                        THCParams%PhiSquaredThresh, &
                         THCParams%QRThresh, &          
                         THCParams%QRThreshReduced, &
                         THCParams%THC_BlockDim, &
@@ -126,8 +127,8 @@ contains
             if (SCFParams%ERI_Algorithm==SCF_ERI_THC .and. RPAParams%TensorHypercontraction) then
                   call thc_ReduceGrid(THCGrid)
             end if
-            call rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, System, CholeskyVecs, CholeskyBasis, THCGrid)
-            
+            call rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, &
+                  System, CholeskyVecs, CholeskyBasis, THCGrid)            
             call free_modules()
             call data_free()
       end subroutine task_uks_rpa

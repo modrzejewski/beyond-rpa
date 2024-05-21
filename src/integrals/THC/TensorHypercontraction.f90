@@ -253,8 +253,9 @@ contains
                   THCGrid%NGrid, &
                   THCGrid%NGridReduced, &
                   THCParams%THC_BeckeGridKind, &  ! parent molecular grid
+                  THCParams%PhiSquaredThresh, &   ! threshold for small values of atomic orbitals
                   THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
-                  THCParams%QRThreshReduced, &      ! threshold for the reduced-size grid
+                  THCParams%QRThreshReduced, &    ! threshold for the reduced-size grid
                   THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
                   AOBasis, System)
             call thc_Z( &
@@ -296,8 +297,8 @@ contains
       end subroutine thc_ReduceGrid
       
 
-      subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, QRThresh, QRThreshReduced, &
-            BlockDim, AOBasis, System)
+      subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, PhiSquaredThresh, &
+            QRThresh, QRThreshReduced, BlockDim, AOBasis, System)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
             !
@@ -338,6 +339,7 @@ contains
             integer, intent(out)                                 :: NGrid
             integer, intent(out)                                 :: NGridReduced
             integer, intent(in)                                  :: BeckeGridKind
+            real(F64), intent(in)                                :: PhiSquaredThresh
             real(F64), intent(in)                                :: QRThresh
             real(F64), intent(in)                                :: QRThreshReduced
             integer, intent(in)                                  :: BlockDim
@@ -365,7 +367,8 @@ contains
             else
                   NAO = AOBasis%NAOCart
             end if
-            call becke_MolecularGrid(X, Y, Z, W, NGrid, BeckeGridKind, System, AOBasis)
+            call becke_MolecularGrid(X, Y, Z, W, NGrid, BeckeGridKind, &
+                  System, AOBasis, PhiSquaredThresh)
             deallocate(W)
             !
             ! Molecular grid pruning by rank-revealing Cholesky decomposition.

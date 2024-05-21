@@ -631,7 +631,7 @@ contains
       end subroutine real_QR_query
 
       
-      subroutine real_QR(a, lda, m, n, qrwork, lqrwork)
+      subroutine real_QR_x(a, lda, m, n, qrwork, lqrwork)
             !
             ! Compute the Q matrix of the QR matrix factorization.
             ! The size of the work array *must* be computed using
@@ -659,14 +659,30 @@ contains
                   call dgeqrf(m, n, a, lda, tau, work, lwork, info)
                   if (info .ne. 0) then
                         call msg("DGEQRF returned error code " // str(info), MSG_ERROR)
-                        stop
+                        error stop
                   end if
                   call dorgqr(m, n, k, a, lda, tau, work, lwork, info)
                   if (info .ne. 0) then
                         call msg("DORGQR returned error code " // str(info), MSG_ERROR)
-                        stop
+                        error stop
                   end if
             end associate
+      end subroutine real_QR_x
+
+
+      subroutine real_QR(A)
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            real(F64), dimension(:), allocatable :: qrwork
+            integer :: lqrwork
+            integer :: m, n, lda
+
+            m = size(A, dim=1)
+            n = size(A, dim=2)
+            lda = m
+            call real_QR_query(lqrwork, lda, m, n)
+            allocate(qrwork(lqrwork))
+            call real_QR_x(A, lda, m, n, qrwork, lqrwork)
       end subroutine real_QR
       
 

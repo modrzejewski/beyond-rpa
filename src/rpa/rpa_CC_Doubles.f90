@@ -25,6 +25,20 @@ contains
             end if
       end subroutine rpa_CC_Doubles_Summary
 
+
+      subroutine rpa_CC_T2_SmoothStepFunction(Alpha, Lambda, Ka, Kb)
+            real(F64), intent(out) :: Alpha
+            real(F64), intent(in)  :: Lambda
+            real(F64), intent(in)  :: Ka
+            real(F64), intent(in)  :: Kb
+            
+            real(F64) :: mu, z
+            
+            mu = (2 * Lambda - (Ka + Kb)) / (Kb - Ka)
+            z = (35 * mu - 35 * mu**3 + 21 * mu**5 - 5 * mu**7) / 16
+            Alpha = ONE/TWO * (ONE - z)
+      end subroutine rpa_CC_T2_SmoothStepFunction
+      
       
       subroutine rpa_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, OccBounds, VirtBounds, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDim)
@@ -628,35 +642,40 @@ contains
       end subroutine rpa_CC_T2_v5
 
       
-      subroutine rpa_THC_CC_T2(A, V, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
+      subroutine rpa_THC_CC_T2(A, V, EigRPA, NVecsT2, PiUEigenvecs, PiUEigenvals, Rkai, NVecsChol, NOcc, NVirt, &
             Freqs, FreqWeights, NFreqs, Lambda, OccEnergies, VirtEnergies, SmallEigenvalsCutoffT2, &
-            GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffCommonThresh)
+            GuessNVecsT2, MaxBatchDim, T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
+            T2CutoffSteepness, T2CutoffCommonThresh, RPAParams)
             !
             ! Compute the dominant NVecsT2 eigenvectors and eigenvalues of the double excitation
             ! amplitudes matrix T2 in the direct-ring approximation. Use the non-iterative formula
             ! based the frequency integral of Chi(Lambda)-Chi(0).
             !
-            real(F64), dimension(:), allocatable, intent(out)    :: A
-            real(F64), dimension(:, :), allocatable, intent(out) :: V
-            integer,intent(inout)                                :: NVecsT2
-            real(F64), dimension(:, :, :), intent(in)            :: PiUEigenvecs
-            real(F64), dimension(:, :), intent(in)               :: PiUEigenvals
-            real(F64), dimension(:, :), intent(in)               :: Rkai
-            integer, intent(in)                                  :: NVecsChol
-            integer, intent(in)                                  :: NOcc
-            integer, intent(in)                                  :: NVirt
-            real(F64), dimension(:), intent(in)                  :: Freqs
-            real(F64), dimension(:), intent(in)                  :: FreqWeights
-            integer, intent(in)                                  :: NFreqs
-            real(F64), intent(in)                                :: Lambda
-            real(F64), dimension(:), intent(in)                  :: OccEnergies
-            real(F64), dimension(:), intent(in)                  :: VirtEnergies
-            real(F64), intent(in)                                :: SmallEigenvalsCutoffT2
-            integer, intent(in)                                  :: GuessNVecsT2
-            integer, intent(in)                                  :: MaxBatchDim
-            real(F64), intent(in)                                :: T2CutoffThresh
-            integer, intent(in)                                  :: T2CutoffType
-            real(F64), intent(inout)                             :: T2CutoffCommonThresh
+            integer, intent(in)                                     :: NVecsChol
+            integer, intent(in)                                     :: NOcc
+            integer, intent(in)                                     :: NVirt
+            real(F64), dimension(:), allocatable, intent(out)       :: A
+            real(F64), dimension(:, :), allocatable, intent(out)    :: V
+            real(F64), dimension(:), allocatable, intent(out)       :: EigRPA
+            integer,intent(inout)                                   :: NVecsT2
+            real(F64), dimension(:, :, :), intent(in)               :: PiUEigenvecs
+            real(F64), dimension(:, :), intent(in)                  :: PiUEigenvals
+            real(F64), dimension(NVecsChol, NVirt*NOcc), intent(in) :: Rkai
+            real(F64), dimension(:), intent(in)                     :: Freqs
+            real(F64), dimension(:), intent(in)                     :: FreqWeights
+            integer, intent(in)                                     :: NFreqs
+            real(F64), intent(in)                                   :: Lambda
+            real(F64), dimension(:), intent(in)                     :: OccEnergies
+            real(F64), dimension(:), intent(in)                     :: VirtEnergies
+            real(F64), intent(in)                                   :: SmallEigenvalsCutoffT2
+            integer, intent(in)                                     :: GuessNVecsT2
+            integer, intent(in)                                     :: MaxBatchDim
+            real(F64), intent(in)                                   :: T2CutoffThresh
+            integer, intent(in)                                     :: T2CutoffType
+            logical, intent(in)                                     :: T2CutoffSmoothStep
+            real(F64), intent(in)                                   :: T2CutoffSteepness
+            real(F64), intent(inout)                                :: T2CutoffCommonThresh
+            type(TRPAParams), intent(in)                            :: RPAParams
 
             real(F64),dimension(:,:), allocatable     :: Omega
             real(F64),dimension(:,:), allocatable     :: IOmega
@@ -672,10 +691,13 @@ contains
             integer :: q0, q1, Nq
 
             real(F64), dimension(:), allocatable   :: Anew
-            integer :: NVecsT2New
-            real(F64) :: max_A, SumA
+            integer :: NVecsT2New, NVecsT2Scaled
+            real(F64) :: SumA
             real(F64) :: K
+            real(F64) :: Ratio
             logical, parameter :: PrintEigenvalues = .false.
+            real(F64) :: StepFunction
+            real(F64) :: Ka, Kb
             !
             ! Where possible, the matrices will be computed as independent batches
             ! to save memory. The last batch will have dimension 0 < Nq < MaxBatchDim.
@@ -745,7 +767,7 @@ contains
             call symmetric_eigenproblem(SEigenValues, S, GuessNVecsT2, .true. )
             NVecsT2 = 0
             do i = GuessNVecsT2, 1, -1
-                  if (SEigenvalues(i)>SmallEigenvalsCutoffT2) then
+                  if (SEigenvalues(i) > SmallEigenvalsCutoffT2) then
                         NVecsT2 = NVecsT2 + 1
                   else
                         exit
@@ -806,8 +828,8 @@ contains
             !           RPA_T2_CUTOFF_EIG                   K = T2CutoffThresh; reject mu if Abs(A(mu)) <= K
             !           RPA_T2_CUTOFF_EIG_DIV_MAXEIG        K = T2CutoffThresh * Maxval(Abs(A)); reject mu if Abs(A(mu)) <= K
             !           RPA_T2_CUTOFF_EIG_DIV_NELECTRON     K = T2CutoffThresh / (NOcc * 2); reject mu if Abs(A(mu)) <= K
-            !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) <= K
-            !                                                   reject mu if Abs(A(mu)) < K
+            !           RPA_T2_CUTOFF_SUM_REJECTED          K = max(mu') abs(A(mu')) : Sum(nu=mu'...NVecsT2) Abs(A(nu)) < TCutoffThresh
+            !                                               reject mu if Abs(A(mu)) <= K
             !
             !           After computing K for the supermolecule, set the common threshold
             !
@@ -832,16 +854,29 @@ contains
                   select case (T2CutoffType)
                   case (RPA_T2_CUTOFF_EIG)
                         K = T2CutoffThresh
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_EIG_DIV_MAXEIG)
                         K = T2CutoffThresh * MAXVAL(Abs(A))
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh*Max(Abs(a(mu')) = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh*Max(Abs(a(mu')) = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_EIG_DIV_NELECTRON)
                         K = T2CutoffThresh / (NOcc * 2)
-                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=1))
+                        call msg("remove mu if Abs(a(mu)) <= T2CutoffThresh/NElectrons = " // str(K,d=3))
                   case (RPA_T2_CUTOFF_SUM_REJECTED)
-                        K = T2CutoffThresh
-                        call msg("remove mu if Sum(mu'=mu,NVecsT2) Abs(a(mu)) <= T2CutoffThresh")
+                        do i = 1, NVecsT2
+                              if (i < NVecsT2) then
+                                    SumA = sum(A(i+1:NVecsT2))
+                                    if (abs(SumA) < T2CutoffThresh) then
+                                          K = Abs(A(i+1))
+                                          exit
+                                    end if
+                              else
+                                    SumA = ZERO
+                                    K = ZERO
+                              end if
+                        end do
+                        call msg("remove mu if Abs(Sum(a(mu:NVecsT2))) < T2CutoffThresh = " // str(T2CutoffThresh,d=3))
+                        call msg("equivalent condition:")
+                        call msg("remove mu if Abs(a(mu)) <= " // str(K, d=3))
                   case default
                         call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
                         error stop
@@ -851,7 +886,7 @@ contains
                   ! subsystem calculation; take K from the supersystem calculation
                   !
                   K = T2CutoffCommonThresh
-                  call msg("remove mu if Abs(a(mu)) <= supersystem threshold = " // str(T2CutoffCommonThresh,d=1))
+                  call msg("remove mu if Abs(a(mu)) <= supersystem threshold = " // str(T2CutoffCommonThresh,d=3))
             end if
             allocate(Anew(NVecsT2))
             !
@@ -859,41 +894,51 @@ contains
             ! number if any eigenvectors are rejected
             !
             NVecsT2New = NVecsT2
-            if (T2CutoffType == RPA_T2_CUTOFF_SUM_REJECTED) then
-                  do i = 1, NVecsT2
-                        if (i < NVecsT2) then
-                              SumA = sum(A(i+1:NVecsT2))
-                        else
-                              SumA = ZERO
-                        end if
-
-                        if (abs(SumA) > K) then
+            NVecsT2Scaled = 0
+            if (T2CutoffSmoothStep) then
+                  Ka = K
+                  Kb = K * T2CutoffSteepness
+                  call msg("Smooth cutoff enabled")
+                  call msg("Step function interval: (" // str(Ka,d=3) // ", " // str(Kb,d=3) // ")")
+            end if
+            do i = 1, NVecsT2
+                  if (T2CutoffSmoothStep) then
+                        if (abs(A(i)) >= Ka) then
                               Anew(i) = A(i)
-                              call msg(str(i) // "   " // str(Anew(i)))
+                        else if (abs(A(i)) > Kb) then
+                              call rpa_CC_T2_SmoothStepFunction(StepFunction, abs(A(i)), Ka, Kb)
+                              Anew(i) = StepFunction * A(i)
+                              NVecsT2Scaled = NVecsT2Scaled + 1
                         else
-                              call msg(str(i) //  "   The sum of eigen values is too smal   "// str(SumA))
                               NVecsT2New = i - 1
-                              call msg("New vectror dimension is:    " // str(NVecsT2New))
                               exit
                         end if
-                  end do
-            else
-                  do i = 1, NVecsT2
+                  else
                         if (abs(A(i)) > K) then
                               Anew(i) = A(i)
                         else
                               NVecsT2New = i - 1
                               exit
                         end if
-                  end do
-            end if
-            if (NVecsT2New < NVecsT2) then
-                  call msg("removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
-                  call msg("full set of eigenvecs:    " // str(NVecsT2))
-                  call msg("reduced set of eigenvecs: " // str(NVecsT2New))
+                  end if
+            end do
+            if (NVecsT2New > 0) then
+                  if (NVecsT2New < NVecsT2) then
+                        call msg("Removed " // str(nint(real(NVecsT2-NVecsT2New,F64)/NVecsT2*100)) // "% of eigenvectors")
+                        call msg("Full set of eigenvecs:    " // str(NVecsT2))
+                        call msg("Reduced set of eigenvecs: " // str(NVecsT2New))
+                        if (NVecsT2Scaled > 0) then
+                              call msg("Step function interval contains " // str(NVecsT2Scaled) // " eigenvals")
+                        end if
+                  else
+                        call msg("No eigenvectors removed")
+                  end if
             else
-                  call msg("no eigenvectors removed")
+                  call msg("Invalid T2CutoffThresh: to eigenvectors left after cutoff", MSG_ERROR)
+                  error stop
             end if
+            Ratio = real(NVecsT2New,F64)/(NOcc+NVirt)
+            call msg(lfield("NVecsT2/(NOcc+NVirt)", 25) // str(Ratio,d=1))
             if (PrintEigenvalues) then
                   call blankline()
                   call msg("Eigenvalues of T2", underline=.true.)
@@ -901,73 +946,14 @@ contains
                         if (i == NVecsT2New + 1) then
                               call msg("--- removed eigenvalues ---")
                         end if
-                        call msg(lfield(str(i), 10) // str(A(i), d=3))                        
+                        if (i > NVecsT2New-NVecsT2Scaled .and. i <= NVecsT2New) then
+                              call msg(lfield(str(i), 10) // lfield(str(A(i), d=3), 30) // lfield(str(Anew(i),d=3), 30))
+                        else
+                              call msg(lfield(str(i), 10) // str(A(i), d=3))
+                        end if
                   end do
                   call blankline()
             end if
-  
-            ! call msg("***************************** Krysia odcięcie z warością maksymalną ***********************************")
-
-            
-            ! block
-                  
-            !       max_A=MAXVAL(abs(A))
-                  
-            !       do i=1, NVecsT2
-            !             if (abs(A(i)/max_A) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-            !             else
-            !                   call msg(str(i)// "   " // str(A(i)) //"   Eigen Value is too small")
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
-            ! call msg("***************************** Krysia odcięcie z sumą wartości odrzuconych ***********************************")
-
-
-            ! block
-                                    
-            !       do i=1, NVecsT2
-            !             if (i < NVecsT2) then
-            !                   SumA = sum(A(i+1:NVecsT2))
-            !             else
-            !                   SumA = ZERO
-            !             end if
-            !             ! SumA = ZERO
-            !             ! do j=i, NVecsT2
-            !             !       SumA=SumA+A(j)
-            !             ! end do
-            !             if (abs(SumA/(2*NOccSupermolecule)) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-            !             else
-            !                   call msg(str(i) //  "   The sum of eigen values is smaler then my treshold   "// str(SumA))
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
-            ! call msg("***************************** Krysia odcięcie z liczbą elektronów ***********************************")
-
-	    ! block
-
-            !       call msg(str(NVecsT2))
-	    !       do i=1, NVecsT2
-	    !     	if (abs(A(i)/(2*NOcc)) > T2CutoffThresh) then
-            !                   Anew(i) = A(i)
-            !                   call msg(str(i) // "   " // str(Anew(i)))
-	    !     	else
-            !                   call msg(str(i) //  "  Eigen Value is too small   " // str(A(i)/NVecsT2))
-            !                   exit
-            !             end if
-            !       end do
-
-            ! end block
-
             deallocate(A)
             allocate(A(NVecsT2New))
             do i=1, NVecsT2New
@@ -983,110 +969,45 @@ contains
             call real_ab_x(V, NVirt*NOcc, T, NVirt*NOcc, TIT, NVecsT2,  &
                   NVirt*NOcc, NVecsT2New, NVecsT2, ONE, ZERO)
             NVecsT2 = NVecsT2New
+            allocate(EigRPA(NVecsT2))
+            call rpa_T2_EigRPA(EigRPA, V, A, Rkai, NOcc, NVirt, NVecsT2, NVecsChol)
             !
-            ! Store threshold value for the subsystem calculation
+            ! Store threshold value for the subsequent
+            ! subsystem calculations
             !
-            T2CutoffCommonThresh = K
+            if (T2CutoffCommonThresh < ZERO) T2CutoffCommonThresh = K
       end subroutine rpa_THC_CC_T2
-      
 
-      subroutine rpa_THC_CC_T2_Decompose(Qem, Yga, Xgi, Uaim, Ak, NOcc, NVirt, &
-            NVecsT2, NGridTHC)
-            
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), intent(in)                 :: Yga
-            real(F64), dimension(:, :), intent(in)                 :: Xgi
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)              :: Ak
-            integer, intent(in)                                    :: NOcc
-            integer, intent(in)                                    :: NVirt
-            integer, intent(in)                                    :: NVecsT2
-            integer, intent(in)                                    :: NGridTHC
 
-            integer :: a, i, k
-            real(F64), dimension(:, :), allocatable :: XXgh, YYgh
-            real(F64), dimension(:, :), allocatable :: YYXXgh, QYYXX, QYYXXQ
-            real(F64), dimension(:, :), allocatable :: QInvS12, InvS12
-            real(F64), dimension(:), allocatable :: Lambda
-            ! ------------------------------------------------------------------
-            ! THC decomposition of T2 eigenvectors.
-            ! At this point the THC-decomposed eigenvectors are not guaranteed
-            ! to be orthonormal.
-            ! ------------------------------------------------------------------
-            allocate(Qem(NGridTHC, NVecsT2))
-            Qem = ZERO
-            !$omp parallel do default(shared) &
-            !$omp private(k, a, i)
-            do k = 1, NVecsT2
-                  do i = 1, NOcc
-                        do a = 1, NVirt
-                              Qem(:, k) = Qem(:, k) + Yga(:, a) * Xgi(:, i) * Uaim(a, i, k)
-                        end do
-                  end do
+      subroutine rpa_T2_EigRPA(EigRPA, Uaim, Am, Rkai, NOcc, NVirt, NVecsT2, NCholesky)
+            real(F64), dimension(NVecsT2), intent(out)              :: EigRPA
+            real(F64), dimension(NVirt*NOcc, NVecsT2), intent(in)   :: Uaim
+            real(F64), dimension(NVecsT2), intent(in)               :: Am
+            real(F64), dimension(NCholesky, NVirt*NOcc), intent(in) :: Rkai
+            integer, intent(in)                                     :: NOcc
+            integer, intent(in)                                     :: NVirt
+            integer, intent(in)                                     :: NVecsT2
+            integer, intent(in)                                     :: NCholesky
+
+            real(F64), dimension(:, :), allocatable :: RUkm
+            integer :: mu
+            real(F64) :: t
+
+            allocate(RUkm(NCholesky, NVecsT2))
+            call real_ab(RUkm, Rkai, Uaim)
+            !$omp parallel do private(mu, t)
+            do mu = 1, NVecsT2
+                  call real_vw_x(t, RUkm(:, mu), RUkm(:, mu), NCholesky)
+                  EigRPA(mu) = TWO * t * Am(mu)
             end do
             !$omp end parallel do
-            allocate(YYXXgh(NGridTHC, NGridTHC))
-            allocate(YYgh(NGridTHC, NGridTHC))
-            allocate(XXgh(NGridTHC, NGridTHC))
-            call real_abT(XXgh, Xgi, Xgi)
-            call real_abT(YYgh, Yga, Yga)            
-            YYXXgh = YYgh * XXgh            
-            call real_Axb_symmetric_sysv(Qem, YYXXgh)
+      end subroutine rpa_T2_EigRPA
+      
 
-            ! do k = 1, NVecsT2
-            !       Qem(:, k) = Qem(:, k) * Sqrt(-Ak(k))
-            ! end do
-
+      subroutine rpa_THC_CC_T2_Decompose(Qem, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
+            NVecsT2, NGridTHC, T2THCThresh)
             
-            ! ------------------------------------------------
-            ! Overlap between THC-deomposed T2 eigenvectors
-            !
-            ! S(mu,nu) = Sum(ai) U(ai,mu)*U(ai,nu)
-            ! = Q**T {YYXX} Q
-            ! ------------------------------------------------
-            YYXXgh = YYgh * XXgh
-            deallocate(YYgh, XXgh)
-            allocate(QYYXX(NVecsT2, NGridTHC))
-            call real_aTb(QYYXX, Qem, YYXXgh)
-            deallocate(YYXXgh)
-            allocate(QYYXXQ(NVecsT2, NVecsT2))
-            call real_ab(QYYXXQ, QYYXX, Qem)
-            deallocate(QYYXX)
-            !
-            ! Transformation matrix S**(-1/2)
-            !
-            allocate(Lambda(NVecsT2))            
-            call symmetric_eigenproblem(Lambda, QYYXXQ, NVecsT2, .true.)
-            do k = 1, NVecsT2
-                  if (Lambda(k) > ZERO) then
-                        QYYXXQ(:, k) = QYYXXQ(:, k) * (ONE/Sqrt(Sqrt(Lambda(k))))
-                  else
-                        QYYXXQ(:, k) = ZERO
-                  end if
-            end do
-            allocate(InvS12(NVecsT2, NVecsT2))
-            call real_abT(InvS12, QYYXXQ, QYYXXQ)
-            deallocate(QYYXXQ)
-            !
-            ! Orthogonalized eigenvectors of T2
-            ! Each eigenvector is scaled by Sqrt(-A(k))
-            !
-            allocate(QInvS12(NGridTHC, NVecsT2))
-            call real_ab(QInvS12, Qem, InvS12)
-            do k = 1, NVecsT2
-                  Qem(:, k) = QInvS12(:, k) * Sqrt(-Ak(k))
-            end do
-      end subroutine rpa_THC_CC_T2_Decompose
-
-
-
-      subroutine rpa_THC_CC_T2_Decompose_v3(Qem, Yea, Xei, Pivots, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
-            NVecsT2, NGridTHC, Thresh)
-            
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Yea
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Xei
-            integer, dimension(:), allocatable, intent(out)        :: Pivots
+            real(F64), dimension(NGridTHC, NVecsT2), intent(out)   :: Qem
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
@@ -1095,175 +1016,71 @@ contains
             integer, intent(in)                                    :: NVirt
             integer, intent(in)                                    :: NVecsT2
             integer, intent(in)                                    :: NGridTHC
-            real(F64), intent(in)                                  :: Thresh
+            real(F64), intent(in)                                  :: T2THCThresh
 
             real(F64), dimension(:, :), allocatable :: Sgh
-            real(F64), dimension(:, :), allocatable :: XXgh, YYgh
+            real(F64), dimension(:, :), allocatable :: XXgh
+            real(F64), dimension(:, :), allocatable :: YYgh
             type(TClock) :: timer
-            integer :: k, a, i
-            integer :: NumericalRank
-            integer :: NPivots
-
-            real(F64), dimension(:), allocatable :: NX, NY
-            real(F64), dimension(:, :), allocatable :: YgaN, XgiN
+            real(F64) :: t_total
+            integer :: mu, a, i
             integer :: g
+            real(F64) :: TikhonovCoeff
 
-            allocate(NX(NGridTHC))
-            allocate(NY(NGridTHC))
-            do g = 1, NGridTHC
-                  NY(g) = norm2(Yga(g, :))
-                  NX(g) = norm2(Xgi(g, :))
-            end do
-            allocate(YgaN(NGridTHC, NVirt))
-            allocate(XgiN(NGridTHC, NOcc))
-            do g = 1, NGridTHC
-                  YgaN(g, :) = Yga(g, :) / NY(g)
-                  XgiN(g, :) = Xgi(g, :) / NX(g)
-            end do
-
-            call msg("Performing pivoted QR for the least-squares THC fit of T2")
-            call msg("Pivoted Cholesky threshold: " // str(Thresh,d=1))
+            call msg("Tensor hypercontraction of T2")
+            call msg("NOT WORKING PROPERLY --- STILL UNDER DEVELOPMENT")
             call clock_start(timer)
+            TikhonovCoeff = T2THCThresh
+            call msg("Tikhonov parameter Lambda: " // str(TikhonovCoeff))
             allocate(Sgh(NGridTHC, NGridTHC))
             allocate(XXgh(NGridTHC, NGridTHC))
             allocate(YYgh(NGridTHC, NGridTHC))
-            call real_abT(XXgh, XgiN, XgiN)
-            call real_abT(YYgh, YgaN, YgaN)
+            call real_abT(XXgh, Xgi, Xgi)
+            call real_abT(YYgh, Yga, Yga)
             Sgh = XXgh * YYgh
-            allocate(Qem(NGridTHC, NVecsT2))
             Qem = ZERO
             !$omp parallel do default(shared) &
-            !$omp private(k, a, i)
-            do k = 1, NVecsT2
+            !$omp private(mu, a, i)
+            do mu = 1, NVecsT2
                   do i = 1, NOcc
                         do a = 1, NVirt
-                              Qem(:, k) = Qem(:, k) + YgaN(:, a) * XgiN(:, i) * Uaim(a, i, k)
+                              Qem(:, mu) = Qem(:, mu) + Yga(:, a) * Xgi(:, i) * Uaim(a, i, mu)
                         end do
                   end do
             end do
             !$omp end parallel do
-            call real_LeastSquares(Qem, NumericalRank, Sgh, Thresh)
-            allocate(Pivots(NGridTHC))
-            NPivots = NGridTHC
-            do k = 1, NGridTHC
-                  Pivots(k) = k
-            end do
-            allocate(Yea(NGridTHC, NVirt))
-            allocate(Xei(NGridTHC, NOcc))
-            Yea = Yga
-            Xei = Xgi
-            do k= 1, NVecsT2
-                  Qem(:, k) = Qem(:, k) * Sqrt(-Am(k))
-            end do
             do g = 1, NGridTHC
-                  Qem(g, :) = Qem(g, :) / (NX(g) * NY(g))
+                  Sgh(g, g) = XXgh(g, g)*YYgh(g, g) + TikhonovCoeff**2
             end do
-      end subroutine rpa_THC_CC_T2_Decompose_v3
+            call real_Axb_symmetric_sysv(Qem, Sgh)
+            t_total = clock_readwall(timer)
+            call msg("T2 decomposed in " // str(t_total,d=1) // " seconds")
+      end subroutine rpa_THC_CC_T2_Decompose
 
 
-      subroutine rpa_THC_CC_T2_Decompose_v2(Qem, Yea, Xei, Pivots, Yga, Xgi, Uaim, Am, NOcc, NVirt, &
-            NVecsT2, NGridTHC, QRThresh)
-            
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Qem
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Yea
-            real(F64), dimension(:, :), allocatable, intent(out)   :: Xei
-            integer, dimension(:), allocatable, intent(out)        :: Pivots
-            real(F64), dimension(:, :), intent(in)                 :: Yga
-            real(F64), dimension(:, :), intent(in)                 :: Xgi
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)              :: Am
-            integer, intent(in)                                    :: NOcc
-            integer, intent(in)                                    :: NVirt
-            integer, intent(in)                                    :: NVecsT2
-            integer, intent(in)                                    :: NGridTHC
-            real(F64), intent(in)                                  :: QRThresh
+      subroutine rpa_THC_CC_T2_Reconstruct(Uaim, Yga, Xgi, Qgm, NOcc, NVirt, NGridTHC, Wgi)
+            real(F64), dimension(NVirt, NOcc), intent(out)      :: Uaim
+            real(F64), dimension(NGridTHC, NVirt), intent(in)   :: Yga
+            real(F64), dimension(NGridTHC, NOcc), intent(in)    :: Xgi
+            real(F64), dimension(NGridTHC), intent(in)          :: Qgm
+            integer, intent(in)                                 :: NOcc
+            integer, intent(in)                                 :: NVirt
+            integer, intent(in)                                 :: NGridTHC
+            real(F64), dimension(NGridTHC, NOcc), intent(out)   :: Wgi
 
-            integer :: NPivots
-            type(TClock) :: timer
-            real(F64) :: t_decomp
+            integer :: i
 
-            real(F64), dimension(:), allocatable :: NX, NY
-            real(F64), dimension(:, :), allocatable :: YgaN, XgiN
-            integer :: g, e
-
-            allocate(NX(NGridTHC))
-            allocate(NY(NGridTHC))
-            do g = 1, NGridTHC
-                  NY(g) = norm2(Yga(g, :))
-                  NX(g) = norm2(Xgi(g, :))
-            end do
-            allocate(YgaN(NGridTHC, NVirt))
-            allocate(XgiN(NGridTHC, NOcc))
-            do g = 1, NGridTHC
-                  YgaN(g, :) = Yga(g, :) / NY(g)
-                  XgiN(g, :) = Xgi(g, :) / NX(g)
-            end do
-
-            call clock_start(timer)
-            call msg("Performing pivoted QR for the least-squares THC fit of T2")
-            call msg("Pivoted Cholesky threshold: " // str(QRThresh,d=1))
-            call rpa_THC_T2_Grid(Yea, Xei, NPivots, Pivots, YgaN, XgiN, QRThresh)
-            call msg("Base grid: " // str(NGridTHC) // " points")
-            call msg("T2 pivots: " // str(NPivots)  // " points selected via pivoted Cholesky")
-            call rpa_THC_CC_T2_Decompose(Qem, Yea, Xei, Uaim, Am, NOcc, NVirt, &
-                  NVecsT2, NPivots)
-            t_decomp = clock_readwall(timer)
-            call msg("Decomposisition of T2 done in " // str(t_decomp,d=1) // " seconds")
-            
-            do e = 1, NPivots
-                  g = Pivots(e)
-                  Qem(e, :) = Qem(e, :) / (NX(g) * NY(g))
-                  Yea(e, :) = Yea(e, :) * NY(g)
-                  Xei(e, :) = Xei(e, :) * NX(g)
-            end do
-      end subroutine rpa_THC_CC_T2_Decompose_v2
-      
-
-      subroutine rpa_THC_T2_Grid(Y2ga, X2gi, NPivots, Pivots, Yga, Xgi, QRThresh)
-            real(F64), dimension(:, :), allocatable, intent(out) :: Y2ga
-            real(F64), dimension(:, :), allocatable, intent(out) :: X2gi
-            integer, intent(out)                                 :: NPivots
-            integer, dimension(:), allocatable, intent(out)      :: Pivots
-            real(F64), dimension(:, :), intent(in)               :: Yga
-            real(F64), dimension(:, :), intent(in)               :: Xgi
-            real(F64), intent(in)                                :: QRThresh
-
-            real(F64), dimension(:, :), allocatable :: YYXX, XX
-            integer :: g, a, i, NOcc, NVirt
-            real(F64) :: CholThresh, MaxDiag
-            integer :: NGridTHC
-
-            NOcc = size(Xgi, dim=2)
-            NVirt = size(Yga, dim=2)
-            NGridTHC = size(Yga, dim=1)
-            allocate(YYXX(NGridTHC, NGridTHC))
-            allocate(XX(NGridTHC, NGridTHC))
-            allocate(Pivots(NGridTHC))
-            call real_abT(YYXX, Yga, Yga)
-            call real_abT(XX, Xgi, Xgi)
-            YYXX = YYXX * XX
-            MaxDiag = ZERO
-            do g = 1, NGridTHC
-                  MaxDiag = max(MaxDiag, YYXX(g, g))
-            end do
-            CholThresh = MaxDiag * QRThresh**2
-            call real_PivotedCholesky(YYXX, Pivots, NPivots, CholThresh)
-            allocate(Y2ga(NPivots, NVirt), X2gi(NPivots, NOcc))
-            do a = 1, NVirt
-                  do g = 1, NPivots
-                        Y2ga(g, a) = Yga(Pivots(g), a)
-                  end do
-            end do
+            !$omp parallel do private(i)
             do i = 1, NOcc
-                  do g = 1, NPivots
-                        X2gi(g, i) = Xgi(Pivots(g), i)
-                  end do
+                  Wgi(:, i) = Xgi(:, i) * Qgm(:)
             end do
-      end subroutine rpa_THC_T2_Grid
+            !$omp end parallel do
+            call real_aTb(Uaim, Yga, Wgi)
+      end subroutine rpa_THC_CC_T2_Reconstruct
       
       
-      subroutine rpa_THC_CC_T2_Decompose_Test(Zgk, Yga, Xgi, Uaim, Ak, NOcc, NVirt, NVecsT2, NGridTHC)
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
+      subroutine rpa_THC_CC_T2_Decompose_Test(Qgm, Yga, Xgi, Uaim, Ak, NOcc, NVirt, NVecsT2, NGridTHC)
+            real(F64), dimension(:, :), intent(in)                 :: Qgm
             real(F64), dimension(:, :), intent(in)                 :: Yga
             real(F64), dimension(:, :), intent(in)                 :: Xgi
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
@@ -1278,6 +1095,7 @@ contains
             real(F64), dimension(:), allocatable :: Vaik, Vbjk
             real(F64), dimension(:), allocatable :: XaiGamma, XbjDelta
             real(F64), dimension(:), allocatable :: XaiZ, XbjZ
+            real(F64) :: MaxAbsError, MaxRelError
 
             allocate(Vaik(NVecsT2))
             allocate(Vbjk(NVecsT2))
@@ -1285,6 +1103,11 @@ contains
             allocate(XbjDelta(NGridTHC))
             allocate(XaiZ(NVecsT2))
             allocate(XbjZ(NVecsT2))
+            call msg("NGridTHC   = " // str(NGridTHC))
+            call msg("NVirt*NOcc = " // str(NVirt*NOcc))
+            call msg("NVecsT2    = " // str(NVecsT2))
+            MaxAbsError = ZERO
+            MaxRelError = ZERO
             do j = 1, NOcc
                   do b = 1, NVirt
                         do i = 1, NOcc
@@ -1297,16 +1120,22 @@ contains
                                     end do
                                     XaiGamma(:) = Yga(:, a) * Xgi(:, i)
                                     XbjDelta(:) = Yga(:, b) * Xgi(:, j)
-                                    T2Exact = dot_product(Vaik, Vbjk)
-                                    XaiZ = matmul(XaiGamma, Zgk)
-                                    XbjZ = matmul(XbjDelta, Zgk)
-                                    T2Approx = dot_product(XaiZ, XbjZ)
+                                    T2Exact = -dot_product(Vaik, Vbjk)
+                                    XaiZ = matmul(XaiGamma, Qgm)
+                                    XbjZ = matmul(XbjDelta, Qgm)
+                                    T2Approx = ZERO
+                                    do k = 1, NVecsT2
+                                          T2Approx = T2Approx + XaiZ(k) * XbjZ(k) * Ak(k)
+                                    end do
                                     if (abs(T2Exact) > 1.0E-3_F64) then
-                                          print *, T2Exact, T2Approx, Abs(T2Exact-T2Approx)
+                                          MaxAbsError = max(MaxAbsError, Abs(T2Exact-T2Approx))
+                                          MaxRelError = max(MaxRelError, Abs(T2Exact-T2Approx)/Abs(T2Exact))
                                     end if
                               end do
                         end do
                   end do
             end do
+            call msg("MaxAbsError = " // str(MaxAbsError,d=1))
+            call msg("MaxRelError = " // str(MaxRelError,d=1))
       end subroutine rpa_THC_CC_T2_Decompose_Test
 end module rpa_CC_Doubles

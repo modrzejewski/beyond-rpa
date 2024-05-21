@@ -67,5 +67,6 @@ module thc_definitions
             real(F64) :: QRThreshReduced = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
             logical   :: THC_QuadraticMemory = .false.
+            real(F64) :: PhiSquaredThresh = 1.0E-15_F64
       end type TTHCParams
 end module thc_definitions

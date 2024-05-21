@@ -38,6 +38,7 @@ contains
             end if
       end subroutine rpa_MeanField_Preamble
 
+      
       subroutine rpa_MeanField_Semi(MeanField, SCFOutput, SCFParams, RPAParams, &
             AOBasis, System, THCGrid)
             !
@@ -474,4 +475,56 @@ contains
             call real_aTv_x(ZD, Zgk, NGridTHC, D, NGridTHC, NCholesky, ONE, ZERO)
             Vcoul = dot_product(ZD, ZD)
       end subroutine rpa_THC_Ec1RDM_Vcoul
+
+
+      subroutine rpa_ChangeOrbitalSpace(MeanField, OrbitalSubspace)
+            type(TMeanField), intent(inout)        :: MeanField
+            real(F64), dimension(:, :), intent(in) :: OrbitalSubspace
+
+            integer :: SubspaceDim, NAO
+            integer :: s
+            integer :: i0, i1, a0, a1
+            real(F64), dimension(:, :), allocatable :: OrbCoeffs
+            
+            SubspaceDim = size(OrbitalSubspace, dim=2)
+            NAO = size(OrbitalSubspace, dim=1)
+            do s = 1, MeanField%NSpins
+                  MeanField%NVirt(s) = SubspaceDim - MeanField%NOcc(s)
+            end do
+            deallocate(MeanField%VirtCoeffs_ao)
+            deallocate(MeanField%OrbEnergies)
+            allocate(MeanField%VirtCoeffs_ao(NAO, maxval(MeanField%NVirt), MeanField%NSpins))
+            allocate(MeanField%OrbEnergies(SubspaceDim, MeanField%NSpins))
+            allocate(OrbCoeffs(NAO, SubspaceDim))
+            do s = 1, MeanField%NSpins
+                  i0 = 1
+                  i1 = MeanField%NOcc(s)
+                  a0 = MeanField%NOcc(s) + 1
+                  a1 = MeanField%NOcc(s) + MeanField%NVirt(s)
+                  call rpa_DiagonalizeFockHamiltonian(MeanField%OrbEnergies(:, s), &
+                        OrbCoeffs, OrbitalSubspace, MeanField%F_ao(:, :, s))
+                  MeanField%OccCoeffs_ao(:, 1:MeanField%NOcc(s), s) = OrbCoeffs(:, i0:i1)
+                  MeanField%VirtCoeffs_ao(:, 1:MeanField%NVirt(s), s) = OrbCoeffs(:, a0:a1)
+            end do
+      end subroutine rpa_ChangeOrbitalSpace
+
+      
+      subroutine rpa_DiagonalizeFockHamiltonian(Ek, Cpk, Subspace, hHFpq)
+            real(F64), dimension(:), intent(out)      :: Ek
+            real(F64), dimension(:, :), intent(out)   :: Cpk
+            real(F64), dimension(:, :), intent(in)    :: Subspace
+            real(F64), dimension(:, :), intent(in)    :: hHFpq
+
+            integer :: NMO_Subspace, NAO
+            real(F64), dimension(:, :), allocatable :: hHFpl, hHFkl
+
+            NMO_Subspace = size(Subspace, dim=2)
+            NAO = size(Subspace, dim=1)
+            allocate(hHFpl(NAO, NMO_Subspace))
+            allocate(hHFkl(NMO_Subspace, NMO_Subspace))
+            call real_ab(hHFpl, hHFpq, Subspace)
+            call real_aTb(hHFkl, Subspace, hHFpl)
+            call symmetric_eigenproblem(Ek, hHFkl, NMO_Subspace, .true.)
+            call real_ab(Cpk, Subspace, hHFkl)
+      end subroutine rpa_DiagonalizeFockHamiltonian
 end module rpa_MeanField
