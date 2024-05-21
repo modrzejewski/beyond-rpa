@@ -99,33 +99,6 @@ contains
             allocate(PiUEigenvecs(NVecsPiU, NVecsPiU, NFreqs))
             allocate(PiUEigenvals(NVecsPiU, NFreqs))
             allocate(Rkai(NVecsPiU, MaxNai, NSpins))
-            !
-            ! Print out the summary of approximations and numerical parameters
-            !
-            call blankline()
-            call midrule()
-            call msg(cfield("Correlation energy", 80))
-            call msg(cfield("Random-phase approximation with MBPT3 corrections", 80))
-            call midrule()
-            call msg("Genuine correlation terms (semicanonical basis):")
-            call msg("1. Direct ring terms (EcRPA)")
-            call msg("2. O(N**4) second-orcder exchange (EcSOSEX)")
-            call msg("3. O(N**4) non-ring CCD correction (Ec2g)")
-            call msg("Total energy includes mean-field singles contribution (Ec1RDM)")
-            call midrule()
-            !            
-            call msg("Mean field")
-            call msg(lfield("", 15) // "GMBPT hamiltonian of Bartlett et al.")
-            call msg(lfield("", 15) // "J. Chem. Phys. 122, 034104 (2005); doi: 10.1063/1.1809605")
-            call msg(lfield("", 15) // "h=hHF(OO+VV)+Lambda*hHF(VO+OV)")
-            !
-            call msg("T2 amplitudes")
-            call msg(lfield("", 15) // "direct ring approximation")
-            call msg(lfield("", 15) // "cutoff for linear dependencies: " // str(SmallEigenvalsCutoffT2,d=1))
-            call msg(lfield("", 15) // "cutoff for eigenvalues: " // str(T2CutoffThresh,d=1))
-            call msg(lfield("", 15) // "diagonalization with " // str(GuessNVecsT2) // " random guess vectors")
-            call midrule()
-            
             EcRPA = ZERO
             call real_abT(THC_Zgh, THC_ZgkFull, THC_ZgkFull)            
             !

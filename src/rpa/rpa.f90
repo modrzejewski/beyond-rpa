@@ -2199,8 +2199,6 @@ contains
             ! size-extensive energy.
             !
             RPAGrids%ComputeGrids = .false.
-            call msg("Total time for ring+MBPT3 correlation: " // str(clock_readwall(timer), d=1) // " seconds")
-            call blankline()
       end subroutine rpa_THC_Ecorr_2
 
       

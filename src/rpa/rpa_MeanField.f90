@@ -143,6 +143,93 @@ contains
                   RPAParams%ACQuadPoints, &
                   RPAParams%AC_1RDMQuad)
       end subroutine rpa_MeanField_Semi
+
+
+      ! subroutine rpa_MeanField_HF(MeanField, SCFOutput, SCFParams, RPAParams, &
+      !       AOBasis, System, THCGrid)
+
+      !       type(TMeanField), intent(out)  :: MeanField
+      !       type(TSCFOutput), intent(in)   :: SCFOutput
+      !       type(TSCFParams), intent(in)   :: SCFParams
+      !       type(TRPAParams), intent(in)   :: RPAParams
+      !       type(TAOBasis), intent(in)     :: AOBasis
+      !       type(TSystem), intent(in)      :: System
+      !       type(TCoulTHCGrid), intent(in) :: THCGrid
+
+      !       integer :: NAO, MaxNVirt, MaxNOcc, NSpins, MaxNai, NMO
+      !       integer :: i0, i1, a0, a1, s
+      !       real(F64), dimension(:, :, :), allocatable :: Rho_ao, OccCoeffs_ao, VirtCoeffs_ao
+      !       real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
+      !       real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
+      !       real(F64) :: time_F
+            
+      !       MeanField%NOcc = SCFOutput%NOcc
+      !       MeanField%NVirt = SCFOutput%NVirt
+      !       NSpins = size(SCFOutput%C_oao, dim=3)
+      !       MeanField%NSpins = NSpins
+      !       NAO = AOBasis%NAOSpher
+      !       NMO = size(SCFOutput%MOBasisVecsSpher, dim=2)
+      !       allocate(Rho_ao(NAO, NAO, NSpins))
+      !       allocate(C_ao(NAO, NMO, NSpins))
+      !       do s = 1, NSpins
+      !             i0 = 1
+      !             i1 = SCFOutput%NOcc(s)
+      !             a0 = SCFOutput%NOcc(s) + 1
+      !             a1 = SCFOutput%NOcc(s) + SCFOutput%NVirt(s)
+      !             call real_ab(C_ao(:, :, s), SCFOutput%MOBasisVecsSpher, &
+      !                   SCFOutput%C_oao(:, 1:NMO, s))
+      !       end do
+
+            
+      !       call real_ab_x(C_ao, NAO, MOBasisVecs, NAO, C_oao, NMO, &
+      !             NAO, N, NMO, ONE, ZERO)
+            
+      !       call real_ab_x(C_ao, NAO, MOBasisVecs, NAO, C_oao, NMO, &
+      !             NAO, N, NMO, ONE, ZERO)
+
+            
+      !       call postscf_Rho(OccCoeffs_ao, VirtCoeffs_ao, Rho_ao, &
+      !             SCFOutput%C_oao, &
+      !             SCFOutput%MOBasisVecsSpher, &
+      !             SCFOutput%NOcc, &
+      !             SCFOutput%NVirt)            
+      !       allocate(MeanField%F_ao(NAO, NAO, NSpins))
+      !       call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
+      !             SCFParams, System, AOBasis, time_F)
+      !       MeanField%EtotHF = EtotHF
+      !       MaxNVirt = maxval(SCFOutput%NVirt)
+      !       MaxNOcc = maxval(SCFOutput%NOcc)
+      !       MaxNai = max(SCFOutput%NOcc(1)*SCFOutput%NVirt(1), SCFOutput%NOcc(2)*SCFOutput%NVirt(2))
+      !       NMO = SCFOutput%NOcc(1) + SCFOutput%NVirt(1)
+      !       allocate(MeanField%OccCoeffs_ao(NAO, MaxNOcc, NSpins))
+      !       allocate(MeanField%VirtCoeffs_ao(NAO, MaxNVirt, NSpins))
+      !       allocate(MeanField%OrbEnergies(NMO, NSpins))
+      !       allocate(OccEnergies(MaxNOcc, NSpins))
+      !       allocate(VirtEnergies(MaxNVirt, NSpins))
+      !       call rpa_semi_Diagonalize( &
+      !             MeanField%OccCoeffs_ao, & ! Semicanonical occupied orbitals
+      !             MeanField%VirtCoeffs_ao, & ! Semicanonical virtual orbitals
+      !             OccEnergies, & ! Occupied block HF hamiltonian eigenvalues
+      !             VirtEnergies, & ! Virtual block HF hamiltonian eigenvalues
+      !             MeanField%F_ao, &
+      !             OccCoeffs_ao, & ! Canonical KS occupied orbitals
+      !             VirtCoeffs_ao, & ! Canonical KS virtual orbitals
+      !             SCFOutput%Nocc, &
+      !             SCFOutput%NVirt)
+      !       MeanField%OrbEnergies = ZERO
+      !       do s = 1, NSpins
+      !             i0 = 1
+      !             i1 = SCFOutput%NOcc(s)
+      !             a0 = SCFOutput%NOcc(s) + 1
+      !             a1 = SCFOutput%NOcc(s) + SCFOutput%NVirt(s)
+      !             if (SCFOutput%NOcc(s) > 0) then
+      !                   MeanField%OrbEnergies(i0:i1, s) = OccEnergies(1:SCFOutput%NOcc(s), s)
+      !                   MeanField%OrbEnergies(a0:a1, s) = VirtEnergies(1:SCFOutput%NVirt(s), s)
+      !             end if
+      !       end do
+      !       MeanField%Ec1RDM_Linear = ZERO
+      !       MeanField%Ec1RDM_Quadratic = ZERO
+      ! end subroutine rpa_MeanField_HF
       
 
       subroutine rpa_semi_Diagonalize(SemiOccCoeffs_ao, SemiVirtCoeffs_ao, &

@@ -698,6 +698,11 @@ contains
             logical, parameter :: PrintEigenvalues = .false.
             real(F64) :: StepFunction
             real(F64) :: Ka, Kb
+
+            call msg("Direct-ring T2 amplitudes")
+            call msg(lfield("cutoff for linear dependencies", 35) // str(SmallEigenvalsCutoffT2,d=1))
+            call msg(lfield("cutoff for eigenvalues", 35) // str(T2CutoffCommonThresh,d=1))
+            call msg(lfield("randomized eigendecomposition", 35) // str(GuessNVecsT2) // " guess vectors")
             !
             ! Where possible, the matrices will be computed as independent batches
             ! to save memory. The last batch will have dimension 0 < Nq < MaxBatchDim.
