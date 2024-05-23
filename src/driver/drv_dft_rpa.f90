@@ -102,7 +102,8 @@ contains
                         THCGrid%Xgp, &
                         CholeskyVecs, CholeskyBasis, Chol2Params, &
                         AOBasis, THCParams)
-                  
+                  allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
+                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
             end if
             do k = 1, NSystems
                   if (k > 1) then
@@ -116,13 +117,11 @@ contains
                         call msg("SCF not converged. Cannot continue with a post-SCF calculation", MSG_ERROR)
                         error stop
                   end if
-                  
                   if (k < NSystems) then
                         call free_modules()
                         call data_free()
                   end if
             end do
-
             if (RPAParams%TensorHypercontraction) deallocate(CholeskyVecs)
             if (SCFParams%ERI_Algorithm==SCF_ERI_THC .and. RPAParams%TensorHypercontraction) then
                   call thc_ReduceGrid(THCGrid)

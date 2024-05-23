@@ -102,8 +102,13 @@ contains
                   call clock_start(timer)
                   do k = 1, NSystems
                         call sys_Init(System, k)
-                        call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
-                              RPAParams, AOBasis, System, THCGrid)
+                        if (SCFParams%XCFunc == XCF_HF) then
+                              call rpa_MeanField_RefineHF(MeanFieldStates(k), SCFOutput(k), &
+                                    SCFParams, AOBasis, System, THCGrid)
+                        else                        
+                              call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
+                                    RPAParams, AOBasis, System, THCGrid)
+                        end if
                   end do
                   call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
@@ -202,8 +207,6 @@ contains
                                     RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
                                     RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
                                     EcRPA_NOBasis(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
-                                    RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA_FullBasis(k)
-                                    call rpa_THC_GatherEnergyContribs(RPAOutput(k)%Energy, MeanFieldStates(k))
                               end if
                         else
                               if (RPAParams%CoupledClusters) then
@@ -237,6 +240,18 @@ contains
                   end if
                   if (FinishMacroLoop) exit MacroIteration
             end do MacroIteration
+            if ( &
+                  RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
+                  RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+                  !
+                  ! If the virual orbital space is truncated,
+                  ! use the full-basis EcRPA contribution in the final energy
+                  !
+                  do k = 1, NSystems
+                        RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA_FullBasis(k)
+                        call rpa_THC_GatherEnergyContribs(RPAOutput(k)%Energy, MeanFieldStates(k))
+                  end do
+            end if
             do k = 1, NSystems
                   EtotRPA(k) = RPAOutput(k)%Energy(RPA_ENERGY_TOTAL)
                   EtotHF(k) = RPAOutput(k)%Energy(RPA_ENERGY_HF)
