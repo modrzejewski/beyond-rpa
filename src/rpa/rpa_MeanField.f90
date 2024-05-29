@@ -145,92 +145,152 @@ contains
       end subroutine rpa_MeanField_Semi
 
 
-      ! subroutine rpa_MeanField_HF(MeanField, SCFOutput, SCFParams, RPAParams, &
-      !       AOBasis, System, THCGrid)
+      subroutine rpa_MeanField_RefineHF(MeanField, SCFOutput, SCFParams, &
+            AOBasis, System, THCGrid)
 
-      !       type(TMeanField), intent(out)  :: MeanField
-      !       type(TSCFOutput), intent(in)   :: SCFOutput
-      !       type(TSCFParams), intent(in)   :: SCFParams
-      !       type(TRPAParams), intent(in)   :: RPAParams
-      !       type(TAOBasis), intent(in)     :: AOBasis
-      !       type(TSystem), intent(in)      :: System
-      !       type(TCoulTHCGrid), intent(in) :: THCGrid
+            type(TMeanField), intent(out)  :: MeanField
+            type(TSCFOutput), intent(in)   :: SCFOutput
+            type(TSCFParams), intent(in)   :: SCFParams
+            type(TAOBasis), intent(in)     :: AOBasis
+            type(TSystem), intent(in)      :: System
+            type(TCoulTHCGrid), intent(in) :: THCGrid
 
-      !       integer :: NAO, MaxNVirt, MaxNOcc, NSpins, MaxNai, NMO
-      !       integer :: i0, i1, a0, a1, s
-      !       real(F64), dimension(:, :, :), allocatable :: Rho_ao, OccCoeffs_ao, VirtCoeffs_ao
-      !       real(F64), dimension(:, :), allocatable :: OccEnergies, VirtEnergies
-      !       real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
-      !       real(F64) :: time_F
-            
-      !       MeanField%NOcc = SCFOutput%NOcc
-      !       MeanField%NVirt = SCFOutput%NVirt
-      !       NSpins = size(SCFOutput%C_oao, dim=3)
-      !       MeanField%NSpins = NSpins
-      !       NAO = AOBasis%NAOSpher
-      !       NMO = size(SCFOutput%MOBasisVecsSpher, dim=2)
-      !       allocate(Rho_ao(NAO, NAO, NSpins))
-      !       allocate(C_ao(NAO, NMO, NSpins))
-      !       do s = 1, NSpins
-      !             i0 = 1
-      !             i1 = SCFOutput%NOcc(s)
-      !             a0 = SCFOutput%NOcc(s) + 1
-      !             a1 = SCFOutput%NOcc(s) + SCFOutput%NVirt(s)
-      !             call real_ab(C_ao(:, :, s), SCFOutput%MOBasisVecsSpher, &
-      !                   SCFOutput%C_oao(:, 1:NMO, s))
-      !       end do
+            integer :: NAO, NSpins, NMO, NGridTHC
+            integer :: i0, i1, a0, a1, s
+            real(F64), dimension(:, :, :), allocatable :: Rho_ao, C_ao, DeltaRho_ao
+            real(F64), dimension(:, :), allocatable :: RhoMF_ao
+            real(F64), dimension(:, :), allocatable :: Fpl, Fkl
+            integer, dimension(2) :: NOcc, NVirt
+            real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
+            real(F64) :: time_F
 
-            
-      !       call real_ab_x(C_ao, NAO, MOBasisVecs, NAO, C_oao, NMO, &
-      !             NAO, N, NMO, ONE, ZERO)
-            
-      !       call real_ab_x(C_ao, NAO, MOBasisVecs, NAO, C_oao, NMO, &
-      !             NAO, N, NMO, ONE, ZERO)
+            NGridTHC = THCGrid%NGrid
+            NOcc = SCFOutput%NOcc
+            NVirt = SCFOutput%NVirt
+            MeanField%NOcc = NOcc
+            MeanField%NVirt = NVirt
+            NSpins = size(SCFOutput%C_oao, dim=3)
+            MeanField%NSpins = NSpins
+            NAO = AOBasis%NAOSpher
+            NMO = size(SCFOutput%MOBasisVecsSpher, dim=2)
+            allocate(Rho_ao(NAO, NAO, NSpins))
+            allocate(C_ao(NAO, NMO, NSpins))
+            do s = 1, NSpins
+                  if (NOcc(s) > 0) then
+                        i0 = 1
+                        i1 = SCFOutput%NOcc(s)
+                        call real_ab(C_ao(:, :, s), SCFOutput%MOBasisVecsSpher, &
+                              SCFOutput%C_oao(:, 1:NMO, s))
+                        call real_abT(Rho_ao(:, :, s), C_ao(:, i0:i1, s), C_ao(:, i0:i1, s))
+                        if (NSpins==1) then
+                              Rho_ao(:, :, s) = TWO * Rho_ao(:, :, s)
+                        end if
+                  else
+                        Rho_ao(:, :, s) = ZERO
+                  end if
+            end do
+            allocate(MeanField%F_ao(NAO, NAO, NSpins))
+            call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
+                  SCFParams, System, AOBasis, time_F)
+            MeanField%EtotHF = EtotHF
+            allocate(Fpl(NAO, NMO))
+            allocate(Fkl(NMO, NMO))
+            allocate(MeanField%OrbEnergies(NMO, NSpins))
+            allocate(MeanField%OccCoeffs_ao(NAO, maxval(NOcc), NSpins))
+            allocate(MeanField%VirtCoeffs_ao(NAO, maxval(NVirt), NSpins))
+            do s = 1, NSpins
+                  if (NOcc(s) > 0) then
+                        i0 = 1
+                        i1 = NOcc(s)
+                        a0 = NOcc(s) + 1
+                        a1 = NOcc(s) + NVirt(s)
+                        call real_ab(Fpl, MeanField%F_ao(:, :, s), C_ao(:, :, s))
+                        call real_aTb(Fkl, C_ao(:, :, s), Fpl)
+                        call symmetric_eigenproblem(MeanField%OrbEnergies(:, s), Fkl, NMO, .true.)
+                        call real_ab(MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), C_ao(:, :, s), Fkl(:, i0:i1))
+                        call real_ab(MeanField%VirtCoeffs_ao(:, 1:NVirt(s), s), C_ao(:, :, s), Fkl(:, a0:a1))
+                  else
+                        MeanField%OccCoeffs_ao(:, :, s) = ZERO
+                        MeanField%VirtCoeffs_ao(:, :, s) = ZERO
+                        MeanField%OrbEnergies(:, s) = ZERO
+                  end if
+            end do
+            allocate(RhoMF_ao(NAO, NAO))
+            allocate(DeltaRho_ao(NAO, NAO, NSpins))
+            do s = 1, NSpins
+                  if (NOcc(s) > 0) then
+                        call real_abT(RhoMF_ao, MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), &
+                              MeanField%OccCoeffs_ao(:, 1:NOcc(s), s))
+                        DeltaRho_ao(:, :, s) = RhoMF_ao - (ONE/TWO) * Rho_ao(:, :, s)
+                  else
+                        DeltaRho_ao(:, :, s) = ZERO
+                  end if
+            end do
+            call rpa_MeanField_DeltaEtotHF_THC( &
+                  MeanField%Ec1RDM_Linear, &
+                  MeanField%Ec1RDM_Quadratic, &
+                  DeltaRho_ao, MeanField%F_ao, NOcc, THCGrid)
+      end subroutine rpa_MeanField_RefineHF
 
-            
-      !       call postscf_Rho(OccCoeffs_ao, VirtCoeffs_ao, Rho_ao, &
-      !             SCFOutput%C_oao, &
-      !             SCFOutput%MOBasisVecsSpher, &
-      !             SCFOutput%NOcc, &
-      !             SCFOutput%NVirt)            
-      !       allocate(MeanField%F_ao(NAO, NAO, NSpins))
-      !       call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
-      !             SCFParams, System, AOBasis, time_F)
-      !       MeanField%EtotHF = EtotHF
-      !       MaxNVirt = maxval(SCFOutput%NVirt)
-      !       MaxNOcc = maxval(SCFOutput%NOcc)
-      !       MaxNai = max(SCFOutput%NOcc(1)*SCFOutput%NVirt(1), SCFOutput%NOcc(2)*SCFOutput%NVirt(2))
-      !       NMO = SCFOutput%NOcc(1) + SCFOutput%NVirt(1)
-      !       allocate(MeanField%OccCoeffs_ao(NAO, MaxNOcc, NSpins))
-      !       allocate(MeanField%VirtCoeffs_ao(NAO, MaxNVirt, NSpins))
-      !       allocate(MeanField%OrbEnergies(NMO, NSpins))
-      !       allocate(OccEnergies(MaxNOcc, NSpins))
-      !       allocate(VirtEnergies(MaxNVirt, NSpins))
-      !       call rpa_semi_Diagonalize( &
-      !             MeanField%OccCoeffs_ao, & ! Semicanonical occupied orbitals
-      !             MeanField%VirtCoeffs_ao, & ! Semicanonical virtual orbitals
-      !             OccEnergies, & ! Occupied block HF hamiltonian eigenvalues
-      !             VirtEnergies, & ! Virtual block HF hamiltonian eigenvalues
-      !             MeanField%F_ao, &
-      !             OccCoeffs_ao, & ! Canonical KS occupied orbitals
-      !             VirtCoeffs_ao, & ! Canonical KS virtual orbitals
-      !             SCFOutput%Nocc, &
-      !             SCFOutput%NVirt)
-      !       MeanField%OrbEnergies = ZERO
-      !       do s = 1, NSpins
-      !             i0 = 1
-      !             i1 = SCFOutput%NOcc(s)
-      !             a0 = SCFOutput%NOcc(s) + 1
-      !             a1 = SCFOutput%NOcc(s) + SCFOutput%NVirt(s)
-      !             if (SCFOutput%NOcc(s) > 0) then
-      !                   MeanField%OrbEnergies(i0:i1, s) = OccEnergies(1:SCFOutput%NOcc(s), s)
-      !                   MeanField%OrbEnergies(a0:a1, s) = VirtEnergies(1:SCFOutput%NVirt(s), s)
-      !             end if
-      !       end do
-      !       MeanField%Ec1RDM_Linear = ZERO
-      !       MeanField%Ec1RDM_Quadratic = ZERO
-      ! end subroutine rpa_MeanField_HF
-      
+
+      subroutine rpa_MeanField_DeltaEtotHF_THC(Ec1RDM_Linear, Ec1RDM_Quadratic, &
+            DeltaRho_ao, F_ao, NOcc, THCGrid)
+
+            real(F64), intent(out)                    :: Ec1RDM_Linear
+            real(F64), intent(out)                    :: Ec1RDM_Quadratic
+            real(F64), dimension(:, :, :), intent(in) :: DeltaRho_ao
+            real(F64), dimension(:, :, :), intent(in) :: F_ao
+            integer, dimension(2), intent(in)         :: NOcc
+            type(TCoulTHCGrid), intent(in)            :: THCGrid
+
+            real(F64), dimension(:, :), allocatable :: X_Rho_X, Zgh, X_Rho
+            real(F64), dimension(:), allocatable :: D
+            real(F64), dimension(2) :: Vexch
+            real(F64) :: Vcoul
+            real(F64) :: TrRhoF
+            integer :: NAO, NGridTHC, NCholesky, NSpins
+            integer :: s, g
+
+            NGridTHC = THCGrid%NGrid
+            NCholesky = size(THCGrid%Zgk, dim=2)
+            NAO = size(DeltaRho_ao, dim=1)
+            NSpins = size(DeltaRho_ao, dim=3)
+            allocate(X_Rho_X(NGridTHC, NGridTHC))
+            allocate(Zgh(NGridTHC, NGridTHC))
+            allocate(X_Rho(NGridTHC, NAO))
+            allocate(D(NGridTHC))
+            call real_abT(Zgh, THCGrid%Zgk, THCGrid%Zgk)
+            D = ZERO
+            Ec1RDM_Linear = ZERO
+            Ec1RDM_Quadratic = ZERO                 
+            Vexch = ZERO
+            Vcoul = ZERO                  
+            do s = 1, NSpins
+                  if (NOcc(s) > 0) then
+                        call real_vw_x(TrRhoF, DeltaRho_ao(:, :, s), F_ao, NAO**2)
+                        if (NSpins == 1) then
+                              Ec1RDM_Linear = TWO * TrRhoF
+                        else
+                              Ec1RDM_Linear = Ec1RDM_Linear + TrRhoF
+                        end if
+                        call rpa_THC_Ec1RDM_Vexch(Vexch(s), X_Rho_X, X_Rho, Zgh, THCGrid%Xgp, &
+                              DeltaRho_ao, NAO, NGridTHC)            
+                        do g = 1, NGridTHC
+                              D(g) = D(g) + X_Rho_X(g, g)
+                        end do
+                  end if
+            end do
+            call rpa_THC_Ec1RDM_Vcoul(Vcoul, D, THCGrid%Zgk, NGridTHC, NCholesky)
+            if (NSpins == 1) then
+                  !
+                  ! Closed shell case
+                  !
+                  Vcoul = FOUR * Vcoul
+                  Vexch(2) = Vexch(1)
+            end if
+            Ec1RDM_Quadratic = Ec1RDM_Quadratic + (ONE/TWO) * (Vcoul - Vexch(1) - Vexch(2))
+      end subroutine rpa_MeanField_DeltaEtotHF_THC
+
 
       subroutine rpa_semi_Diagonalize(SemiOccCoeffs_ao, SemiVirtCoeffs_ao, &
             Fii, Faa, hHF_ao, OccCoeffs_ao, VirtCoeffs_ao, Nocc, NVirt)
