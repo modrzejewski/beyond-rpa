@@ -284,11 +284,20 @@ module scf_definitions
             !
             integer :: ERI_Algorithm = SCF_ERI_CHOLESKY
             !
-            ! Tensor hypercontraction of Coulomb integrals            
-            ! The THC threshold for SCF calculations differs from
-            ! the threshold for RPA
+            ! Tensor hypercontraction of Coulomb integrals
             !
-            real(F64) :: THC_QRThresh = 1.0E-6_F64
+            ! The THC threshold for SCF calculations can differ from
+            ! the threshold for RPA.
+            !
+            ! QRThresh=1.0E-3 gives accurate
+            ! correlation energy components, but frequently results
+            ! in a poorly converging SCF (example: dimers and trimers
+            ! of acetylene in the AVQZ basis).
+            !
+            ! QRThresh=1.0E-4 is reliable for the SCF, but it's
+            ! an overkill for the correlation energy.
+            !
+            real(F64) :: THC_QRThresh = 1.0E-4_F64
             integer :: MaxNIters = 128
             ! ----------------------------------------------------
             ! Cholesky decomposition of the Coulomb matrix

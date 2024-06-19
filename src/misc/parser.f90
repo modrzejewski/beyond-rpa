@@ -3714,7 +3714,7 @@ contains
                   RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
             case ("TENSORHYPERCONTRACTION", "THC", "TENSOR-HYPERCONTRACTION")
                   RPAParams%TensorHypercontraction = .true.
-            case ("THC_QRTHRESH")
+            case ("THC_QRTHRESH", "THCQRTHRESH")
                   read(val, *) m
                   RPAParams%THC_QRThresh = m
             case ("THC_PHISQUAREDTHRESH")
@@ -3778,6 +3778,14 @@ contains
                         call msg("Invalid value of T2AuxLOCutoffThresh", MSG_ERROR)
                         error stop
                   end if
+            case ("CUTOFFTHRESHPNO", "TCUTPNO")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%CutoffThreshPNO = m
+                  else
+                        call msg("Invalid value of CutoffThreshPNO", MSG_ERROR)
+                        error stop
+                  end if
             case ("ADIABATIC-CONNECTION", "ADIABATICCONNECTION", "ADIABATIC_CONNECTION", "COUPLEDCLUSTERS", "COUPLED-CLUSTERS")
                   RPAParams%CoupledClusters = .true.
             case ("ACQUADPOINTS")
@@ -3813,10 +3821,12 @@ contains
                   select case (uppercase(val))
                   case ("RPA", "DIRECT-RING")
                         RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
-                  case ("JCTC2023")
+                  case ("JCTC2023", "DEFAULT")
                         RPAParams%TheoryLevel = RPA_THEORY_JCTC2023
-                  case ("JCTC2024", "ALL")
+                  case ("JCTC2024")
                         RPAParams%TheoryLevel = RPA_THEORY_JCTC2024
+                  case ("ALL")
+                        RPAParams%TheoryLevel = RPA_THEORY_ALL
                   case default
                         call msg("Invalid value of TheoryLevel", MSG_ERROR)
                         error stop
@@ -4165,7 +4175,7 @@ contains
                   case ("EXACT")
                         SCFParams%ERI_Algorithm = SCF_ERI_EXACT
                   end select
-            case ("THC_QRTHRESH")
+            case ("THC_QRTHRESH", "THCQRTHRESH")
                   read(val, *) a
                   SCFParams%THC_QRThresh = a
             case ("ASYMPVXCOMEGA")
@@ -4210,6 +4220,8 @@ contains
                         call msg("Invalid value of SpherAO", MSG_ERROR)
                         error stop
                   end select
+            case default
+                  call msg("Invalid keyword: " // key)
             end select
       end subroutine read_block_SCF
       

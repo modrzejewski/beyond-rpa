@@ -74,7 +74,8 @@ contains
                   THCParams%QRThresh = SCFParams%THC_QRThresh
                   THCParams%QRThreshReduced = -ONE
             end if
-            if ((SCFParams%ERI_Algorithm == SCF_ERI_EXACT .or. SCFParams%ERI_Algorithm == SCF_ERI_THC) &
+            if ((SCFParams%ERI_Algorithm == SCF_ERI_EXACT .or. &
+                  SCFParams%ERI_Algorithm == SCF_ERI_THC) &
                   .and. RPAParams%TensorHypercontraction) then
                   THCParams%THC_QuadraticMemory = .true.
                   call thc_CoulombMatrix_QuadraticMemory(THCGrid, AOBasis, &

@@ -1211,6 +1211,17 @@ contains
             end if
             if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
+                  !
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2H) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2I) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_2J) = .true.
+            end if
+            if (RPAParams%TheoryLevel == RPA_THEORY_ALL) then
+                  DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.

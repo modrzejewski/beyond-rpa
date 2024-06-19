@@ -6,10 +6,44 @@ module rpa_Orbitals
       use string
       use OneElectronInts
       use basis_sets
+      use rpa_definitions
 
       implicit none
       
 contains
+
+      subroutine rpa_LocalizedOrbitals(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
+            real(F64), dimension(:, :), intent(out) :: LijLoc
+            real(F64), dimension(:, :), intent(in)  :: Cpi
+            integer, intent(in)                     :: NOcc
+            type(TRPAParams), intent(in)            :: RPAParams
+            type(TAOBasis), intent(in)              :: AOBasis
+
+            real(F64), dimension(:, :), allocatable :: Spq, Qkp, Uik
+            real(F64), dimension(:, :), allocatable :: Dpq, Dkq, Dkl
+            real(F64), dimension(:, :), allocatable :: Cki
+            integer :: NAO, NOAO, NOccLoc
+
+            NAO = AOBasis%NAOSpher
+            allocate(Spq(NAO, NAO))
+            call ints1e_S(Spq, AOBasis)
+            call real_PivotedCholesky(Qkp, Spq, NOAO, RPAParams%LOLinDepThresh)
+            allocate(Dpq(NAO, NAO))
+            allocate(Dkq(NOAO, NAO))
+            allocate(Dkl(NOAO, NOAO))
+            call real_abT(Dpq, Cpi(:, 1:NOcc), Cpi(:, 1:NOcc))
+            call real_ab(Dkq, Qkp, Dpq)
+            call real_abT(Dkl, Dkq, Qkp)
+            call real_PivotedCholesky(Uik, Dkl, NOccLoc, 0.1_F64)
+            if (NOccLoc /= NOcc) then
+                  call msg("Cholesky decomposition produced wrong number of occupied orbitals: "//str(NOccLoc), MSG_ERROR)
+                  error stop
+            end if
+            allocate(Cki(NOAO, NOcc))
+            call real_ab(Cki, Qkp, Cpi(:, 1:NOcc))
+            call real_aTbT(LijLoc, Cki, Uik)
+      end subroutine rpa_LocalizedOrbitals
+      
 
       subroutine rpa_ProjectOrbitals(Cpa_Projection, NMO_Projection, Cpa_Full, &
             AOBasis, Subspace, Thresh)

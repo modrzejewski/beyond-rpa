@@ -231,7 +231,8 @@ module rpa_definitions
       
       integer, parameter :: RPA_THEORY_DIRECT_RING = 0        ! RPA
       integer, parameter :: RPA_THEORY_JCTC2023 = 1           ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_THEORY_JCTC2024 = 2           ! RPA + full set of quadratic corrections
+      integer, parameter :: RPA_THEORY_JCTC2024 = 2           ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
+      integer, parameter :: RPA_THEORY_ALL      = 3           ! all third-order corrections
       
       type TRPAParams
             logical :: MOAlgorithm = .true.
@@ -433,7 +434,7 @@ module rpa_definitions
             !
             ! THC decomposition threshold for RPA. This can differ
             ! from the THC threshold for the SCF step.
-            !            
+            !
             real(F64) :: THC_QRThresh = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
             integer :: TheoryLevel = RPA_THEORY_JCTC2023
@@ -467,10 +468,16 @@ module rpa_definitions
             ! Transformation of the RPA amplitudes to an auxiliary basis
             !
             integer :: T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
-            real(F64) :: T2AuxNOCutoffThresh = 0.0_F64
+            real(F64) :: T2AuxNOCutoffThresh = 1.0E-8_F64
             real(F64) :: T2AuxLOCutoffThresh = 0.0_F64
             real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
             logical :: ComputeNaturalOrbitals = .false.
+            !
+            ! Localized orbitals
+            !
+            real(F64) :: LOLinDepThresh = 1.0E-6_F64
+            real(F64) :: LOCoulombThresh = 1.0E-8_F64
+            real(F64) :: CutoffThreshPNO = 1.0E-8_F64
       end type TRPAParams
 
       type TRPAGrids

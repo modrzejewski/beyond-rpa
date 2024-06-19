@@ -69,7 +69,7 @@ contains
       end subroutine real_LowerTriangularInverse
       
             
-      subroutine real_PivotedCholesky(A, P, Rank, Eps)
+      subroutine real_PivotedCholesky(U, A, Rank, Eps)
             !
             ! Perform pivoted Cholesky decompostion of A
             ! 
@@ -82,25 +82,37 @@ contains
             ! The output array P is a compressed storage form
             ! of the permutation matrix Pi.
             !
-            ! The algorithm terminates if the current diagonal
-            ! element at U <= Eps.
+            ! The algorithm terminates if the largest diagonal
+            ! element in the current iteration <= Eps.
             !
-            real(F64), dimension(:, :), intent(inout) :: A
-            integer, dimension(:), intent(out)        :: P
-            integer, intent(out)                      :: Rank
-            real(F64), intent(in)                     :: Eps
+            real(F64), dimension(:, :), allocatable, intent(out) :: U
+            real(F64), dimension(:, :), intent(inout)            :: A
+            integer, intent(out)                                 :: Rank
+            real(F64), intent(in)                                :: Eps
 
             integer :: N, info
+            integer :: k, l
             real(F64), dimension(:), allocatable :: Work
+            integer, dimension(:), allocatable :: P
             external :: dpstrf
             
             N = size(A, dim=1)
             allocate(Work(2*N))
+            allocate(P(N))
             call dpstrf("U", N, A, N, P, Rank, Eps, Work, info)
             if (info < 0) then
                   call msg("Pivoted Cholesky decomposition returned with info="//str(info), MSG_ERROR)
                   error stop
             end if
+            do k = 1, N - 1
+                  A(k+1:, k) = ZERO
+            end do
+            allocate(U(Rank, N))
+            U = ZERO
+            do k = 1, N
+                  l = P(k)
+                  U(:, l) = A(1:Rank, k)
+            end do
       end subroutine real_PivotedCholesky
       
 

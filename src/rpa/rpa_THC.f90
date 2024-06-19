@@ -152,7 +152,8 @@ contains
                         ! ---------------------------------------------------------------------------------
                         call clock_start(timer)
                         call rpa_Corrections(RPAOutput, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                              Uaim, Am, NOcc(s), NVirt(s), NVecsT2, NGridTHC, RPAParams)
+                              Uaim, Am, OccCoeffs(:, 1:NOcc(s), s), NOcc(s), NVirt(s), NVecsT2, NGridTHC, &
+                              RPAParams, AOBasis)
                         t_Corrections = clock_readwall(timer)
                   end if
                   call move_alloc(from=Am, to=RPAOutput%Am)

@@ -913,6 +913,11 @@ contains
 
 
       subroutine ints1e_S(S, AOBasis)
+            !
+            ! Overlap matrix of spherical Gaussian atomic orbitals.
+            ! Both upper and lower triangles of the output matrix
+            ! are filled with data.
+            !
             real(F64), dimension(:, :), intent(out) :: S
             type(TAOBasis), intent(in)              :: AOBasis
 

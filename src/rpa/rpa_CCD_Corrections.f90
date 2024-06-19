@@ -4,6 +4,7 @@ module rpa_CCD_Corrections
       use rpa_definitions
       use rpa_MeanField
       use rpa_CCD_Corrections_Experimental
+      use rpa_JCTC2024
       use rpa_CCS_Corrections
       use rpa_CC_Doubles
       use rpa_Orbitals
@@ -15,9 +16,8 @@ module rpa_CCD_Corrections
       
 contains
 
-
       subroutine rpa_Corrections(RPAOutput, Zgh, Zgk, Yga, Xgi, &
-            Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams)
+            Uaim, Am, Cpi, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams, AOBasis)
             
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
@@ -30,7 +30,9 @@ contains
             real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
             real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
             real(F64), dimension(:), intent(in)                    :: Am
+            real(F64), dimension(:, :), intent(in)                 :: Cpi
             type(TRPAParams), intent(in)                           :: RPAParams
+            type(TAOBasis), intent(in)                             :: AOBasis
 
             real(F64), dimension(:, :), allocatable :: YXUggm
             type(TClock) :: timer_total, timer            
@@ -41,13 +43,18 @@ contains
             if (RPAParams%TheoryLevel==RPA_THEORY_DIRECT_RING) then
                   continue
             else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024 .or. &
-                  RPAParams%TheoryLevel==RPA_THEORY_JCTC2023) then
-                  if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
+                  RPAParams%TheoryLevel==RPA_THEORY_JCTC2023 .or. &
+                  RPAParams%TheoryLevel==RPA_THEORY_ALL) then
+                  if (RPAParams%TheoryLevel==RPA_THEORY_ALL) then
                         !
                         ! Experimental code
                         !
                         call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
                               Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
+                  end if
+                  if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
+                        call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+                              RPAParams, AOBasis)
                   end if
                   call msg("CCD corrections to RPA correlation energy")
                   call clock_start(timer_total)
