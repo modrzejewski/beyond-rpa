@@ -187,7 +187,7 @@ contains
                   !
                   Bm = FOUR * Am(mu)**2 / (ONE - FOUR * Am(mu)**2)
                   call real_abT_x(RhoVV, NVirt, Uaim(:, :, mu), NVirt, &
-                        Uaim(:, :, mu), NVirt, NVirt, NVirt, NOcc, Bm, ONE)                  
+                        Uaim(:, :, mu), NVirt, NVirt, NVirt, NOcc, Bm, ONE)
             end do
             if (XContrib) then
                   allocate(Tab(NVirt, NVirt))
@@ -206,4 +206,81 @@ contains
                   end do
             end if
       end subroutine rpa_RhoVV_RPAX
+
+
+      subroutine rpa_OccupiedNO(Cij, Uaim, Am, NVecsT2, NOcc, NVirt)
+            !
+            ! Compute RPA natural orbitals in the occupied subspace,
+            ! computed using the coupled-cluster
+            ! expression for the RPA 1-RDM of Ref. 1.
+            !
+            ! 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
+            ! Post-Kohn-Sham Random-Phase Approximation and Correction Terms
+            ! in the Expectation-Value Coupled-Cluster Formulation
+            ! J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+            !
+            integer, intent(in)                                     :: NVecsT2
+            integer, intent(in)                                     :: NOcc
+            integer, intent(in)                                     :: NVirt
+            real(F64), dimension(NOcc, NOcc), intent(out)           :: Cij
+            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)  :: Uaim
+            real(F64), dimension(NVecsT2), intent(in)               :: Am
+
+            integer :: mu, i
+            real(F64), dimension(:, :), allocatable :: RhoOO
+            real(F64), dimension(:), allocatable :: OccNumbers
+            logical, parameter :: OneRDM_Exchange = .false.
+
+            allocate(RhoOO(NOcc, NOcc))
+            allocate(OccNumbers(NOcc))
+            call rpa_RhoOO_RPAX(RhoOO, Uaim, Am, NOcc, NVirt, NVecsT2, OneRDM_Exchange)
+            call symmetric_eigenproblem(OccNumbers, RhoOO, NOcc, .true.)
+            do i = 1, NOcc
+                  Cij(:, i) = RhoOO(:, NOcc-i+1)
+            end do
+      end subroutine rpa_OccupiedNO
+
+      
+      subroutine rpa_RhoOO_RPAX(RhoOO, Uaim, Am, NOcc, NVirt, NVecsT2, XContrib)
+            integer, intent(in)                                    :: NOcc, NVirt, NVecsT2
+            real(F64), dimension(NOcc, NOcc), intent(out)          :: RhoOO
+            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
+            real(F64), dimension(NVecsT2), intent(in)              :: Am
+            logical, intent(in)                                    :: XContrib
+            
+            integer :: mu, a, b, i, j
+            real(F64) :: Bm, Alpha
+            real(F64), dimension(:, :), allocatable :: Tab
+
+            RhoOO = ZERO
+            do i = 1, NOcc
+                  RhoOO(i, i) = TWO
+            end do
+            do mu = 1, NVecsT2
+                  !                  
+                  ! Rho(i,j) = Delta(i,j) + Sum(a) Sum(bk) (-4)*S(ai,bk)*T(bk,aj)
+                  ! = Delta(i,j) + Sum(a)*Sum(mu) U(ai,mu) * (-4)*A(mu)**2/(1-4*A(mu)**2) * U(aj,mu)
+                  ! Auxiliary amplitude: S = T/(1-4*T**2), see Eq. 59 in the SI for Ref. 1
+                  !
+                  Bm = (-FOUR) * Am(mu)**2 / (ONE - FOUR * Am(mu)**2)
+                  call real_aTb_x(RhoOO, NOcc, Uaim(:, :, mu), NVirt, &
+                        Uaim(:, :, mu), NVirt, NOcc, NOcc, NVirt, Bm, ONE)
+            end do
+            ! if (XContrib) then
+            !       allocate(Tab(NVirt, NVirt))
+            !       do j = 1, NOcc
+            !             do i = 1, NOcc
+            !                   Tab = ZERO
+            !                   do mu = 1, NVecsT2
+            !                         call real_vwT(Tab, Uaim(:, i, mu), Uaim(:, j, mu), Am(mu))
+            !                   end do
+            !                   !
+            !                   ! Rho(a,b) = -2 * Sum(ij) Sum(c) T(ac;ij) * T(cb;ij)
+            !                   !
+            !                   Alpha = -TWO
+            !                   call real_ab_x(RhoVV, NVirt, Tab, NVirt, Tab, NVirt, NVirt, NVirt, NVirt, Alpha, ONE)
+            !             end do
+            !       end do
+            ! end if
+      end subroutine rpa_RhoOO_RPAX
 end module rpa_Orbitals
