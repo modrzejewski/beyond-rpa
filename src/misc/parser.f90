@@ -3815,7 +3815,7 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
-            case ("CCD-CORRECTIONS", "CCDCORRECTIONS", "THEORY-LEVEL")
+            case ("CCD-CORRECTIONS", "CCDCORRECTIONS", "THEORY-LEVEL", "THEORYLEVEL")
                   RPAParams%TensorHypercontraction = .true.
                   RPAParams%CoupledClusters = .true.
                   select case (uppercase(val))

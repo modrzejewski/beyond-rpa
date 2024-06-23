@@ -150,10 +150,10 @@ contains
             
             real(F64), dimension(:, :), allocatable :: Ygx, Ygy
             real(F64), dimension(:, :), allocatable :: YXgai, ZYXkai, ZYXkbj
-            real(F64), dimension(:), allocatable :: XXgij, ZXXkij
-            real(F64), dimension(:, :), allocatable :: Sxy
-            real(F64), dimension(:, :), allocatable :: Vay, Vxy, Vabij, Vaibj
-            real(F64) :: S1b, S2bij, S2bji, S2d, S2g, S2h, S2i
+            real(F64), dimension(:), allocatable :: XXgij, ZXXkij, ZXXgij
+            real(F64), dimension(:, :), allocatable :: Sxy, PSy
+            real(F64), dimension(:, :), allocatable :: Vaibj
+            real(F64) :: S1b, S2bij, S2bji, S2d, S2g, S2h, S2iij, S2iji
             real(F64) :: Weight
             integer :: i, j, k
             integer :: IJ, IJp, IJq
@@ -165,15 +165,14 @@ contains
             allocate(Ygx(NGridTHC, NVirtPNO))
             allocate(Ygy(NGridTHC, NVirtPNO))
             allocate(Vaibj(NVirtPNO, NVirtPNO))
-            allocate(Vay(NVirt, NVirtPNO))
-            allocate(Vxy(NVirtPNO, NVirtPNO))
-            allocate(Vabij(NVirt, NVirt))
             allocate(Sxy(NVirtPNO, NVirtPNO))
-            allocate(YXgai(NGridTHC, NVirt))
+            allocate(PSy(NVirt, NVirtPNO))
+            allocate(YXgai(NGridTHC, NVirtPNO))
             allocate(XXgij(NGridTHC))
+            allocate(ZXXgij(NGridTHC))
             allocate(ZXXkij(NCholesky))
-            allocate(ZYXkai(NCholesky, NVirt))
-            allocate(ZYXkbj(NCholesky, NVirt))
+            allocate(ZYXkai(NCholesky, NVirtPNO))
+            allocate(ZYXkbj(NCholesky, NVirtPNO))
             Ec1b = ZERO
             Ec2b = ZERO
             Ec2d = ZERO
@@ -187,9 +186,14 @@ contains
                         else
                               Weight = ONE
                         end if
-                        call rpa_JCTC2024_Vabij(Vabij, XXgij, ZXXkij, &
-                              YXgai, ZYXkai, Zgk, Xgi, Yga, i, j, NOcc, &
-                              NVirt, NGridTHC, NCholesky)
+                        !
+                        ! Intermediates for computing transformed
+                        ! two-electron integrals
+                        !
+                        XXgij(:) = Xgi(:, i) * Xgi(:, j)
+                        call real_aTv(ZXXkij, Zgk, XXgij)
+                        call real_av(ZXXgij, Zgk, ZXXkij)
+                        
                         IJ = LocIJ(1, i, j)
                         IJp = LocIJ(2, i, j)
                         IJq = LocIJ(3, i, j)
@@ -213,20 +217,36 @@ contains
                               KJ = LocIJ(1, k, j)
                               KJp = LocIJ(2, k, j)
                               KJq = LocIJ(3, k, j)
-                              call VxyijDotSxy(S2g, TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                              call VxyijDotSxy(S2g, &
+                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
                                     TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), i, j)
                               Ec2g = Ec2g - FOUR * Weight * S2g
-                              call VxiyjDotSxy(S2d, TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), &
+                              call VxyijDotSxy(S2h, &
+                                    TaxPNOij(:, :, KJp, KJ), TaxPNOij(:, :, KJq, KJ), &
+                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), i, j)
+                              Ec2h = Ec2h - FOUR * Weight * S2h
+                              call VxiyjDotSxy(S2d, &
+                                    TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), &
                                     TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), i, j)
                               Ec2d = Ec2d + TWO * Weight * S2d
-                              call VxiyjDotSxy(S2bij, TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
+                              call VxiyjDotSxy(S2bij, &
+                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
                                     TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), i, j)
+                              call VxyijDotSxy(S2iij, &
+                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), i, j)
                               if (i /= j) then
-                                    call VxiyjDotSxy(S2bji, TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                                    call VxiyjDotSxy(S2bji, &
+                                          TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
                                           TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), j, i)
+                                    call VxyijDotSxy(S2iji, &
+                                          TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
+                                          TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), j, i)
                                     Ec2b = Ec2b - FOUR * (S2bij + S2bji)
+                                    Ec2i = Ec2i + TWO * (S2iij + S2iji)
                               else
                                     Ec2b = Ec2b - FOUR * S2bij
+                                    Ec2i = Ec2i + TWO * S2iij
                               end if                              
                         end do
                   end do
@@ -262,10 +282,18 @@ contains
                   integer, intent(in)                               :: i
                   integer, intent(in)                               :: j
 
-                  call real_ab(Vay, Vabij, Qy)
-                  call real_aTb(Vxy, Px, Vay)
+                  real(F64) :: Dy
+                  integer :: y
+                  
                   call real_aTb(Sxy, Qx, Py)
-                  call real_vw_x(D, Vxy, Sxy, NVirtPNO**2)
+                  call real_ab(PSy, Px, Sxy)
+                  call real_ab(Ygx, Yga, PSy)
+                  call real_ab(Ygy, Yga, Qy)
+                  do y = 1, NVirtPNO
+                        YXgai(:, y) = Ygx(:, y) * Ygy(:, y)                        
+                  end do
+                  call real_ATv(Sxy(:, 1), YXgai, ZXXgij)
+                  D = sum(Sxy(:, 1))
             end subroutine VxyijDotSxy
       end subroutine rpa_JCTC2024_Gaibj_Gabij
       
