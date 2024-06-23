@@ -149,13 +149,13 @@ contains
             real(F64), dimension(NGridTHC, NCholesky), intent(in)           :: Zgk
             
             real(F64), dimension(:, :), allocatable :: Ygx, Ygy
-            real(F64), dimension(:, :), allocatable :: YXgai, ZYXkai, ZYXkbj
+            real(F64), dimension(:, :), allocatable :: ZYXkai, ZYXkbj, ZYXkyi, ZYXkyj
+            real(F64), dimension(:), allocatable :: Wg
             real(F64), dimension(:), allocatable :: XXgij, ZXXkij, ZXXgij
             real(F64), dimension(:, :), allocatable :: Sxy, PSy
-            real(F64), dimension(:, :), allocatable :: Vaibj
             real(F64) :: S1b, S2bij, S2bji, S2d, S2g, S2h, S2iij, S2iji
             real(F64) :: Weight
-            integer :: i, j, k
+            integer :: a, i, j, k
             integer :: IJ, IJp, IJq
             integer :: IK, IKp, IKq
             integer :: JK, JKp, JKq
@@ -164,15 +164,16 @@ contains
             
             allocate(Ygx(NGridTHC, NVirtPNO))
             allocate(Ygy(NGridTHC, NVirtPNO))
-            allocate(Vaibj(NVirtPNO, NVirtPNO))
+            allocate(Wg(NGridTHC))
+            allocate(ZYXkai(NCholesky, NVirt))
+            allocate(ZYXkbj(NCholesky, NVirt))
+            allocate(ZYXkyi(NCholesky, NVirtPNO))
+            allocate(ZYXkyj(NCholesky, NVirtPNO))
             allocate(Sxy(NVirtPNO, NVirtPNO))
             allocate(PSy(NVirt, NVirtPNO))
-            allocate(YXgai(NGridTHC, NVirtPNO))
-            allocate(XXgij(NGridTHC))
-            allocate(ZXXgij(NGridTHC))
+            allocate(XXgij(NGridTHC))            
+            allocate(ZXXgij(NGridTHC))            
             allocate(ZXXkij(NCholesky))
-            allocate(ZYXkai(NCholesky, NVirtPNO))
-            allocate(ZYXkbj(NCholesky, NVirtPNO))
             Ec1b = ZERO
             Ec2b = ZERO
             Ec2d = ZERO
@@ -191,17 +192,31 @@ contains
                         ! two-electron integrals
                         !
                         XXgij(:) = Xgi(:, i) * Xgi(:, j)
-                        call real_aTv(ZXXkij, Zgk, XXgij)
-                        call real_av(ZXXgij, Zgk, ZXXkij)
-                        
+                        call real_ATv(ZXXkij, Zgk, XXgij)
+                        call real_Av(ZXXgij, Zgk, ZXXkij)
+                        if (i /= j) then
+                              do a = 1, NVirt
+                                    Wg = Yga(:, a) * Xgi(:, i)
+                                    call real_Atv(ZYXkai(:, a), Zgk, Wg)
+                                    Wg = Yga(:, a) * Xgi(:, j)
+                                    call real_Atv(ZYXkbj(:, a), Zgk, Wg)
+                              end do
+                        else
+                              do a = 1, NVirt
+                                    Wg = Yga(:, a) * Xgi(:, i)
+                                    call real_Atv(ZYXkai(:, a), Zgk, Wg)
+                              end do
+                              ZYXkbj = ZYXkai
+                        end if
+                              
                         IJ = LocIJ(1, i, j)
                         IJp = LocIJ(2, i, j)
                         IJq = LocIJ(3, i, j)
                         if (IJ /= 0) then
-                              call real_ab(Ygx, Yga, TaxPNOij(:, :, IJq, IJ))
-                              call real_ab(Ygy, Yga, TaxPNOij(:, :, IJp, IJ))
-                              call rpa_JCTC2024_TrVaibj(S1b, YXgai, ZYXkai, ZYXkbj, Zgk, Xgi, Ygx, Ygy, &
-                                    i, j, NOcc, NVirtPNO, NGridTHC, NCholesky)
+                              call TrVxiyj(S1b, &
+                                    TaxPNOij(:, :, IJp, IJ), &
+                                    TaxPNOij(:, :, IJq, IJ), &
+                                    ZYXkai, ZYXkbj)
                               Ec1b = Ec1b - TWO * Weight * S1b
                         end if
                         do k = 1, NOcc
@@ -227,18 +242,21 @@ contains
                               Ec2h = Ec2h - FOUR * Weight * S2h
                               call VxiyjDotSxy(S2d, &
                                     TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), i, j)
+                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                                    ZYXkai, ZYXkbj)
                               Ec2d = Ec2d + TWO * Weight * S2d
                               call VxiyjDotSxy(S2bij, &
                                     TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), i, j)
+                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                                    ZYXkai, ZYXkbj)
                               call VxyijDotSxy(S2iij, &
                                     TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
                                     TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), i, j)
                               if (i /= j) then
                                     call VxiyjDotSxy(S2bji, &
                                           TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
-                                          TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), j, i)
+                                          TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
+                                          ZYXkbj, ZYXkai)
                                     call VxyijDotSxy(S2iji, &
                                           TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
                                           TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), j, i)
@@ -254,24 +272,33 @@ contains
 
       contains
 
-            subroutine VxiyjDotSxy(D, Px, Qx, Py, Qy, i, j)
-                  real(F64), intent(out)                            :: D
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Px
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Qx
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Py
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Qy
-                  integer, intent(in)                               :: i
-                  integer, intent(in)                               :: j
+            subroutine TrVxiyj(D, Py, Qy, ZYXkai, ZYXkbj)
+                  real(F64), intent(out)                             :: D
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Py
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qy
+                  real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkai
+                  real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkbj
 
-                  call real_ab(Ygx, Yga, Px)
-                  call real_ab(Ygy, Yga, Qy)
+                  call real_ab(ZYXkyi, ZYXkai, Qy)
+                  call real_ab(ZYXkyj, ZYXkbj, Py)
+                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*NVirtPNO)
+            end subroutine TrVxiyj
+
+            subroutine VxiyjDotSxy(D, Px, Qx, Py, Qy, ZYXkai, ZYXkbj)
+                  real(F64), intent(out)                             :: D
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Px
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qx
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Py
+                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qy
+                  real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkai
+                  real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkbj
+
                   call real_aTb(Sxy, Qx, Py)
-                  call rpa_JCTC2024_Vaibj(Vaibj, YXgai, ZYXkai, ZYXkbj, &
-                        Zgk, Xgi, Ygx, Ygy, i, j, NOcc, NVirtPNO, &
-                        NGridTHC, NCholesky)
-                  call real_vw_x(D, Vaibj, Sxy, NVirtPNO**2)
-            end  subroutine VxiyjDotSxy
-
+                  call real_ab(PSy, Px, Sxy)
+                  call real_ab(ZYXkyi, ZYXkai, PSy)
+                  call real_ab(ZYXkyj, ZYXkbj, Qy)
+                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*NVirtPNO)
+            end subroutine VxiyjDotSxy
             
             subroutine VxyijDotSxy(D, Px, Qx, Py, Qy, i, j)
                   real(F64), intent(out)                            :: D
@@ -289,11 +316,11 @@ contains
                   call real_ab(PSy, Px, Sxy)
                   call real_ab(Ygx, Yga, PSy)
                   call real_ab(Ygy, Yga, Qy)
+                  Wg = ZERO
                   do y = 1, NVirtPNO
-                        YXgai(:, y) = Ygx(:, y) * Ygy(:, y)                        
+                        Wg(:) = Wg(:) + Ygx(:, y) * Ygy(:, y)                        
                   end do
-                  call real_ATv(Sxy(:, 1), YXgai, ZXXgij)
-                  D = sum(Sxy(:, 1))
+                  call real_vw_x(D, Wg, ZXXgij, NGridTHC)
             end subroutine VxyijDotSxy
       end subroutine rpa_JCTC2024_Gaibj_Gabij
       
@@ -318,110 +345,4 @@ contains
             !$omp end parallel do
             call real_abT(Tabij, Pam, Qam)
       end subroutine rpa_JCTC2024_Tabij
-
-
-      subroutine rpa_JCTC2024_Vaibj(Vaibj, YXgai, ZYXkai, ZYXkbj, Zgk, Xgi, Yga, Ygb, &
-            i, j, NOcc, NVirt, NGridTHC, NCholesky)
-            
-            integer, intent(in)                                   :: NOcc
-            integer, intent(in)                                   :: NVirt
-            integer, intent(in)                                   :: NGridTHC
-            integer, intent(in)                                   :: NCholesky
-            real(F64), dimension(NVirt, NVirt), intent(out)       :: Vaibj
-            real(F64), dimension(NGridTHC, NVirt), intent(out)    :: YXgai
-            real(F64), dimension(NCholesky, NVirt), intent(out)   :: ZYXkai
-            real(F64), dimension(NCholesky, NVirt), intent(out)   :: ZYXkbj
-            real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
-            real(F64), dimension(NGridTHC, NOcc), intent(in)      :: Xgi
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Yga
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Ygb
-            integer, intent(in)                                   :: i
-            integer, intent(in)                                   :: j
-            
-            integer :: a
-
-            !$omp parallel do private(a)
-            do a = 1, NVirt
-                  YXgai(:, a) = Yga(:, a) * Xgi(:, i)
-            end do
-            !$omp end parallel do
-            call real_aTb(ZYXkai, Zgk, YXgai)
-            !$omp parallel do private(a)
-            do a = 1, NVirt
-                  YXgai(:, a) = Ygb(:, a) * Xgi(:, j)
-            end do
-            !$omp end parallel do
-            call real_aTb(ZYXkbj, Zgk, YXgai)
-            call real_aTb(Vaibj, ZYXkai, ZYXkbj)
-      end subroutine rpa_JCTC2024_Vaibj
-
-
-      subroutine rpa_JCTC2024_TrVaibj(TrVaibj, YXgai, ZYXkai, ZYXkbj, Zgk, Xgi, Yga, Ygb, &
-            i, j, NOcc, NVirt, NGridTHC, NCholesky)
-            
-            integer, intent(in)                                   :: NOcc
-            integer, intent(in)                                   :: NVirt
-            integer, intent(in)                                   :: NGridTHC
-            integer, intent(in)                                   :: NCholesky
-            real(F64), intent(out)                                :: TrVaibj
-            real(F64), dimension(NGridTHC, NVirt), intent(out)    :: YXgai
-            real(F64), dimension(NCholesky, NVirt), intent(out)   :: ZYXkai
-            real(F64), dimension(NCholesky, NVirt), intent(out)   :: ZYXkbj
-            real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
-            real(F64), dimension(NGridTHC, NOcc), intent(in)      :: Xgi
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Yga
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Ygb
-            integer, intent(in)                                   :: i
-            integer, intent(in)                                   :: j
-            
-            integer :: a
-
-            !$omp parallel do private(a)
-            do a = 1, NVirt
-                  YXgai(:, a) = Yga(:, a) * Xgi(:, i)
-            end do
-            !$omp end parallel do
-            call real_aTb(ZYXkai, Zgk, YXgai)
-            !$omp parallel do private(a)
-            do a = 1, NVirt
-                  YXgai(:, a) = Ygb(:, a) * Xgi(:, j)
-            end do
-            !$omp end parallel do
-            call real_aTb(ZYXkbj, Zgk, YXgai)
-            call real_vw_x(TrVaibj, ZYXkai, ZYXkbj, NCholesky*NVirt)
-      end subroutine rpa_JCTC2024_TrVaibj
-
-
-      subroutine rpa_JCTC2024_Vabij(Vabij, XXgij, ZXXkij, YYgab, ZYYkab, &
-            Zgk, Xgi, Yga, i, j, NOcc, NVirt, NGridTHC, NCholesky)
-            
-            integer, intent(in)                                   :: NOcc
-            integer, intent(in)                                   :: NVirt
-            integer, intent(in)                                   :: NGridTHC
-            integer, intent(in)                                   :: NCholesky
-            real(F64), dimension(NVirt, NVirt), intent(out)       :: Vabij
-            real(F64), dimension(NGridTHC), intent(out)           :: XXgij
-            real(F64), dimension(NCholesky), intent(out)          :: ZXXkij
-            real(F64), dimension(NGridTHC, NVirt), intent(out)    :: YYgab
-            real(F64), dimension(NCholesky, NVirt), intent(out)   :: ZYYkab
-            real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
-            real(F64), dimension(NGridTHC, NOcc), intent(in)      :: Xgi
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Yga
-            integer, intent(in)                                   :: i
-            integer, intent(in)                                   :: j
-            
-            integer :: a, b
-
-            XXgij(:) = Xgi(:, i) * Xgi(:, j)
-            call real_ATv(ZXXkij, Zgk, XXgij)
-            do b = 1, NVirt
-                  !$omp parallel do private(a)
-                  do a = 1, NVirt
-                        YYgab(:, a) = Yga(:, a) * Yga(:, b)
-                  end do
-                  !$omp end parallel do
-                  call real_aTb(ZYYkab, Zgk, YYgab)
-                  call real_ATv(Vabij(:, b), ZYYkab, ZXXkij)
-            end do
-      end subroutine rpa_JCTC2024_Vabij
 end module rpa_JCTC2024

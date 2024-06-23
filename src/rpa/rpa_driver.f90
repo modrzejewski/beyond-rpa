@@ -939,6 +939,12 @@ contains
             real(F64) :: Delta
             character(:), allocatable :: line
 
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023 .or. &
+                  RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                  continue
+            else
+                  return
+            end if
             Delta = CutoffThresh * (CutoffScaling - ONE) / NAltCutoffs
             AltCutoffs(0) = CutoffThresh
             do i = 1, NAltCutoffs
@@ -950,15 +956,19 @@ contains
                   System%SystemKind == SYS_TRIMER .or. &
                   System%SystemKind == SYS_TETRAMER &
                   ) then
-                  call msg("Sensitivity of Ec to the perturbation of T2CutoffThresh")
+                  call msg("Sensitivity of Ec to a perturbation of T2CutoffThresh")
                   call msg("All values in kcal/mol")
                   call midrule()
                   if (System%SystemKind == SYS_DIMER) then
-                        line = lfield("T2CutoffThresh", 17) // lfield("Eint(direct ring)", 20) &
-                              // lfield("Eint(2g)", 20) // lfield("Eint(SOSEX)", 20)
+                        line = lfield("T2CutoffThresh", 17) // lfield("Eint(direct ring)", 20)
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              line = line // lfield("Eint(2g)", 20) // lfield("Eint(SOSEX)", 20)
+                        end if
                   else
-                        line = lfield("T2CutoffThresh", 17) // lfield("EintNadd(direct ring)", 20) &
-                              // lfield("EintNadd(2g)", 20) // lfield("EintNadd(SOSEX)", 20)
+                        line = lfield("T2CutoffThresh", 17) // lfield("EintNadd(direct ring)", 20)
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              line = line // lfield("EintNadd(2g)", 20) // lfield("EintNadd(SOSEX)", 20)
+                        end if
                   end if
                   call msg(line)
                   call midrule()
@@ -977,37 +987,56 @@ contains
                         // lfield("", 20) // lfield("", 20)
                   call msg(line)
                   do i = NAltCutoffs, 0, -1                        
-                        call E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, NSystems, AltCutoffs(i))
+                        call E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, RPAParams, NSystems, AltCutoffs(i))
                         select case (System%SystemKind)
                         case (SYS_DIMER)
                               call rpa_Eint2Body(EintRPA(i), EcRPA)
-                              call rpa_Eint2Body(Eint2g(i), Ec2g)
-                              call rpa_Eint2Body(EintSOSEX(i), EcSOSEX)
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                                    call rpa_Eint2Body(Eint2g(i), Ec2g)
+                                    call rpa_Eint2Body(EintSOSEX(i), EcSOSEX)
+                              end if
                         case (SYS_TRIMER)
                               call rpa_EintNadd(EintRPA(i), EcRPA)
-                              call rpa_EintNadd(Eint2g(i), Ec2g)
-                              call rpa_EintNadd(EintSOSEX(i), EcSOSEX)
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                                    call rpa_EintNadd(Eint2g(i), Ec2g)
+                                    call rpa_EintNadd(EintSOSEX(i), EcSOSEX)
+                              end if
                         case (SYS_TETRAMER)
                               call rpa_EintNadd4Body(EintRPA(i), EcRPA)
-                              call rpa_EintNadd4Body(Eint2g(i), Ec2g)
-                              call rpa_EintNadd4Body(EintSOSEX(i), EcSOSEX)
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                                    call rpa_EintNadd4Body(Eint2g(i), Ec2g)
+                                    call rpa_EintNadd4Body(EintSOSEX(i), EcSOSEX)
+                              end if
                         end select
-                        line = lfield(str(AltCutoffs(i),d=3), 17) // lfield(str(tokcal(EintRPA(i)),d=6), 20) &
-                              // lfield(str(tokcal(Eint2g(i)),d=6), 20) // lfield(str(tokcal(EintSOSEX(i)),d=6), 20)
+                        line = lfield(str(AltCutoffs(i),d=3), 17) // lfield(str(tokcal(EintRPA(i)),d=6), 20)
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              line = line // lfield(str(tokcal(Eint2g(i)),d=6), 20) // lfield(str(tokcal(EintSOSEX(i)),d=6), 20)
+                        end if
                         call msg(line)
                   end do
                   call midrule()
                   DintRPA = max(abs(EintRPA(0) - EintRPA_Reference), abs(maxval(EintRPA) - minval(EintRPA)))
-                  Dint2g = abs(maxval(Eint2g) - minval(Eint2g))
-                  DintSOSEX = abs(maxval(EintSOSEX) - minval(EintSOSEX))
                   RelDintRPA = DintRPA / abs(EintRPA_Reference)
-                  RelDint2g = Dint2g / abs(Eint2g(0))
-                  RelDintSOSEX = DintSOSEX / abs(EintSOSEX(0))
-                  line = lfield("abs error", 17) // lfield(str(tokcal(DintRPA),d=1), 20) &
-                        // lfield(str(tokcal(Dint2g),d=1), 20) // lfield(str(tokcal(DintSOSEX),d=1), 20)
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        Dint2g = abs(maxval(Eint2g) - minval(Eint2g))
+                        DintSOSEX = abs(maxval(EintSOSEX) - minval(EintSOSEX))
+                        RelDint2g = Dint2g / abs(Eint2g(0))
+                        RelDintSOSEX = DintSOSEX / abs(EintSOSEX(0))
+                  else
+                        Dint2g = ZERO
+                        DintSOSEX = ZERO
+                        RelDint2g = ZERO
+                        RelDintSOSEX = ZERO
+                  end if
+                  line = lfield("abs error", 17) // lfield(str(tokcal(DintRPA),d=1), 20)
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        line = line // lfield(str(tokcal(Dint2g),d=1), 20) // lfield(str(tokcal(DintSOSEX),d=1), 20)
+                  end if
                   call msg(line)
-                  line = lfield("rel error", 17) // lfield(str(RelDintRPA,d=1), 20) &
-                        // lfield(str(RelDint2g,d=1), 20) // lfield(str(RelDintSOSEX,d=1), 20)
+                  line = lfield("rel error", 17) // lfield(str(RelDintRPA,d=1), 20)
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        line = line // lfield(str(RelDint2g,d=1), 20) // lfield(str(RelDintSOSEX,d=1), 20)
+                  end if
                   call msg(line)
                   if (RPAParams%T2AdaptiveCutoff) then
                         if ( &
@@ -1028,11 +1057,12 @@ contains
 
       contains
 
-            subroutine E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, NSystems, CutoffThresh)
+            subroutine E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, RPAParams, NSystems, CutoffThresh)
                   real(F64), dimension(:), intent(out)        :: EcRPA
                   real(F64), dimension(:), intent(out)        :: Ec2g
                   real(F64), dimension(:), intent(out)        :: EcSOSEX
                   type(TRPAOutput), dimension(:), intent(in)  :: RPAOutput
+                  type(TRPAParams), intent(in)                :: RPAParams
                   integer, intent(in)                         :: NSystems
                   real(F64), intent(in)                       :: CutoffThresh
 
@@ -1053,8 +1083,10 @@ contains
                         end do
                         if (NVecsT2(k) > 0) then
                               EcRPA(k) = sum(RPAOutput(k)%EigRPA(1:NVecsT2(k)))
-                              Ec2g(k) = sum(RPAOutput(k)%Eig2g(1:NVecsT2(k)))
-                              EcSOSEX(k) = sum(RPAOutput(k)%EigSOSEX(1:NVecsT2(k)))
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                                    Ec2g(k) = sum(RPAOutput(k)%Eig2g(1:NVecsT2(k)))
+                                    EcSOSEX(k) = sum(RPAOutput(k)%EigSOSEX(1:NVecsT2(k)))
+                              end if
                         end if
                   end do
             end subroutine E_AltCutoff

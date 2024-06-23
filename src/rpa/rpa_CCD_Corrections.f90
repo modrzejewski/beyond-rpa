@@ -40,18 +40,16 @@ contains
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bcd = .true.
 
-            if (RPAParams%TheoryLevel==RPA_THEORY_DIRECT_RING) then
-                  continue
-            else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024 .or. &
-                  RPAParams%TheoryLevel==RPA_THEORY_JCTC2023 .or. &
-                  RPAParams%TheoryLevel==RPA_THEORY_ALL) then
-                  if (RPAParams%TheoryLevel==RPA_THEORY_ALL) then
-                        !
-                        ! Experimental code
-                        !
-                        call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
-                              Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))
-                  end if
+            if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
+                  call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+                        RPAParams, AOBasis)
+            else if (RPAParams%TheoryLevel==RPA_THEORY_ALL) then
+                  !
+                  ! Warning: this code path allocates large matrices
+                  !
+                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
+                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))                  
+            else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2023) then
                   call msg("CCD corrections to RPA correlation energy")
                   call clock_start(timer_total)
                   if (Compute_1b2g) then
@@ -73,10 +71,6 @@ contains
                   RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
                   RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
                   call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
-                  if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
-                        call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
-                              RPAParams, AOBasis)
-                  end if
             end if
       end subroutine rpa_Corrections
 
