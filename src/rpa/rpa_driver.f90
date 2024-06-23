@@ -939,6 +939,7 @@ contains
             real(F64) :: Delta
             character(:), allocatable :: line
 
+            SatisfiedAccuracyTarget = .true.
             if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023 .or. &
                   RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
                   continue
@@ -950,7 +951,6 @@ contains
             do i = 1, NAltCutoffs
                   AltCutoffs(i) = CutoffThresh * CutoffScaling - (i - 1) * Delta
             end do
-            SatisfiedAccuracyTarget = .true.
             if ( &
                   System%SystemKind == SYS_DIMER .or. &
                   System%SystemKind == SYS_TRIMER .or. &
