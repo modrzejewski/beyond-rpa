@@ -38,9 +38,10 @@ contains
             real(F64), dimension(:, :), allocatable :: U, V
             integer, dimension(:, :, :), allocatable :: LocIJ            
             integer :: IJ
-            type(TClock) :: timer
+            type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO
+            real(F64) :: t_Total, t_SVD, t_Energy, t_LO
 
-            call clock_start(timer)
+            call clock_start(timer_Total)
             call blankline()
             call midrule()
             call msg(cfield("Particle-Hole Corrections to Direct RPA", 76))
@@ -65,6 +66,7 @@ contains
             ! Transformation to the localized occupied orbital
             ! basis
             !
+            call clock_start(timer_LO)
             allocate(UaimLoc(NVirt, NOcc, NVecsT2))
             allocate(XgiLoc(NGridTHC, NOcc))
             allocate(Lik(NOcc, NOcc))
@@ -74,12 +76,14 @@ contains
             do mu = 1, NVecsT2
                   call real_ab(UaimLoc(:, :, mu), Uaim(:, :, mu), Lik)
             end do
-            !$omp end parallel do            
+            !$omp end parallel do
+            t_LO = clock_readwall(timer_LO)
             !
             ! Find the number of pair-natural orbitals corresponding
             ! to CutoffThreshPNO by decomposing diagonal amplitude
             ! matrices T(ai,bi)
             !
+            call clock_start(timer_SVD)
             allocate(Sigma(NVirt))
             allocate(U(NVirt, NVirt))
             allocate(V(NVirt, NVirt))
@@ -128,14 +132,18 @@ contains
                         LocIJ(3, J, I) = 1
                   end do
             end do
+            t_SVD = clock_readwall(timer_SVD)
             !
             ! Ec1b + Ec2b + Ec2c + Ec2d
             ! Ec2g + Ec2h + Ec2i + Ec2j
             !
+            call clock_start(timer_Energy)
             call rpa_JCTC2024_Gaibj_Gabij(Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
                   LocIJ, TaxPNOij, XgiLoc, Yga, Zgk, NVirtPNO, NVirt, NOcc, &
                   NOccPairs, NGridTHC, NCholesky)
-
+            t_Energy = clock_readwall(timer_Energy)
+            t_Total = clock_readwall(timer_Total)
+            
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * Ec1b
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Ec2b
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Ec2b
@@ -147,10 +155,13 @@ contains
 
             call blankline()
             call msg("Calculation of particle-hole corrections completed")
-            call msg("Total time             " // str(clock_readwall(timer),d=1) // " seconds")
+            call msg("Timings in seconds:")
+            call msg("Total time           " // str(t_Total,d=1))
+            call msg("Orbital localization " // str(t_LO,d=1))
+            call msg("SVD                  " // str(t_SVD,d=1))
+            call msg("Energy terms         " // str(t_Energy,d=1))
             call blankline()
       end subroutine rpa_JCTC2024_Corrections
-
 
 
       subroutine rpa_JCTC2024_Gaibj_Gabij(Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
