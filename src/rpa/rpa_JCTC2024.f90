@@ -31,7 +31,7 @@ contains
             integer :: i, j, mu, x
             real(F64) :: Ec1b, Ec2b, Ec2d, Ec2i, Ec2h, Ec2g
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
-            integer :: NVirtPNO
+            integer :: MaxNVirtPNO, NVirtPNO
             integer :: NOccPairs
             real(F64), dimension(:, :, :, :), allocatable :: TaxPNOij
             real(F64), dimension(:), allocatable :: Sigma
@@ -48,7 +48,6 @@ contains
             call blankline()
             call msg("Energy terms: EcSOSEX, Ec2b, Ec2c, Ec2d, Ec2g, Ec2h, Ec2i, Ec2j")
             call msg("Definitions: Table 2 of Ref. 1")
-            call msg("Pair-natural orbitals cutoff: " // str(RPAParams%CutoffThreshPNO,d=1))
             call blankline()
             call msg("1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski")
             call msg("   J. Chem. Theory Comput. 19, 6619 (2023);")
@@ -77,15 +76,38 @@ contains
             end do
             !$omp end parallel do            
             !
-            ! Singular value decomposition of T(aI,bJ)
+            ! Find the number of pair-natural orbitals corresponding
+            ! to CutoffThreshPNO by decomposing diagonal amplitude
+            ! matrices T(ai,bi)
             !
-            NVirtPNO = min(100, NVirt)
-            NOccPairs = (NOcc * (NOcc + 1)) / 2
-            allocate(LocIJ(3, NOcc, NOcc))
-            allocate(TaxPNOij(NVirt, NVirtPNO, 2, NOccPairs))
             allocate(Sigma(NVirt))
             allocate(U(NVirt, NVirt))
             allocate(V(NVirt, NVirt))
+            MaxNVirtPNO = 0            
+            do i = 1, NOcc
+                  call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, i, &
+                        NOcc, NVirt, NVecsT2)
+                  call symmetric_eigenproblem(Sigma, Tabij, NVirt, .false.)
+                  NVirtPNO = 0
+                  do mu = 1, NVirt
+                        if (Abs(Sigma(mu)) >= RPAParams%CutoffThreshPNO) then
+                              NVirtPNO = NVirtPNO + 1
+                        end if
+                  end do
+                  MaxNVirtPNO = max(MaxNVirtPNO, NVirtPNO)
+            end do
+            NVirtPNO = MaxNVirtPNO
+            call blankline()
+            call msg("Pair-natural orbitals cutoff " // str(RPAParams%CutoffThreshPNO,d=1))
+            call msg("NVirtPNO                     " // str(NVirtPNO))
+            call msg("NVirt                        " // str(NVirt))
+            call msg("NVirtPNO/NVirt               " // str(real(NVirtPNO,F64)/NVirt,d=1))
+            !
+            ! Singular value decomposition of T(aI,bJ)
+            !
+            NOccPairs = (NOcc * (NOcc + 1)) / 2
+            allocate(LocIJ(3, NOcc, NOcc))
+            allocate(TaxPNOij(NVirt, NVirtPNO, 2, NOccPairs))
             LocIJ = 0
             IJ = 0
             do j = 1, NOcc
@@ -126,9 +148,6 @@ contains
             call blankline()
             call msg("Calculation of particle-hole corrections completed")
             call msg("Total time             " // str(clock_readwall(timer),d=1) // " seconds")
-            call msg("NVirtPNO               " // str(NVirtPNO))
-            call msg("NVirt                  " // str(NVirt))
-            call msg("NVirtPNO/NVirt         " // str(real(NVirtPNO,F64)/NVirt,d=1))
             call blankline()
       end subroutine rpa_JCTC2024_Corrections
 
