@@ -126,6 +126,7 @@ contains
                         SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, T2CutoffThresh, &
                         T2CutoffType, T2CutoffSmoothStep, T2CutoffSmoothness,T2CutoffCommonThresh, &
                         RPAParams)
+                  RPAOutput%Energy(RPA_ENERGY_T2_DIRECT_RING) = sum(RPAOutput%EigRPA)
                   deallocate(Rkai)
                   t_T2 = clock_readwall(timer)
                   if (RPAParams%ComputeNaturalOrbitals) then

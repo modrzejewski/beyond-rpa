@@ -8,6 +8,15 @@ module rpa_JCTC2024
       use clock
 
       implicit none
+
+      type TPNOTransform
+            real(F64), dimension(:, :, :), allocatable :: TaxPNO
+      end type TPNOTransform
+
+      integer, parameter :: PNO_PAIR_INDEX      = 1
+      integer, parameter :: PNO_LEFT_TRANSFORM  = 2
+      integer, parameter :: PNO_RIGHT_TRANSFORM = 3
+      integer, parameter :: PNO_NVIRT           = 4
       
 contains
 
@@ -29,14 +38,15 @@ contains
             real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
             integer :: i, j, mu, x
-            real(F64) :: Ec1b, Ec2b, Ec2d, Ec2i, Ec2h, Ec2g
+            real(F64) :: EcRPA, Ec1b, Ec2b, Ec2d, Ec2i, Ec2h, Ec2g
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
             integer :: MaxNVirtPNO, NVirtPNO
+            integer :: SumNVirtPNO, AvNVirtPNO
             integer :: NOccPairs
-            real(F64), dimension(:, :, :, :), allocatable :: TaxPNOij
+            type(TPNOTransform), dimension(:), allocatable :: PNOTransform
             real(F64), dimension(:), allocatable :: Sigma
             real(F64), dimension(:, :), allocatable :: U, V
-            integer, dimension(:, :, :), allocatable :: LocIJ            
+            integer, dimension(:, :, :), allocatable :: PNOData
             integer :: IJ
             type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO
             real(F64) :: t_Total, t_SVD, t_Energy, t_LO
@@ -87,63 +97,82 @@ contains
             allocate(Sigma(NVirt))
             allocate(U(NVirt, NVirt))
             allocate(V(NVirt, NVirt))
-            MaxNVirtPNO = 0            
-            do i = 1, NOcc
-                  call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, i, &
-                        NOcc, NVirt, NVecsT2)
-                  call symmetric_eigenproblem(Sigma, Tabij, NVirt, .false.)
-                  NVirtPNO = 0
-                  do mu = 1, NVirt
-                        if (Abs(Sigma(mu)) >= RPAParams%CutoffThreshPNO) then
-                              NVirtPNO = NVirtPNO + 1
-                        end if
-                  end do
-                  MaxNVirtPNO = max(MaxNVirtPNO, NVirtPNO)
-            end do
-            NVirtPNO = MaxNVirtPNO
-            call blankline()
-            call msg("Pair-natural orbitals cutoff " // str(RPAParams%CutoffThreshPNO,d=1))
-            call msg("NVirtPNO                     " // str(NVirtPNO))
-            call msg("NVirt                        " // str(NVirt))
-            call msg("NVirtPNO/NVirt               " // str(real(NVirtPNO,F64)/NVirt,d=1))
             !
             ! Singular value decomposition of T(aI,bJ)
             !
             NOccPairs = (NOcc * (NOcc + 1)) / 2
-            allocate(LocIJ(3, NOcc, NOcc))
-            allocate(TaxPNOij(NVirt, NVirtPNO, 2, NOccPairs))
-            LocIJ = 0
+            allocate(PNOTransform(NOccPairs))
+            allocate(PNOData(4, NOcc, NOcc))
+            PNOData = 0
             IJ = 0
+            MaxNVirtPNO = 0
+            SumNVirtPNO = 0
             do j = 1, NOcc
                   do i = j, NOcc
-                        IJ = IJ + 1
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)                        
                         call real_SVD(U, V, Sigma, Tabij)
-                        TaxPNOij(:, :, 1, IJ) = U(:, 1:NVirtPNO)
-                        do x = 1, NVirtPNO
-                              TaxPNOij(:, x, 2, IJ) = Sigma(x) * V(:, x)
+                        NVirtPNO = 0
+                        do x = 1, NVirt
+                              if (Sigma(x) >= RPAParams%CutoffThreshPNO) then
+                                    NVirtPNO = x
+                              else
+                                    exit
+                              end if
                         end do
-                        LocIJ(1, I, J) = IJ
-                        LocIJ(2, I, J) = 1
-                        LocIJ(3, I, J) = 2
-                        LocIJ(1, J, I) = IJ
-                        LocIJ(2, J, I) = 2
-                        LocIJ(3, J, I) = 1
+                        if (NVirtPNO > 0) then
+                              IJ = IJ + 1
+                              allocate(PNOTransform(IJ)%TaxPNO(NVirt, NVirtPNO, 2))
+                              associate (TaxPNO => PNOTransform(IJ)%TaxPNO)
+                                    TaxPNO(:, :, 1) = U(:, 1:NVirtPNO)
+                                    do x = 1, NVirtPNO
+                                          TaxPNO(:, x, 2) = Sigma(x) * V(:, x)
+                                    end do
+                              end associate
+                              PNOData(PNO_PAIR_INDEX, I, J) = IJ
+                              PNOData(PNO_LEFT_TRANSFORM, I, J) = 1
+                              PNOData(PNO_RIGHT_TRANSFORM, I, J) = 2
+                              PNOData(PNO_NVIRT, I, J) = NVirtPNO
+                              PNOData(PNO_PAIR_INDEX, J, I) = IJ
+                              PNOData(PNO_LEFT_TRANSFORM, J, I) = 2
+                              PNOData(PNO_RIGHT_TRANSFORM, J, I) = 1
+                              PNOData(PNO_NVIRT, J, I) = NVirtPNO
+                        else
+                              PNOData(PNO_PAIR_INDEX, I, J) = -1
+                              PNOData(PNO_PAIR_INDEX, J, I) = -1
+                              PNOData(PNO_NVIRT, I, J) = 0
+                              PNOData(PNO_NVIRT, J, I) = 0
+                        end if
+                        MaxNVirtPNO = max(MaxNVirtPNO, NVirtPNO)
+                        SumNVirtPNO = SumNVirtPNO + NVirtPNO
                   end do
             end do
+            AvNVirtPNO = nint(real(SumNVirtPNO,F64)/((NOcc*(NOcc+1))/2))
             t_SVD = clock_readwall(timer_SVD)
+            call blankline()
+            call msg("Pair-natural orbitals cutoff " // str(RPAParams%CutoffThreshPNO,d=1))
+            call msg("AverageNVirtPNO              " // str(AvNVirtPNO))
+            call msg("Max NVirtPNO                 " // str(MaxNVirtPNO))
+            call msg("NVirt                        " // str(NVirt))
+            call msg("AverageNVirtPNO/NVirt        " // str(real(AvNVirtPNO,F64)/NVirt,d=1))
             !
             ! Ec1b + Ec2b + Ec2c + Ec2d
             ! Ec2g + Ec2h + Ec2i + Ec2j
             !
             call clock_start(timer_Energy)
-            call rpa_JCTC2024_Gaibj_Gabij(Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
-                  LocIJ, TaxPNOij, XgiLoc, Yga, Zgk, NVirtPNO, NVirt, NOcc, &
-                  NOccPairs, NGridTHC, NCholesky)
+            call rpa_JCTC2024_Gaibj_Gabij(EcRPA, Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
+                  PNOData, PNOTransform, XgiLoc, Yga, Zgk, MaxNVirtPNO, NVirt, NOcc, &
+                  NGridTHC, NCholesky)
             t_Energy = clock_readwall(timer_Energy)
             t_Total = clock_readwall(timer_Total)
-            
+            !
+            ! PNO RPA energy used only to estimate the error
+            ! due to the use of PNOs
+            !
+            RPAOutput%Energy(RPA_ENERGY_PNO_DIRECT_RING) = EcRPA
+            !
+            ! Beyond-RPA corrections
+            !
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * Ec1b
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Ec2b
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Ec2b
@@ -164,16 +193,16 @@ contains
       end subroutine rpa_JCTC2024_Corrections
 
 
-      subroutine rpa_JCTC2024_Gaibj_Gabij(Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
-            LocIJ, TaxPNOij, Xgi, Yga, Zgk, NVirtPNO, NVirt, NOcc, NOccPairs, &
+      subroutine rpa_JCTC2024_Gaibj_Gabij(EcRPA, Ec1b, Ec2b, Ec2d, Ec2g, Ec2h, Ec2i, &
+            PNOData, PNOTransform, Xgi, Yga, Zgk, MaxNVirtPNO, NVirt, NOcc, &
             NGridTHC, NCholesky)
 
-            integer, intent(in)                                             :: NVirtPNO, NVirt, NOcc
-            integer, intent(in)                                             :: NOccPairs, NGridTHC, NCholesky
-            real(F64), intent(out)                                          :: Ec1b, Ec2b, Ec2d
+            integer, intent(in)                                             :: MaxNVirtPNO, NVirt, NOcc
+            integer, intent(in)                                             :: NGridTHC, NCholesky
+            real(F64), intent(out)                                          :: EcRPA, Ec1b, Ec2b, Ec2d
             real(F64), intent(out)                                          :: Ec2g, Ec2h, Ec2i
-            integer, dimension(3, NOcc, NOcc), intent(in)                   :: LocIJ
-            real(F64), dimension(NVirt, NVirtPNO, 2, NOccPairs), intent(in) :: TaxPNOij
+            integer, dimension(:, :, :), intent(in)                         :: PNOData
+            type(TPNOTransform), dimension(:), intent(in)                   :: PNOTransform
             real(F64), dimension(NGridTHC, NOcc), intent(in)                :: Xgi
             real(F64), dimension(NGridTHC, NVirt), intent(in)               :: Yga
             real(F64), dimension(NGridTHC, NCholesky), intent(in)           :: Zgk
@@ -183,27 +212,23 @@ contains
             real(F64), dimension(:), allocatable :: Wg
             real(F64), dimension(:), allocatable :: XXgij, ZXXkij, ZXXgij
             real(F64), dimension(:, :), allocatable :: Sxy, PSy
-            real(F64) :: S1b, S2bij, S2bji, S2d, S2g, S2h, S2iij, S2iji
+            real(F64) :: S1a, S1b, S2bij, S2bji, S2d, S2g, S2h, S2iij, S2iji
             real(F64) :: Weight
             integer :: a, i, j, k
-            integer :: IJ, IJp, IJq
-            integer :: IK, IKp, IKq
-            integer :: JK, JKp, JKq
-            integer :: KJ, KJp, KJq
-            integer :: KI, KIp, KIq
             
-            allocate(Ygx(NGridTHC, NVirtPNO))
-            allocate(Ygy(NGridTHC, NVirtPNO))
+            allocate(Ygx(NGridTHC, MaxNVirtPNO))
+            allocate(Ygy(NGridTHC, MaxNVirtPNO))
             allocate(Wg(NGridTHC))
             allocate(ZYXkai(NCholesky, NVirt))
             allocate(ZYXkbj(NCholesky, NVirt))
-            allocate(ZYXkyi(NCholesky, NVirtPNO))
-            allocate(ZYXkyj(NCholesky, NVirtPNO))
-            allocate(Sxy(NVirtPNO, NVirtPNO))
-            allocate(PSy(NVirt, NVirtPNO))
+            allocate(ZYXkyi(NCholesky, MaxNVirtPNO))
+            allocate(ZYXkyj(NCholesky, MaxNVirtPNO))
+            allocate(Sxy(MaxNVirtPNO, MaxNVirtPNO))
+            allocate(PSy(NVirt, MaxNVirtPNO))
             allocate(XXgij(NGridTHC))            
-            allocate(ZXXgij(NGridTHC))            
+            allocate(ZXXgij(NGridTHC))
             allocate(ZXXkij(NCholesky))
+            EcRPA = ZERO
             Ec1b = ZERO
             Ec2b = ZERO
             Ec2d = ZERO
@@ -238,58 +263,25 @@ contains
                               end do
                               ZYXkbj = ZYXkai
                         end if
-                              
-                        IJ = LocIJ(1, i, j)
-                        IJp = LocIJ(2, i, j)
-                        IJq = LocIJ(3, i, j)
-                        if (IJ /= 0) then
-                              call TrVxiyj(S1b, &
-                                    TaxPNOij(:, :, IJp, IJ), &
-                                    TaxPNOij(:, :, IJq, IJ), &
-                                    ZYXkai, ZYXkbj)
-                              Ec1b = Ec1b - TWO * Weight * S1b
-                        end if
+                        call Gaibj1b(S1b, PNOData(:, i, j), ZYXkai, ZYXkbj)
+                        Ec1b = Ec1b - TWO * Weight * S1b
+                        call Gaibj1b(S1a, PNOData(:, j, i), ZYXkai, ZYXkbj)
+                        EcRPA = EcRPA + TWO * Weight * S1a
                         do k = 1, NOcc
-                              KI = LocIJ(1, k, i)
-                              KIp = LocIJ(2, k, i)
-                              KIq = LocIJ(3, k, i)
-                              JK = LocIJ(1, j, k)
-                              JKp = LocIJ(2, j, k)
-                              JKq = LocIJ(3, j, k)
-                              IK = LocIJ(1, i, k)
-                              IKp = LocIJ(2, i, k)
-                              IKq = LocIJ(3, i, k)
-                              KJ = LocIJ(1, k, j)
-                              KJp = LocIJ(2, k, j)
-                              KJq = LocIJ(3, k, j)
-                              call VxyijDotSxy(S2g, &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
-                                    TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), i, j)
+                              call Gabij(S2g, PNOData(:, j, k), PNOData(:, k, i))
                               Ec2g = Ec2g - FOUR * Weight * S2g
-                              call VxyijDotSxy(S2h, &
-                                    TaxPNOij(:, :, KJp, KJ), TaxPNOij(:, :, KJq, KJ), &
-                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), i, j)
+                              call Gabij(S2h, PNOData(:, k, j), PNOData(:, i, k))
                               Ec2h = Ec2h - FOUR * Weight * S2h
-                              call VxiyjDotSxy(S2d, &
-                                    TaxPNOij(:, :, KIp, KI), TaxPNOij(:, :, KIq, KI), &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                              call Gaibj(S2d, PNOData(:, k, i), PNOData(:, j, k), &
                                     ZYXkai, ZYXkbj)
                               Ec2d = Ec2d + TWO * Weight * S2d
-                              call VxiyjDotSxy(S2bij, &
-                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
+                              call Gaibj(S2bij, PNOData(:, i, k), PNOData(:, j, k), &
                                     ZYXkai, ZYXkbj)
-                              call VxyijDotSxy(S2iij, &
-                                    TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
-                                    TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), i, j)
+                              call Gabij(S2iij, PNOData(:, j, k), PNOData(:, i, k))
                               if (i /= j) then
-                                    call VxiyjDotSxy(S2bji, &
-                                          TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), &
-                                          TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
+                                    call Gaibj(S2bji, PNOData(:, j, k), PNOData(:, i, k), &
                                           ZYXkbj, ZYXkai)
-                                    call VxyijDotSxy(S2iji, &
-                                          TaxPNOij(:, :, IKp, IK), TaxPNOij(:, :, IKq, IK), &
-                                          TaxPNOij(:, :, JKp, JK), TaxPNOij(:, :, JKq, JK), j, i)
+                                    call Gabij(S2iji, PNOData(:, i, k), PNOData(:, j, k))                                    
                                     Ec2b = Ec2b - FOUR * (S2bij + S2bji)
                                     Ec2i = Ec2i + TWO * (S2iij + S2iji)
                               else
@@ -302,24 +294,110 @@ contains
 
       contains
 
-            subroutine TrVxiyj(D, Py, Qy, ZYXkai, ZYXkbj)
+            subroutine Gaibj1b(D, Iy, ZYXkai, ZYXkbj)
+                  real(F64), intent(out)                 :: D
+                  integer, dimension(:), intent(in)      :: Iy
+                  real(F64), dimension(:, :), intent(in) :: ZYXkai
+                  real(F64), dimension(:, :), intent(in) :: ZYXkbj
+
+                  integer :: Y, Yp, Yq, Ny
+
+                  Ny = Iy(PNO_NVIRT)
+                  if (Ny > 0) then
+                        Y  = Iy(PNO_PAIR_INDEX)
+                        Yp = Iy(PNO_LEFT_TRANSFORM)
+                        Yq = Iy(PNO_RIGHT_TRANSFORM)
+                        call TrVxiyj(D, ZYXkyi, ZYXkyj, &
+                              PNOTransform(Y)%TaxPNO(:, :, Yp), PNOTransform(Y)%TaxPNO(:, :, Yq), &
+                              ZYXkai, ZYXkbj, Ny)
+                  else
+                        D = ZERO
+                  end if
+            end subroutine Gaibj1b
+            
+            subroutine TrVxiyj(D, ZYXkyi, ZYXkyj, Py, Qy, ZYXkai, ZYXkbj, Ny)
+                  integer, intent(in)                                :: Ny
                   real(F64), intent(out)                             :: D
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Py
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qy
+                  real(F64), dimension(NCholesky, Ny), intent(out)   :: ZYXkyi
+                  real(F64), dimension(NCholesky, Ny), intent(out)   :: ZYXkyj
+                  real(F64), dimension(NVirt, Ny), intent(in)        :: Py
+                  real(F64), dimension(NVirt, Ny), intent(in)        :: Qy
                   real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkai
                   real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkbj
 
                   call real_ab(ZYXkyi, ZYXkai, Qy)
                   call real_ab(ZYXkyj, ZYXkbj, Py)
-                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*NVirtPNO)
+                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*Ny)
             end subroutine TrVxiyj
 
-            subroutine VxiyjDotSxy(D, Px, Qx, Py, Qy, ZYXkai, ZYXkbj)
+            subroutine Gaibj(D, Ix, Iy, ZYXkai, ZYXkbj)
+                  real(F64), intent(out)                 :: D
+                  integer, dimension(:), intent(in)      :: Ix
+                  integer, dimension(:), intent(in)      :: Iy
+                  real(F64), dimension(:, :), intent(in) :: ZYXkai
+                  real(F64), dimension(:, :), intent(in) :: ZYXkbj
+
+                  integer :: X, Xp, Xq, Nx
+                  integer :: Y, Yp, Yq, Ny
+
+                  Nx = Ix(PNO_NVIRT)
+                  Ny = Iy(PNO_NVIRT)
+                  if (Nx*Ny > 0) then
+                        X  = Ix(PNO_PAIR_INDEX)
+                        Xp = Ix(PNO_LEFT_TRANSFORM)
+                        Xq = Ix(PNO_RIGHT_TRANSFORM)
+                        Y  = Iy(PNO_PAIR_INDEX)
+                        Yp = Iy(PNO_LEFT_TRANSFORM)
+                        Yq = Iy(PNO_RIGHT_TRANSFORM)
+                        call VxiyjDotSxy(D, &
+                              Sxy, PSy, ZYXkyi, ZYXkyj, &
+                              PNOTransform(X)%TaxPNO(:, :, Xp), PNOTransform(X)%TaxPNO(:, :, Xq), &
+                              PNOTransform(Y)%TaxPNO(:, :, Yp), PNOTransform(Y)%TaxPNO(:, :, Yq), &
+                              ZYXkai, ZYXkbj, Nx, Ny)
+                  else
+                        D = ZERO
+                  end if
+            end subroutine Gaibj
+
+            subroutine Gabij(D, Ix, Iy)
+                  real(F64), intent(out)            :: D
+                  integer, dimension(:), intent(in) :: Ix
+                  integer, dimension(:), intent(in) :: Iy
+
+                  integer :: X, Xp, Xq, Nx
+                  integer :: Y, Yp, Yq, Ny
+
+                  Nx = Ix(PNO_NVIRT)
+                  Ny = Iy(PNO_NVIRT)
+                  if (Nx*Ny > 0) then
+                        X  = Ix(PNO_PAIR_INDEX)
+                        Xp = Ix(PNO_LEFT_TRANSFORM)
+                        Xq = Ix(PNO_RIGHT_TRANSFORM)
+                        Y  = Iy(PNO_PAIR_INDEX)
+                        Yp = Iy(PNO_LEFT_TRANSFORM)
+                        Yq = Iy(PNO_RIGHT_TRANSFORM)
+                        call VxyijDotSxy(D, Wg, Sxy, PSy, Ygx, Ygy, &
+                              PNOTransform(X)%TaxPNO(:, :, Xp), PNOTransform(X)%TaxPNO(:, :, Xq), &
+                              PNOTransform(Y)%TaxPNO(:, :, Yp), PNOTransform(Y)%TaxPNO(:, :, Yq), &
+                              ZXXgij, Nx, Ny)
+                  else
+                        D = ZERO
+                  end if
+            end subroutine Gabij
+            
+            subroutine VxiyjDotSxy(D, Sxy, PSy, ZYXkyi, ZYXkyj, &
+                  Px, Qx, Py, Qy, ZYXkai, ZYXkbj, Nx, Ny)
+                  
+                  integer, intent(in)                                :: Nx, Ny
                   real(F64), intent(out)                             :: D
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Px
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qx
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Py
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in)  :: Qy
+                  real(F64), dimension(Nx, Ny), intent(out)          :: Sxy
+                  real(F64), dimension(NVirt, Ny), intent(out)       :: PSy
+                  real(F64), dimension(NCholesky, Ny), intent(out)   :: ZYXkyi
+                  real(F64), dimension(NCholesky, Ny), intent(out)   :: ZYXkyj
+                  real(F64), dimension(NVirt, Nx), intent(in)        :: Px
+                  real(F64), dimension(NVirt, Nx), intent(in)        :: Qx
+                  real(F64), dimension(NVirt, Ny), intent(in)        :: Py
+                  real(F64), dimension(NVirt, Ny), intent(in)        :: Qy
                   real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkai
                   real(F64), dimension(NCholesky, NVirt), intent(in) :: ZYXkbj
 
@@ -327,17 +405,24 @@ contains
                   call real_ab(PSy, Px, Sxy)
                   call real_ab(ZYXkyi, ZYXkai, PSy)
                   call real_ab(ZYXkyj, ZYXkbj, Qy)
-                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*NVirtPNO)
+                  call real_vw_x(D, ZYXkyi, ZYXkyj, NCholesky*Ny)
             end subroutine VxiyjDotSxy
             
-            subroutine VxyijDotSxy(D, Px, Qx, Py, Qy, i, j)
+            subroutine VxyijDotSxy(D, Wg, Sxy, PSy, Ygx, Ygy, Px, Qx, Py, Qy, &
+                  ZXXgij, Nx, Ny)
+                  
+                  integer, intent(in)                               :: Nx, Ny
                   real(F64), intent(out)                            :: D
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Px
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Qx
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Py
-                  real(F64), dimension(NVirt, NVirtPNO), intent(in) :: Qy
-                  integer, intent(in)                               :: i
-                  integer, intent(in)                               :: j
+                  real(F64), dimension(NGridTHC), intent(out)       :: Wg
+                  real(F64), dimension(Nx, Ny), intent(out)         :: Sxy
+                  real(F64), dimension(NVirt, Ny), intent(out)      :: PSy
+                  real(F64), dimension(NGridTHC, Ny), intent(out)   :: Ygx
+                  real(F64), dimension(NGridTHC, Ny), intent(out)   :: Ygy
+                  real(F64), dimension(NVirt, Nx), intent(in)       :: Px
+                  real(F64), dimension(NVirt, Nx), intent(in)       :: Qx
+                  real(F64), dimension(NVirt, Ny), intent(in)       :: Py
+                  real(F64), dimension(NVirt, Ny), intent(in)       :: Qy
+                  real(F64), dimension(NGridTHC), intent(in)        :: ZXXgij
 
                   real(F64) :: Dy
                   integer :: y
@@ -347,7 +432,7 @@ contains
                   call real_ab(Ygx, Yga, PSy)
                   call real_ab(Ygy, Yga, Qy)
                   Wg = ZERO
-                  do y = 1, NVirtPNO
+                  do y = 1, Ny
                         Wg(:) = Wg(:) + Ygx(:, y) * Ygy(:, y)                        
                   end do
                   call real_vw_x(D, Wg, ZXXgij, NGridTHC)

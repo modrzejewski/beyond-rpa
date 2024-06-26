@@ -9,7 +9,6 @@ module rpa_definitions
       integer, parameter :: RPA_AUX_MOLECULAR_ORBITALS = 0
       integer, parameter :: RPA_AUX_NATURAL_ORBITALS = 1
       integer, parameter :: RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS = 2
-      integer, parameter :: RPA_AUX_LOCALIZED_ORBITALS = 3
       !
       ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
       ! or tensor hypercontraction matrices. 
@@ -207,6 +206,12 @@ module rpa_definitions
       integer, parameter :: RPA_ENERGY_CUMULANT_2P = 36
       
       integer, dimension(2), parameter :: RPA_CORRELATION_TERMS = [RPA_ENERGY_DIRECT_RING, RPA_ENERGY_CUMULANT_2P]
+      !
+      ! Diagnostics
+      !
+      integer, parameter :: RPA_ENERGY_T2_DIRECT_RING = 50  ! EcRPA with T2 decomposed into eigenvectors
+      integer, parameter :: RPA_ENERGY_PNO_DIRECT_RING = 49 ! EcRPA with approximate T2 in the PNO basis
+      
       ! -------------------------------------------------------------------
       ! Perturbation theory contributions
       ! Slow implementation, should be used only for testing
@@ -477,7 +482,7 @@ module rpa_definitions
             !
             real(F64) :: LOLinDepThresh = 1.0E-6_F64
             real(F64) :: LOCoulombThresh = 1.0E-8_F64
-            real(F64) :: CutoffThreshPNO = 1.0E-8_F64
+            real(F64) :: CutoffThreshPNO = 1.0E-6_F64
       end type TRPAParams
 
       type TRPAGrids

@@ -46,7 +46,7 @@ contains
             real(F64) :: EtotDFT_Nadd, EtotHF_Nadd, EtotRPA_Nadd, EcSingles_Nadd, EcRPA_Nadd, EcExchange_Nadd
             integer, parameter :: MaxNSubsystems = 15
             real(F64), dimension(MaxNSubsystems) :: EtotDFT, EtotRPA, EtotHF, EcSingles, EcRPA, EcExchange
-            real(F64), dimension(MaxNSubsystems) :: EcRPA_FullBasis, EcRPA_NOBasis
+            real(F64), dimension(MaxNSubsystems) :: EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, EcRPA_T2_NO, EcRPA_T2_PNO
             integer :: TheoryLevel_NOBasis
             real(F64), dimension(:, :, :), allocatable :: NOBasis
             type(TRPAGrids) :: RPAGrids
@@ -193,7 +193,8 @@ contains
                                     RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
                                     call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                           RPAGrids, THCGrid, T2CutoffCommonThresh)
-                                    EcRPA_FullBasis(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                                    EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
+                                    EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
                                     if (RPAParams%ComputeNaturalOrbitals) then
                                           call move_alloc(from=RPAOutput(k)%NaturalOrbitals, to=NOBasis)
                                     end if
@@ -201,12 +202,16 @@ contains
                                     RPAParams%ComputeNaturalOrbitals = .false.
                                     RPAParams%TheoryLevel = TheoryLevel_NOBasis
                               end if
+                              
                               call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                     RPAGrids, THCGrid, T2CutoffCommonThresh)
-                              if ( &
-                                    RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
-                                    RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
-                                    EcRPA_NOBasis(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                              
+                              EcRPA_T2_PNO(k) = RPAOutput(k)%Energy(RPA_ENERGY_PNO_DIRECT_RING)
+                              EcRPA_T2_NO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
+                              EcRPA_Chi_NO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
+                              if (RPAParams%T2AuxOrbitals==RPA_AUX_MOLECULAR_ORBITALS) then
+                                    EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
+                                    EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
                               end if
                         else
                               if (RPAParams%CoupledClusters) then
@@ -221,12 +226,8 @@ contains
                         end if
                   end do
                   if (RPAParams%TensorHypercontraction) then
-                        if ( &
-                              RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
-                              RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
-                              call rpa_EstimateNOCutoffError(EcRPA_FullBasis, EcRPA_NOBasis, &
-                                    RPAParams, System)
-                        end if
+                        call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
+                              EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
                         call rpa_EstimateT2EigenvalueError(FinishMacroLoop, RPAOutput, RPAParams, &
                               System, T2CutoffCommonThresh, NSystems)
                         if (.not. FinishMacroLoop .and. i < MaxMacroIters .and. RPAParams%T2AdaptiveCutoff) then
@@ -248,7 +249,7 @@ contains
                   ! use the full-basis EcRPA contribution in the final energy
                   !
                   do k = 1, NSystems
-                        RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA_FullBasis(k)
+                        RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA_Chi_MO(k)
                         call rpa_THC_GatherEnergyContribs(RPAOutput(k)%Energy, MeanFieldStates(k))
                   end do
             end if
@@ -930,10 +931,9 @@ contains
             real(F64), dimension(MaxNSystems) :: EcRPA, Ec2g, EcSOSEX
             real(F64) :: DintRPA, Dint2g, DintSOSEX
             real(F64) :: RelDintRPA, RelDint2g, RelDintSOSEX
-            real(F64) :: EintRPA_Reference
             integer, parameter :: NAltCutoffs = 10
             real(F64), dimension(0:NAltCutoffs) :: EintRPA, Eint2g, EintSOSEX
-            integer :: k, i
+            integer :: i
             real(F64), parameter :: CutoffScaling = 1.1_F64
             real(F64), dimension(0:NAltCutoffs) :: AltCutoffs
             real(F64) :: Delta
@@ -956,35 +956,21 @@ contains
                   System%SystemKind == SYS_TRIMER .or. &
                   System%SystemKind == SYS_TETRAMER &
                   ) then
-                  call msg("Sensitivity of Ec to a perturbation of T2CutoffThresh")
-                  call msg("All values in kcal/mol")
-                  call midrule()
+                  call blankline()
+                  call msg("sensitivity to perturbations of T2CutoffThresh")
+                  call msg("all values in kcal/mol")
+                  call blankline()
                   if (System%SystemKind == SYS_DIMER) then
-                        line = lfield("T2CutoffThresh", 17) // lfield("Eint(direct ring)", 20)
+                        line = lfield("T2CutoffThresh", 17) // rfield("Eint(direct ring)", 20)
                         if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
-                              line = line // lfield("Eint(2g)", 20) // lfield("Eint(SOSEX)", 20)
+                              line = line // rfield("Eint(2g)", 20) // rfield("Eint(SOSEX)", 20)
                         end if
                   else
-                        line = lfield("T2CutoffThresh", 17) // lfield("EintNadd(direct ring)", 20)
+                        line = lfield("T2CutoffThresh", 17) // rfield("EintNadd(direct ring)", 20)
                         if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
-                              line = line // lfield("EintNadd(2g)", 20) // lfield("EintNadd(SOSEX)", 20)
+                              line = line // rfield("EintNadd(2g)", 20) // rfield("EintNadd(SOSEX)", 20)
                         end if
                   end if
-                  call msg(line)
-                  call midrule()
-                  do k = 1, NSystems
-                        EcRPA(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
-                  end do
-                  select case (System%SystemKind)
-                  case (SYS_DIMER)
-                        call rpa_Eint2Body(EintRPA_Reference, EcRPA)
-                  case (SYS_TRIMER)
-                        call rpa_EintNadd(EintRPA_Reference, EcRPA)
-                  case (SYS_TETRAMER)
-                        call rpa_EintNadd4Body(EintRPA_Reference, EcRPA)
-                  end select
-                  line = lfield("accurate", 17) // lfield(str(tokcal(EintRPA_Reference),d=6), 20) &
-                        // lfield("", 20) // lfield("", 20)
                   call msg(line)
                   do i = NAltCutoffs, 0, -1                        
                         call E_AltCutoff(EcRPA, Ec2g, EcSOSEX, RPAOutput, RPAParams, NSystems, AltCutoffs(i))
@@ -1008,15 +994,14 @@ contains
                                     call rpa_EintNadd4Body(EintSOSEX(i), EcSOSEX)
                               end if
                         end select
-                        line = lfield(str(AltCutoffs(i),d=3), 17) // lfield(str(tokcal(EintRPA(i)),d=6), 20)
+                        line = lfield(str(AltCutoffs(i),d=3), 17) // rfield(str(tokcal(EintRPA(i)),d=6), 20)
                         if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
-                              line = line // lfield(str(tokcal(Eint2g(i)),d=6), 20) // lfield(str(tokcal(EintSOSEX(i)),d=6), 20)
+                              line = line // rfield(str(tokcal(Eint2g(i)),d=6), 20) // rfield(str(tokcal(EintSOSEX(i)),d=6), 20)
                         end if
                         call msg(line)
                   end do
-                  call midrule()
-                  DintRPA = max(abs(EintRPA(0) - EintRPA_Reference), abs(maxval(EintRPA) - minval(EintRPA)))
-                  RelDintRPA = DintRPA / abs(EintRPA_Reference)
+                  DintRPA = abs(maxval(EintRPA) - minval(EintRPA))
+                  RelDintRPA = DintRPA / abs(EintRPA(0))
                   if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
                         Dint2g = abs(maxval(Eint2g) - minval(Eint2g))
                         DintSOSEX = abs(maxval(EintSOSEX) - minval(EintSOSEX))
@@ -1028,14 +1013,14 @@ contains
                         RelDint2g = ZERO
                         RelDintSOSEX = ZERO
                   end if
-                  line = lfield("abs error", 17) // lfield(str(tokcal(DintRPA),d=1), 20)
+                  line = lfield("max abs diff", 17) // rfield(str(tokcal(DintRPA),d=1), 20)
                   if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
-                        line = line // lfield(str(tokcal(Dint2g),d=1), 20) // lfield(str(tokcal(DintSOSEX),d=1), 20)
+                        line = line // rfield(str(tokcal(Dint2g),d=1), 20) // rfield(str(tokcal(DintSOSEX),d=1), 20)
                   end if
                   call msg(line)
-                  line = lfield("rel error", 17) // lfield(str(RelDintRPA,d=1), 20)
+                  line = lfield("max rel diff", 17) // rfield(str(RelDintRPA,d=1), 20)
                   if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
-                        line = line // lfield(str(RelDint2g,d=1), 20) // lfield(str(RelDintSOSEX,d=1), 20)
+                        line = line // rfield(str(RelDint2g,d=1), 20) // rfield(str(RelDintSOSEX,d=1), 20)
                   end if
                   call msg(line)
                   if (RPAParams%T2AdaptiveCutoff) then
@@ -1093,64 +1078,89 @@ contains
       end subroutine rpa_EstimateT2EigenvalueError
 
 
-      subroutine rpa_EstimateNOCutoffError(EcRPA_FullBasis, EcRPA_NOBasis, &
-            RPAParams, System)
-            
-            real(F64), dimension(:), intent(in)           :: EcRPA_FullBasis
-            real(F64), dimension(:), intent(in)           :: EcRPA_NOBasis
-            type(TRPAParams), intent(in)                  :: RPAParams
+      subroutine rpa_EstimateEcRPAError(Error, RefVal, ApproxVal, EcRPA_Reference, EcRPA_Approx, System)
+            real(F64), intent(out)                        :: Error
+            real(F64), intent(out)                        :: RefVal, ApproxVal
+            real(F64), dimension(:), intent(in)           :: EcRPA_Reference
+            real(F64), dimension(:), intent(in)           :: EcRPA_Approx
             type(TSystem), intent(in)                     :: System
             
-            real(F64) :: DintRPA
-            real(F64) :: RelDintRPA
             real(F64) :: EintRPA_Reference, EintRPA_Approx        
-            character(:), allocatable :: line
 
             if ( &
                   System%SystemKind == SYS_DIMER .or. &
                   System%SystemKind == SYS_TRIMER .or. &
                   System%SystemKind == SYS_TETRAMER &
                   ) then
-                  call msg("Error in Ec due to natural orbitals cutoff")
-                  call msg("All values in kcal/mol")
-                  call midrule()
-                  if (System%SystemKind == SYS_DIMER) then
-                        line = lfield("virtual orbital space", 25) // lfield("Eint(direct ring)", 20)
-                  else
-                        line = lfield("virtual orbital space", 25) // lfield("EintNadd(direct ring)", 20)
-                  end if
-                  call msg(line)
-                  call midrule()
                   select case (System%SystemKind)
                   case (SYS_DIMER)
-                        call rpa_Eint2Body(EintRPA_Reference, EcRPA_FullBasis)
+                        call rpa_Eint2Body(EintRPA_Reference, EcRPA_Reference)
                   case (SYS_TRIMER)
-                        call rpa_EintNadd(EintRPA_Reference, EcRPA_FullBasis)
+                        call rpa_EintNadd(EintRPA_Reference, EcRPA_Reference)
                   case (SYS_TETRAMER)
-                        call rpa_EintNadd4Body(EintRPA_Reference, EcRPA_FullBasis)
+                        call rpa_EintNadd4Body(EintRPA_Reference, EcRPA_Reference)
                   end select
-                  line = lfield("all virtual orbitals", 25) // lfield(str(tokcal(EintRPA_Reference),d=6), 20)
-                  call msg(line)
                   select case (System%SystemKind)
                   case (SYS_DIMER)
-                        call rpa_Eint2Body(EintRPA_Approx, EcRPA_NOBasis)
+                        call rpa_Eint2Body(EintRPA_Approx, EcRPA_Approx)
                   case (SYS_TRIMER)
-                        call rpa_EintNadd(EintRPA_Approx, EcRPA_NOBasis)
+                        call rpa_EintNadd(EintRPA_Approx, EcRPA_Approx)
                   case (SYS_TETRAMER)
-                        call rpa_EintNadd4Body(EintRPA_Approx, EcRPA_NOBasis)
+                        call rpa_EintNadd4Body(EintRPA_Approx, EcRPA_Approx)
                   end select
-                  line = lfield("natural orbitals", 25) // lfield(str(tokcal(EintRPA_Approx),d=6), 20)                  
-                  call msg(line)
-                  call midrule()
-                  DintRPA = abs(EintRPA_Reference - EintRPA_Approx)
-                  RelDintRPA = DintRPA / abs(EintRPA_Reference)
-                  line = lfield("abs error", 25) // lfield(str(tokcal(DintRPA),d=1), 20)
-                  call msg(line)
-                  line = lfield("rel error", 25) // lfield(str(RelDintRPA,d=1), 20) 
-                  call msg(line)
-                  call blankline()
+                  RefVal = tokcal(EintRPA_Reference)
+                  ApproxVal = tokcal(EintRPA_Approx)
+                  Error = tokcal(EintRPA_Approx - EintRPA_Reference)
+            else
+                  RefVal = EcRPA_Reference(1)
+                  ApproxVal = EcRPA_Approx(1)
+                  Error = EcRPA_Approx(1) - EcRPA_Reference(1)
             end if
-      end subroutine rpa_EstimateNOCutoffError
+      end subroutine rpa_EstimateEcRPAError
+
+
+      subroutine rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
+            EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
+            
+            real(F64), dimension(:), intent(in) :: EcRPA_Chi_MO
+            real(F64), dimension(:), intent(in) :: EcRPA_Chi_NO
+            real(F64), dimension(:), intent(in) :: EcRPA_T2_MO
+            real(F64), dimension(:), intent(in) :: EcRPA_T2_NO
+            real(F64), dimension(:), intent(in) :: EcRPA_T2_PNO
+            type(TRPAParams), intent(in)        :: RPAParams
+            type(TSystem), intent(in)           :: System
+            
+            real(F64) :: Error_NO, Error_T2, Error_PNO
+            real(F64) :: Chi_MO, Chi_NO, T2_NO, T2_PNO
+
+            call rpa_EstimateEcRPAError(Error_NO, Chi_MO, Chi_NO, EcRPA_Chi_MO, EcRPA_Chi_NO, System)
+            call rpa_EstimateEcRPAError(Error_T2, Chi_NO, T2_NO, EcRPA_Chi_NO, EcRPA_T2_NO, System)
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                  call rpa_EstimateEcRPAError(Error_PNO, T2_NO, T2_PNO, EcRPA_T2_NO, EcRPA_T2_PNO, System)
+            end if            
+            call midrule()
+            call msg(cfield("Errors due to numerical approximations", 76))
+            call midrule()
+            if (System%SystemKind == SYS_MOLECULE) then
+                  call msg("EcRPA single-point energies and errors are in a.u.")
+                  call msg(lfield("", 30)    // rfield("energy", 20)  // rfield("approx-ref", 20))
+            else
+                  if (System%SystemKind == SYS_DIMER) then
+                        call msg("EcRPA interaction energies and errors are in kcal/mol")
+                  else
+                        call msg("EcRPA nonadditive interaction energies and errors are in kcal/mol")
+                  end if
+                  call msg("error for each approximation is defined as energy(i)-energy(i-1)")
+                  call blankline()
+                  call msg(lfield("i", 3) // lfield("", 30)    // rfield("direct-ring energy", 20)  // rfield("error", 20))
+            end if
+            call msg(lfield("1", 3) // lfield("accurate", 30) // rfield(str(Chi_MO,d=6), 20))
+            call msg(lfield("2", 3) //lfield("natural orbitals", 30) // rfield(str(Chi_NO,d=6),20) // rfield(str(Error_NO, d=1), 20))
+            call msg(lfield("3", 3) //lfield("eigendecomposition of T2", 30) // rfield(str(T2_NO,d=6),20) // rfield(str(Error_T2,d=1), 20))
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                  call msg(lfield("4", 3) // lfield("pair-natural orbitals", 30) // rfield(str(T2_PNO,d=6),20) // rfield(str(Error_PNO,d=1), 20))
+            end if
+      end subroutine rpa_SummaryOfErrors
 
 
       subroutine rpa_PrintEnergies(Energies, RPAParams, NSystems)
