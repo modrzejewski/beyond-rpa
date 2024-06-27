@@ -98,13 +98,15 @@ contains
             end do
             allocate(MeanFieldStates(NSystems))
             if (RPAParams%TensorHypercontraction) then
-                  call rpa_MeanField_Preamble(RPAParams)
+                  if (SCFParams%XCFunc == XCF_HF) then
+                        call rpa_MeanField_RefineHF_Preamble(RPAParams, SCFParams)
+                  end if
                   call clock_start(timer)
                   do k = 1, NSystems
                         call sys_Init(System, k)
                         if (SCFParams%XCFunc == XCF_HF) then
                               call rpa_MeanField_RefineHF(MeanFieldStates(k), SCFOutput(k), &
-                                    SCFParams, AOBasis, System, THCGrid)
+                                    SCFParams, RPAParams, AOBasis, System, THCGrid)
                         else                        
                               call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
                                     RPAParams, AOBasis, System, THCGrid)

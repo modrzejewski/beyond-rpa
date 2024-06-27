@@ -483,6 +483,13 @@ module rpa_definitions
             real(F64) :: LOLinDepThresh = 1.0E-6_F64
             real(F64) :: LOCoulombThresh = 1.0E-8_F64
             real(F64) :: CutoffThreshPNO = 1.0E-6_F64
+            !
+            ! Refinement of approximate Hartree-Fock orbitals and
+            ! orbital energies. The refinement subroutine is applied
+            ! prior to the correlation energy calculation if the SCF
+            ! was computed with the tensor-hypercontraction algorithm.
+            !
+            real(F64) :: HFRefineLinDepThresh = 1.0E-6_F64
       end type TRPAParams
 
       type TRPAGrids

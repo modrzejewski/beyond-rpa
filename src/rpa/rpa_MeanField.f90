@@ -15,28 +15,21 @@ module rpa_MeanField
 
 contains
 
-      subroutine rpa_MeanField_Preamble(RPAParams)
+      subroutine rpa_MeanField_RefineHF_Preamble(RPAParams, SCFParams)
             type(TRPAParams), intent(in) :: RPAParams
-
+            type(TSCFParams), intent(in) :: SCFParams
+            
             call blankline()
-            call msg("Mean-field (Hartree-Fock) calculation on Kohn-Sham occupied space", underline=.true.)
-            !
-            call msg("Hartree-Fock (EXX) energy")
-            call msg(lfield("", 30) // "Kohn-Sham orbitals, exact integrals")
-            !
-            call msg("1-RDM linear")
-            call msg(lfield("", 30) // "mean-field 1-RDM")
-            call msg(lfield("", 30) // "AC integration with " // str(RPAParams%ACQuadPoints) // " quadrature points")
-            !
-            call msg("1-RDM quadratic")
-            call msg(lfield("", 30) // "mean-field 1-RDM")
-            call msg(lfield("", 30) // "THC decomposition of Coulomb integrals")
-            if (RPAParams%AC_1RDMQuad) then
-                  call msg(lfield("", 30) // "AC integration with " // str(RPAParams%ACQuadPoints) // " quadrature points")
-            else
-                  call msg(lfield("", 30) // "Lambda=1 evaluation")
-            end if
-      end subroutine rpa_MeanField_Preamble
+            call msg("Hartree-Fock total energy, orbitals, and orbital energies are recomputed using accurate integrals")
+            call msg("Total corrected mean-field energy components:")
+            call msg("1. HF energy (EtotHF)")
+            call msg("2. linear density correction (1-RDM linear)")
+            call msg("3. quadratic density correction (1-RDM quadratic)")
+            call msg("Terms (2) and (3) are nonzero if the Brillouin theorem is satisfied only approximately")
+            call msg("Linear-dependence threshold for the eigenvalues of S:")
+            call msg(lfield("SCF", 15) // lfield(str(SCFParams%LinDepThresh,d=1), 15))
+            call msg(lfield("refinement", 15) // lfield(str(RPAParams%HFRefineLinDepThresh,d=1), 15))
+      end subroutine rpa_MeanField_RefineHF_Preamble
 
       
       subroutine rpa_MeanField_Semi(MeanField, SCFOutput, SCFParams, RPAParams, &
@@ -145,46 +138,91 @@ contains
       end subroutine rpa_MeanField_Semi
 
 
+      subroutine rpa_MeanField_OAOBasisVecs(Qpk, NOAO, LinDepThresh, AOBasis)
+            real(F64), dimension(:, :), allocatable, intent(out) :: Qpk
+            integer, intent(out)                                 :: NOAO
+            real(F64), intent(in)                                :: LinDepThresh
+            type(TAOBasis), intent(in)                           :: AOBasis
+
+            integer :: NAO, k
+            real(F64), dimension(:, :), allocatable :: Spq
+            real(F64), dimension(:), allocatable :: Lambda
+
+            NAO = AOBasis%NAOSpher
+            allocate(Spq(NAO, NAO))
+            allocate(Lambda(NAO))
+            call ints1e_S(Spq, AOBasis)
+            call symmetric_eigenproblem(Lambda, Spq, NAO, .true.)
+            NOAO = 0
+            do k = NAO, 1, -1
+                  if (Lambda(k) > LinDepThresh) then
+                        NOAO = NOAO + 1
+                  else
+                        exit
+                  end if
+            end do
+            if (NOAO == 0) then
+                  call msg("Failed to generate OAO vectors for LinDepThresh=" // str(LinDepThresh,d=1), MSG_ERROR)
+                  error stop
+            end if
+            allocate(Qpk(NAO, NOAO))
+            do k = 1, NOAO
+                  Qpk(:, k) = Spq(:, NAO-k+1) / Sqrt(Lambda(NAO-k+1))
+            end do
+      end subroutine rpa_MeanField_OAOBasisVecs
+      
+
       subroutine rpa_MeanField_RefineHF(MeanField, SCFOutput, SCFParams, &
-            AOBasis, System, THCGrid)
+            RPAParams, AOBasis, System, THCGrid)
 
             type(TMeanField), intent(out)  :: MeanField
             type(TSCFOutput), intent(in)   :: SCFOutput
             type(TSCFParams), intent(in)   :: SCFParams
+            type(TRPAParams), intent(in)   :: RPAParams
             type(TAOBasis), intent(in)     :: AOBasis
             type(TSystem), intent(in)      :: System
             type(TCoulTHCGrid), intent(in) :: THCGrid
 
             integer :: NAO, NSpins, NMO, NGridTHC
             integer :: i0, i1, a0, a1, s
-            real(F64), dimension(:, :, :), allocatable :: Rho_ao, C_ao, DeltaRho_ao
+            real(F64), dimension(:, :, :), allocatable :: Rho_ao, DeltaRho_ao
+            real(F64), dimension(:, :), allocatable :: Qpk
             real(F64), dimension(:, :), allocatable :: RhoMF_ao
             real(F64), dimension(:, :), allocatable :: Fpl, Fkl
+            real(F64), dimension(:, :), allocatable :: Cpi
             integer, dimension(2) :: NOcc, NVirt
             real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
             real(F64) :: time_F
 
+            call rpa_MeanField_OAOBasisVecs(Qpk, NMO, &
+                  RPAParams%HFRefineLinDepThresh, AOBasis)
             NGridTHC = THCGrid%NGrid
             NOcc = SCFOutput%NOcc
-            NVirt = SCFOutput%NVirt
+            do s = 1, 2
+                  if (NOcc(s) > 0) then
+                        NVirt(s) = NMO - NOcc(s)
+                  else
+                        NVirt(s) = 0
+                  end if
+            end  do
             MeanField%NOcc = NOcc
             MeanField%NVirt = NVirt
             NSpins = size(SCFOutput%C_oao, dim=3)
             MeanField%NSpins = NSpins
             NAO = AOBasis%NAOSpher
-            NMO = size(SCFOutput%MOBasisVecsSpher, dim=2)
             allocate(Rho_ao(NAO, NAO, NSpins))
-            allocate(C_ao(NAO, NMO, NSpins))
             do s = 1, NSpins
                   if (NOcc(s) > 0) then
                         i0 = 1
                         i1 = SCFOutput%NOcc(s)
-                        call real_ab(C_ao(:, :, s), SCFOutput%MOBasisVecsSpher, &
-                              SCFOutput%C_oao(:, 1:NMO, s))
-                        call real_abT(Rho_ao(:, :, s), C_ao(:, i0:i1, s), C_ao(:, i0:i1, s))
+                        allocate(Cpi(NAO, NOcc(s)))
+                        call real_ab(Cpi, SCFOutput%MOBasisVecsSpher, &
+                              SCFOutput%C_oao(:, i0:i1, s))
+                        call real_abT(Rho_ao(:, :, s), Cpi, Cpi)
                         if (NSpins==1) then
                               Rho_ao(:, :, s) = TWO * Rho_ao(:, :, s)
                         end if
+                        deallocate(Cpi)
                   else
                         Rho_ao(:, :, s) = ZERO
                   end if
@@ -204,11 +242,11 @@ contains
                         i1 = NOcc(s)
                         a0 = NOcc(s) + 1
                         a1 = NOcc(s) + NVirt(s)
-                        call real_ab(Fpl, MeanField%F_ao(:, :, s), C_ao(:, :, s))
-                        call real_aTb(Fkl, C_ao(:, :, s), Fpl)
+                        call real_ab(Fpl, MeanField%F_ao(:, :, s), Qpk)
+                        call real_aTb(Fkl, Qpk, Fpl)
                         call symmetric_eigenproblem(MeanField%OrbEnergies(:, s), Fkl, NMO, .true.)
-                        call real_ab(MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), C_ao(:, :, s), Fkl(:, i0:i1))
-                        call real_ab(MeanField%VirtCoeffs_ao(:, 1:NVirt(s), s), C_ao(:, :, s), Fkl(:, a0:a1))
+                        call real_ab(MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), Qpk, Fkl(:, i0:i1))
+                        call real_ab(MeanField%VirtCoeffs_ao(:, 1:NVirt(s), s), Qpk, Fkl(:, a0:a1))
                   else
                         MeanField%OccCoeffs_ao(:, :, s) = ZERO
                         MeanField%VirtCoeffs_ao(:, :, s) = ZERO
@@ -232,7 +270,7 @@ contains
                   DeltaRho_ao, MeanField%F_ao, NOcc, THCGrid)
       end subroutine rpa_MeanField_RefineHF
 
-
+      
       subroutine rpa_MeanField_DeltaEtotHF_THC(Ec1RDM_Linear, Ec1RDM_Quadratic, &
             DeltaRho_ao, F_ao, NOcc, THCGrid)
 
