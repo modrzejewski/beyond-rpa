@@ -1,6 +1,8 @@
 module rpa_definitions
       use arithmetic
       use grid_definitions
+      use scf_definitions
+      use TwoStepCholesky_definitions
       
       implicit none
       !
@@ -257,7 +259,7 @@ module rpa_definitions
             ! Eq. 17 in J. Chem. Phys. 150, 194112 (2019);
             ! doi: 10.1063/1.5083802
             !
-            real(F64) :: CholeskyTauThresh = 1.0E-7_F64
+            real(F64) :: CholeskyTauThresh = 1.0E-5_F64
             !
             ! Accuracy threshold for the numerical grid optimization
             ! for the Laplace transform of dai/(dai**2+u**2)
@@ -362,7 +364,7 @@ module rpa_definitions
             ! Correction for non-constant density along
             ! the adiabatic connection
             !
-            logical :: CoupledClusters = .false.
+            logical :: CoupledClusters = .true.
             !
             ! Number of points of the Gauss-Legendre quadrature
             ! used for the adiabatic connection integral on the (0,1)
@@ -434,7 +436,7 @@ module rpa_definitions
             !    J. Chem. Theory Comput. 16, 1382 (2020);
             !    doi: 10.1021/acs.jctc.9b01205 
             !
-            logical :: TensorHypercontraction = .false.
+            logical :: TensorHypercontraction = .true.
             integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
             !
             ! THC decomposition threshold for RPA. This can differ
@@ -442,7 +444,7 @@ module rpa_definitions
             !
             real(F64) :: THC_QRThresh = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
-            integer :: TheoryLevel = RPA_THEORY_JCTC2023
+            integer :: TheoryLevel = RPA_THEORY_JCTC2024
             !
             ! Use numerical integration to evaluate Ec1RDMQuad.
             ! If false, the integrand is evaluated only at Lambda=1
@@ -457,7 +459,7 @@ module rpa_definitions
             !
             ! Removal of small eigenvalues of T2
             !
-            real(F64) :: T2CutoffThresh = 0.0_F64
+            real(F64) :: T2CutoffThresh = 1.0E-4_F64
             integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
             logical :: T2CutoffSmoothStep = .false.
             real(F64) :: T2CutoffSteepness = 0.1_F64
@@ -472,7 +474,7 @@ module rpa_definitions
             !
             ! Transformation of the RPA amplitudes to an auxiliary basis
             !
-            integer :: T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+            integer :: T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             real(F64) :: T2AuxNOCutoffThresh = 1.0E-8_F64
             real(F64) :: T2AuxLOCutoffThresh = 0.0_F64
             real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
@@ -482,7 +484,7 @@ module rpa_definitions
             !
             real(F64) :: LOLinDepThresh = 1.0E-6_F64
             real(F64) :: LOCoulombThresh = 1.0E-8_F64
-            real(F64) :: CutoffThreshPNO = 1.0E-6_F64
+            real(F64) :: CutoffThreshPNO = 1.0E-5_F64
             !
             ! Refinement of approximate Hartree-Fock orbitals and
             ! orbital energies. The refinement subroutine is applied
@@ -558,26 +560,57 @@ module rpa_definitions
       
 contains
 
-      subroutine rpa_Params_Default(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
 
-            p%TargetErrorRandom = min(sqrt(1.0E-5_F64), p%TargetErrorRandom)
-            p%T2AdaptiveCutoffTargetKcal = 0.05_F64
+            RPAParams%TargetErrorRandom = sqrt(1.0E-5_F64)
+            RPAParams%T2CutoffThresh = 1.0E-5_F64
+            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-9_F64
+            RPAParams%CutoffThreshPNO = sqrt(1.0E-11_F64)
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+            SCFParams%THC_QRThresh = sqrt(1.0E-7_F64)
+            SCFParams%LinDepThresh = 1.0E-5_F64
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-5_F64
       end subroutine rpa_Params_Default
 
       
-      subroutine rpa_Params_Tight(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
 
-            p%TargetErrorRandom = min(sqrt(1.0E-7_F64), p%TargetErrorRandom)
-            p%T2AdaptiveCutoffTargetKcal = 0.005_F64
+            RPAParams%TargetErrorRandom = sqrt(1.0E-7_F64)
+            RPAParams%T2CutoffThresh = 1.0E-6_F64
+            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
+            RPAParams%CutoffThreshPNO = 1.0E-6_F64
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+            SCFParams%THC_QRThresh = 1.0E-4_F64
+            SCFParams%LinDepThresh = 1.0E-5_F64
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-6_F64
       end subroutine rpa_Params_Tight
 
 
-      subroutine rpa_Params_Ludicrous(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
 
-            p%TargetErrorRandom = min(1.0E-5_F64, p%TargetErrorRandom)
-            p%T2AdaptiveCutoffTargetKcal = 0.0005_F64
+            RPAParams%TargetErrorRandom = 1.0E-5_F64
+            RPAParams%T2CutoffThresh = 1.0E-6_F64
+            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
+            RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-7_F64
       end subroutine rpa_Params_Ludicrous
 end module rpa_definitions

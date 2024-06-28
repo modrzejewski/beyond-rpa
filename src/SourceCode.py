@@ -48,8 +48,8 @@ FileList += [("DFT", ["integrals/THC/thc_definitions.f90"])]
 FileList += [("DFT", ["common/display.f90"])]
 FileList += [("DFT", ["common/journal.f90"])]
 FileList += [("DFT", ["common/h_xcfunc.f90"])]
-FileList += [("DFT", ["scf/scf_definitions.f90",
-                      "rpa/rpa_definitions.f90"])]
+FileList += [("DFT", ["scf/scf_definitions.f90"])]
+FileList += [("DFT", ["rpa/rpa_definitions.f90"])]
 FileList += [("DFT", ["common/gparam.f90"])]
 FileList += [("DFT", ["common/io.f90",
                       "common/periodic.f90",

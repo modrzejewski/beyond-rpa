@@ -266,7 +266,7 @@ module scf_definitions
             ! ----------------------------------------------------
             ! SCF convergence thresholds
             ! ----------------------------------------------------
-            real(F64) :: ConvThreshRho = 2.0E-5_F64
+            real(F64) :: ConvThreshRho = 1.0E-6_F64
             real(F64) :: ConvThreshGrad = 2.0E-5_F64
             !
             ! Threshold for removing small eigenvalues from
@@ -292,7 +292,8 @@ module scf_definitions
             ! QRThresh=1.0E-3 gives accurate
             ! correlation energy components, but frequently results
             ! in a poorly converging SCF (example: dimers and trimers
-            ! of acetylene in the AVQZ basis).
+            ! of acetylene in the AVQZ basis). The convergence is
+            ! improved by setting LinDepThresh=1.0E-5.
             !
             ! QRThresh=1.0E-4 is reliable for the SCF, but it's
             ! an overkill for the correlation energy.

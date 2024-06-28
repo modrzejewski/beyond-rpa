@@ -3675,11 +3675,11 @@ contains
             case ("ACCURACY")
                   select case (uppercase(val))
                   case ("DEFAULT")
-                        call rpa_Params_Default(RPAParams)
+                        call rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
                   case ("TIGHT")
-                        call rpa_Params_Tight(RPAParams)
+                        call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
                   case ("LUDICROUS")
-                        call rpa_Params_Ludicrous(RPAParams)
+                        call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
                   case default
                         call msg("Invalid RPA accuracy level", MSG_ERROR)
                         error stop
