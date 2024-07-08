@@ -191,12 +191,14 @@ module rpa_definitions
       ! ------------------------------------------------------------------
       integer, parameter :: RPA_ENERGY_DIRECT_RING = 20
       integer, parameter :: RPA_ENERGY_CUMULANT_1B = 21
+      integer, parameter :: RPA_ENERGY_CUMULANT_SOSEX = 21
       integer, parameter :: RPA_ENERGY_CUMULANT_2B = 22
       integer, parameter :: RPA_ENERGY_CUMULANT_2C = 23
       integer, parameter :: RPA_ENERGY_CUMULANT_2D = 24
       integer, parameter :: RPA_ENERGY_CUMULANT_2E = 25
       integer, parameter :: RPA_ENERGY_CUMULANT_2F = 26      
       integer, parameter :: RPA_ENERGY_CUMULANT_2G = 27
+      integer, parameter :: RPA_ENERGY_CUMULANT_PH3 = 27
       integer, parameter :: RPA_ENERGY_CUMULANT_2H = 28
       integer, parameter :: RPA_ENERGY_CUMULANT_2I = 29
       integer, parameter :: RPA_ENERGY_CUMULANT_2J = 30

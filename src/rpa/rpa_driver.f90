@@ -1255,14 +1255,7 @@ contains
             end if
             if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
-                  !
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2H) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2I) = .true.
-                  DisplayedValues(RPA_ENERGY_CUMULANT_2J) = .true.
+                  DisplayedValues(RPA_ENERGY_CUMULANT_PH3) = .true.
             end if
             if (RPAParams%TheoryLevel == RPA_THEORY_ALL) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
@@ -1318,6 +1311,7 @@ contains
                         Labels(RPA_ENERGY_1RDM_QUADRATIC)              = lfield(Prefix // "1-RDM quadratic" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_DIRECT_RING)                 = lfield(Prefix // "direct ring" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_CUMULANT_1B)                 = lfield(Prefix // "SOSEX" // Postfix, ColWidth)
+
                         Labels(RPA_ENERGY_CUMULANT_2B)                 = lfield(Prefix // "2b" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_CUMULANT_2C)                 = lfield(Prefix // "2c" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_CUMULANT_2D)                 = lfield(Prefix // "2d" // Postfix, ColWidth)
@@ -1334,6 +1328,10 @@ contains
                         Labels(RPA_ENERGY_CUMULANT_2O)                 = lfield(Prefix // "2o" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_CUMULANT_2P)                 = lfield(Prefix // "2p" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "total" // Postfix, ColWidth)
+
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                              Labels(RPA_ENERGY_CUMULANT_PH3)          = lfield(Prefix // "3rd order ph" // Postfix, ColWidth)
+                        end if
                   else
                         Labels(RPA_ENERGY_DFT)                         = lfield(Prefix // "DFT" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_HF)                          = lfield(Prefix // "HF" // Postfix, ColWidth)
