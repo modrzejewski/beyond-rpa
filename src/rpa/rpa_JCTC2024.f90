@@ -80,7 +80,7 @@ contains
             allocate(UaimLoc(NVirt, NOcc, NVecsT2))
             allocate(XgiLoc(NGridTHC, NOcc))
             allocate(Lik(NOcc, NOcc))
-            call rpa_LocalizedOrbitals(Lik, Cpi, NOcc, RPAParams, AOBasis)
+            call rpa_LocalizeOrbitals_AquilanteJCP2006(Lik, Cpi, NOcc, RPAParams, AOBasis)
             call real_ab(XgiLoc, Xgi, Lik)
             !$omp parallel do private(mu)
             do mu = 1, NVecsT2

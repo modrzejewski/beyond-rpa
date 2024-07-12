@@ -12,37 +12,74 @@ module rpa_Orbitals
       
 contains
 
-      subroutine rpa_LocalizedOrbitals(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
+      ! subroutine rpa_LocalizedOrbitals(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
+      !       real(F64), dimension(:, :), intent(out) :: LijLoc
+      !       real(F64), dimension(:, :), intent(in)  :: Cpi
+      !       integer, intent(in)                     :: NOcc
+      !       type(TRPAParams), intent(in)            :: RPAParams
+      !       type(TAOBasis), intent(in)              :: AOBasis
+
+      !       real(F64), dimension(:, :), allocatable :: Spq, Qkp, Uik
+      !       real(F64), dimension(:, :), allocatable :: Dpq, Dkq, Dkl
+      !       real(F64), dimension(:, :), allocatable :: Cki
+      !       integer :: NAO, NOAO, NOccLoc
+
+      !       NAO = AOBasis%NAOSpher
+      !       allocate(Spq(NAO, NAO))
+      !       call ints1e_S(Spq, AOBasis)
+      !       call real_PivotedCholesky(Qkp, Spq, NOAO, RPAParams%LOLinDepThresh)
+      !       allocate(Dpq(NAO, NAO))
+      !       allocate(Dkq(NOAO, NAO))
+      !       allocate(Dkl(NOAO, NOAO))
+      !       call real_abT(Dpq, Cpi(:, 1:NOcc), Cpi(:, 1:NOcc))
+      !       call real_ab(Dkq, Qkp, Dpq)
+      !       call real_abT(Dkl, Dkq, Qkp)
+      !       call real_PivotedCholesky(Uik, Dkl, NOccLoc, 0.1_F64)
+      !       if (NOccLoc /= NOcc) then
+      !             call msg("Cholesky decomposition produced wrong number of occupied orbitals: "//str(NOccLoc), MSG_ERROR)
+      !             error stop
+      !       end if
+      !       allocate(Cki(NOAO, NOcc))
+      !       call real_ab(Cki, Qkp, Cpi(:, 1:NOcc))
+      !       call real_aTbT(LijLoc, Cki, Uik)
+      ! end subroutine rpa_LocalizedOrbitals
+
+
+      subroutine rpa_LocalizeOrbitals_AquilanteJCP2006(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
             real(F64), dimension(:, :), intent(out) :: LijLoc
             real(F64), dimension(:, :), intent(in)  :: Cpi
             integer, intent(in)                     :: NOcc
             type(TRPAParams), intent(in)            :: RPAParams
             type(TAOBasis), intent(in)              :: AOBasis
 
-            real(F64), dimension(:, :), allocatable :: Spq, Qkp, Uik
-            real(F64), dimension(:, :), allocatable :: Dpq, Dkq, Dkl
-            real(F64), dimension(:, :), allocatable :: Cki
-            integer :: NAO, NOAO, NOccLoc
+            real(F64), dimension(:, :), allocatable :: Dpq, Uip, SUpj, Spq
+            integer :: NAO, NOccLoc
+            integer :: p
+            real(F64) :: MaxDpp
+            real(F64) :: CholeskyThresh
 
             NAO = AOBasis%NAOSpher
-            allocate(Spq(NAO, NAO))
-            call ints1e_S(Spq, AOBasis)
-            call real_PivotedCholesky(Qkp, Spq, NOAO, RPAParams%LOLinDepThresh)
             allocate(Dpq(NAO, NAO))
-            allocate(Dkq(NOAO, NAO))
-            allocate(Dkl(NOAO, NOAO))
             call real_abT(Dpq, Cpi(:, 1:NOcc), Cpi(:, 1:NOcc))
-            call real_ab(Dkq, Qkp, Dpq)
-            call real_abT(Dkl, Dkq, Qkp)
-            call real_PivotedCholesky(Uik, Dkl, NOccLoc, 0.1_F64)
-            if (NOccLoc /= NOcc) then
+            MaxDpp = ZERO
+            !$omp parallel do private(p) reduction(max: MaxDpp)
+            do p = 1, NAO
+                  MaxDpp = max(MaxDpp, Dpq(p, p))
+            end do
+            !$omp end parallel do
+            CholeskyThresh = RPAParams%LoLinDepThresh * MaxDpp
+            call real_PivotedCholesky(Uip, Dpq, NOccLoc, CholeskyThresh)
+            if (NOccLoc < NOcc) then
                   call msg("Cholesky decomposition produced wrong number of occupied orbitals: "//str(NOccLoc), MSG_ERROR)
                   error stop
             end if
-            allocate(Cki(NOAO, NOcc))
-            call real_ab(Cki, Qkp, Cpi(:, 1:NOcc))
-            call real_aTbT(LijLoc, Cki, Uik)
-      end subroutine rpa_LocalizedOrbitals
+            allocate(Spq(NAO, NAO))
+            call ints1e_S(Spq, AOBasis)
+            allocate(SUpj(NAO, NOcc))
+            call real_abT_x(SUpj, NAO, Spq, NAO, Uip, NOccLoc, &
+                  NAO, NOcc, NAO, ONE, ZERO)
+            call real_aTb(LijLoc, Cpi, SUpj)
+      end subroutine rpa_LocalizeOrbitals_AquilanteJCP2006
       
 
       subroutine rpa_ProjectOrbitals(Cpa_Projection, NMO_Projection, Cpa_Full, &

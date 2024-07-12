@@ -75,13 +75,6 @@ contains
             ! 
             ! Pi**T * A * Pi = U**T * U
             !
-            ! where Pi is the permuation matrix
-            !
-            ! Pi(k,l) = KroneckerDelta(P(l),k)
-            !
-            ! The output array P is a compressed storage form
-            ! of the permutation matrix Pi.
-            !
             ! The algorithm terminates if the largest diagonal
             ! element in the current iteration <= Eps.
             !
@@ -107,6 +100,16 @@ contains
             do k = 1, N - 1
                   A(k+1:, k) = ZERO
             end do
+            !
+            ! We now eliminate the permutation matrix Pi in
+            !
+            ! Pi**T * A * Pi = U**T * U
+            !
+            ! The output array P is a compressed storage form
+            ! of the permutation matrix Pi.
+            !
+            ! Pi(k,l) = KroneckerDelta(P(l),k)
+            !
             allocate(U(Rank, N))
             U = ZERO
             do k = 1, N
