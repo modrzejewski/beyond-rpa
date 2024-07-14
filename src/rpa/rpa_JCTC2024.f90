@@ -541,6 +541,7 @@ contains
             real(F64) :: Weight, S1b, S1a
             real(F64) :: S2ghij, S2bcd
             type(TClock) :: timer
+            integer :: NPairs, ProcessedPairs, JobsDone
 
             allocate(ZYXkbj(NCholesky, NVirt))
             allocate(ZYXgbj(NGridTHC, NVirt))
@@ -568,6 +569,7 @@ contains
             allocate(QS_kj_ik(NVirt, MaxNVirtPNO))
             allocate(QS(NVirt, 2*MaxNVirtPNO))
 
+            NPairs = (NOcc*(NOcc+1))/2
             t_SOSEX = ZERO
             t_G = ZERO
             t_TrVGabij = ZERO
@@ -578,6 +580,8 @@ contains
             Ec1b = ZERO
             Ec2ghij = ZERO
             Ec2bcd = ZERO
+            ProcessedPairs = 0
+            JobsDone = 0
             do j = 1, NOcc
                   call rpa_JCTC2024_PackTransfMatrices(PQax_kj, PQaxkjLoc, PQAxkjNum, j, &
                         PNOData, PNOTransform, NOcc, NVirt)
@@ -659,6 +663,13 @@ contains
                         t_TrVGaibj = t_TrVGaibj + clock_readwall(timer)
                         Ec2ghij = Ec2ghij + S2ghij
                         Ec2bcd = Ec2bcd + S2bcd
+                        !
+                        ! Progress info
+                        !
+                        ProcessedPairs = ProcessedPairs + 1
+                        if (10*((10*ProcessedPairs)/NPairs) > JobsDone) then
+                              JobsDone = 10*((10*ProcessedPairs)/NPairs)
+                              call msg(rfield(str(JobsDone), 3) // "% completed")
                   end do
             end do
 
@@ -740,7 +751,6 @@ contains
             real(F64) :: c2g, c2h, c2i, c2j, c2d, c2b, c2c
             integer :: Pki, Qki, Pik, Qik
             integer :: Pkj, Qkj, Pjk, Qjk
-            integer :: x
 
             if (k >= i) then
                   Pki = 1
