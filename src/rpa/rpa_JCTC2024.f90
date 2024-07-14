@@ -540,7 +540,7 @@ contains
             integer :: Nkj, Nki, kj0, kj1, ki0, ki1, Nij, ij0, ij1
             real(F64) :: Weight, S1b, S1a
             real(F64) :: S2ghij, S2bcd
-            type(TClock) :: timer
+            type(TClock) :: timer, timer_Job
             integer :: NPairs, ProcessedPairs, JobsDone
 
             allocate(ZYXkbj(NCholesky, NVirt))
@@ -582,6 +582,8 @@ contains
             Ec2bcd = ZERO
             ProcessedPairs = 0
             JobsDone = 0
+            call clock_start(timer_Job)
+            call blankline()
             do j = 1, NOcc
                   call rpa_JCTC2024_PackTransfMatrices(PQax_kj, PQaxkjLoc, PQAxkjNum, j, &
                         PNOData, PNOTransform, NOcc, NVirt)
@@ -669,7 +671,10 @@ contains
                         ProcessedPairs = ProcessedPairs + 1
                         if (10*((10*ProcessedPairs)/NPairs) > JobsDone) then
                               JobsDone = 10*((10*ProcessedPairs)/NPairs)
-                              call msg(rfield(str(JobsDone), 3) // "% completed")
+                              call msg(rfield(str(JobsDone), 3) // "% completed in " &
+                                    // str(clock_readwall(timer_Job,d=1)) // " s")
+                              call clock_start(timer_Job)
+                        end if
                   end do
             end do
 
