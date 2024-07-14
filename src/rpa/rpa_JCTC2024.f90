@@ -50,6 +50,7 @@ contains
             integer :: IJ
             type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO
             real(F64) :: t_Total, t_SVD, t_Energy, t_LO
+            real(F64) :: t_SOSEX, t_G, t_TrVGabij, t_TrVGaibj, t_ZYX, t_ZXX
 
             call clock_start(timer_Total)
             call blankline()
@@ -163,9 +164,9 @@ contains
             ! Ec2g + Ec2h + Ec2i + Ec2j
             !
             call clock_start(timer_Energy)
-            call rpa_JCTC2024_Gaibj_Gabij(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
+            call rpa_JCTC2024_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
                   PNOData, PNOTransform, XgiLoc, Yga, Zgk, MaxNVirtPNO, NVirt, NOcc, &
-                  NGridTHC, NCholesky)
+                  NGridTHC, NCholesky, t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, t_ZYX, t_ZXX)            
             t_Energy = clock_readwall(timer_Energy)
             t_Total = clock_readwall(timer_Total)
             !
@@ -184,6 +185,12 @@ contains
             call msg("Total time           " // str(t_Total,d=1))
             call msg("Orbital localization " // str(t_LO,d=1))
             call msg("SVD                  " // str(t_SVD,d=1))
+            call msg("SOSEX                " // str(t_SOSEX,d=1))
+            call msg("Gabij+Gaibj          " // str(t_G,d=1))
+            call msg("Tr(VGabij)           " // str(t_TrVGabij,d=1))
+            call msg("Tr(VGaibj)           " // str(t_TrVGaibj,d=1))
+            call msg("ZXX                  " // str(t_ZXX,d=1))
+            call msg("ZYX                  " // str(t_ZYX,d=1))
             call msg("Energy terms         " // str(t_Energy,d=1))
             call blankline()
       end subroutine rpa_JCTC2024_Corrections
@@ -499,6 +506,310 @@ contains
             Ec2ghij = Ec2ghij + S2ghij
             Ec2bcd = Ec2bcd + S2bcd
       end subroutine rpa_JCTC2024_phRPA_jik
+
+
+      subroutine rpa_JCTC2024_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
+            PNOData, PNOTransform, Xgi, Yga, Zgk, MaxNVirtPNO, NVirt, NOcc, &
+            NGridTHC, NCholesky, t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, t_ZYX, t_ZXX)
+
+            integer, intent(in)                                             :: MaxNVirtPNO, NVirt, NOcc
+            integer, intent(in)                                             :: NGridTHC, NCholesky
+            real(F64), intent(out)                                          :: EcRPA, Ec1b
+            real(F64), intent(out)                                          :: Ec2bcd, Ec2ghij
+            integer, dimension(:, :, :), intent(in)                         :: PNOData
+            type(TPNOTransform), dimension(:), intent(in)                   :: PNOTransform
+            real(F64), dimension(NGridTHC, NOcc), intent(in)                :: Xgi
+            real(F64), dimension(NGridTHC, NVirt), intent(in)               :: Yga
+            real(F64), dimension(NGridTHC, NCholesky), intent(in)           :: Zgk
+            real(F64), intent(out)                                          :: t_SOSEX, t_G, t_TrVGaibj
+            real(F64), intent(out)                                          :: t_TrVGabij, t_ZYX, t_ZXX
+            
+            real(F64), dimension(:, :), allocatable :: ZYXkbj, ZYXgbj
+            real(F64), dimension(:), allocatable :: Wg
+            real(F64), dimension(:, :), allocatable :: Wga, Wgb, YXgai
+            real(F64), dimension(:), allocatable :: ZXXkij, ZXXgij
+            integer :: SumNVirtPNOkj
+            integer :: a, b, i, j, k
+            real(F64), dimension(:, :), allocatable :: PQax_kj
+            real(F64), dimension(:, :), allocatable :: PQax_ki
+            real(F64), dimension(:, :), allocatable :: Gab_2bcd, Gab_2ghij
+            integer, dimension(:), allocatable :: PQaxkjLoc, PQaxkjNum
+            integer, dimension(:), allocatable :: PQaxkiLoc, PQaxkiNum
+            real(F64), dimension(:, :), allocatable :: S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik
+            real(F64), dimension(:, :), allocatable :: QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik, QS
+            integer :: Nkj, Nki, kj0, kj1, ki0, ki1, Nij, ij0, ij1
+            real(F64) :: Weight, S1b, S1a
+            real(F64) :: S2ghij, S2bcd
+            type(TClock) :: timer
+
+            allocate(ZYXkbj(NCholesky, NVirt))
+            allocate(ZYXgbj(NGridTHC, NVirt))
+            allocate(YXgai(NGridTHC, NVirt))
+            allocate(PQax_kj(NVirt, 2*MaxNVirtPNO*NOcc))
+            allocate(PQax_ki(NVirt, 2*MaxNVirtPNO*NOcc))
+            allocate(Gab_2bcd(NVirt, NVirt))
+            allocate(Gab_2ghij(NVirt, NVirt))
+            allocate(PQaxkjLoc(NOcc))
+            allocate(PQaxkjNum(NOcc))
+            allocate(PQaxkiLoc(NOcc))
+            allocate(PQaxkiNum(NOcc))
+            allocate(ZXXgij(NGridTHC))
+            allocate(ZXXkij(NCholesky))
+            allocate(Wg(NGridTHC))
+            allocate(Wga(NGridTHC, NVirt))
+            allocate(Wgb(NGridTHC, NVirt))
+            allocate(S_jk_ki(MaxNVirtPNO, MaxNVirtPNO))
+            allocate(S_jk_ik(MaxNVirtPNO, MaxNVirtPNO))
+            allocate(S_kj_ki(MaxNVirtPNO, MaxNVirtPNO))
+            allocate(S_kj_ik(MaxNVirtPNO, MaxNVirtPNO))
+            allocate(QS_jk_ki(NVirt, MaxNVirtPNO))
+            allocate(QS_jk_ik(NVirt, MaxNVirtPNO))
+            allocate(QS_kj_ki(NVirt, MaxNVirtPNO))
+            allocate(QS_kj_ik(NVirt, MaxNVirtPNO))
+            allocate(QS(NVirt, 2*MaxNVirtPNO))
+
+            t_SOSEX = ZERO
+            t_G = ZERO
+            t_TrVGabij = ZERO
+            t_TrVGaibj = ZERO
+            t_ZXX = ZERO
+            t_ZYX = ZERO
+            EcRPA = ZERO
+            Ec1b = ZERO
+            Ec2ghij = ZERO
+            Ec2bcd = ZERO
+            do j = 1, NOcc
+                  call rpa_JCTC2024_PackTransfMatrices(PQax_kj, PQaxkjLoc, PQAxkjNum, j, &
+                        PNOData, PNOTransform, NOcc, NVirt)
+                  SumNVirtPNOkj = sum(PQaxkjNum)
+                  call clock_start(timer)
+                  !$omp parallel do private(b)
+                  do b = 1, NVirt
+                        Wga(:, b) = Yga(:, b) * Xgi(:, j)
+                  end do
+                  !$omp end parallel do
+                  call real_aTb(ZYXkbj, Zgk, Wga)
+                  call real_ab(ZYXgbj, Zgk, ZYXkbj)                  
+                  t_ZYX = t_ZYX + clock_readwall(timer)
+                  do i = j, NOcc
+                        if (i /= j) then
+                              Weight = TWO
+                              call rpa_JCTC2024_PackTransfMatrices(PQax_ki, PQaxkiLoc, PQaxkiNum, i, &
+                                    PNOData, PNOTransform, NOcc, NVirt)
+                        else
+                              PQax_ki = PQax_kj
+                              PQaxkiLoc = PQaxkjLoc
+                              PQaxkiNum = PQaxkjNum
+                              Weight = ONE
+                        end if
+                        !
+                        ! Intermediates for computing transformed
+                        ! two-electron integrals
+                        !
+                        call clock_start(timer)
+                        Wg(:) = Xgi(:, i) * Xgi(:, j)
+                        call real_ATv(ZXXkij, Zgk, Wg)
+                        call real_Av(ZXXgij, Zgk, ZXXkij)
+                        t_ZXX = t_ZXX + clock_readwall(timer)
+                        call clock_start(timer)
+                        !$omp parallel do
+                        do a = 1, NVirt
+                              YXgai(:, a) = Yga(:, a) * Xgi(:, i)
+                        end do
+                        !$omp end parallel do
+                        t_ZYX = t_ZYX + clock_readwall(timer)
+                        call clock_start(timer)
+                        Nij = PQaxkjNum(i)
+                        if (Nij > 0) then
+                              ij0 = PQaxkjLoc(i)
+                              ij1 = PQaxkjLoc(i) + 2*Nij - 1
+                              call rpa_JCTC2024_S1ab(S1a, S1b, Wga, Wgb, &
+                                    PQax_kj(:, ij0:ij1), YXgai, ZYXgbj, &
+                                    NVirt, NGridTHC, Nij)
+                              Ec1b = Ec1b - TWO * Weight * S1b
+                              EcRPA = EcRPA + TWO * Weight * S1a
+                        end if
+                        t_SOSEX = t_SOSEX + clock_readwall(timer)
+                        call clock_start(timer)
+                        Gab_2bcd = ZERO
+                        Gab_2ghij = ZERO
+                        do k = 1, NOcc
+                              Nkj = PQaxkjNum(k)
+                              Nki = PQaxkiNum(k)
+                              if (Nkj*Nki > 0) then
+                                    kj0 = PQaxkjLoc(k)
+                                    kj1 = PQaxkjLoc(k) + 2*Nkj - 1
+                                    ki0 = PQaxkiLoc(k)
+                                    ki1 = PQaxkiLoc(k) + 2*Nki - 1
+                                    call rpa_JCTC2024_phRPA_Gab_jik( &
+                                          Gab_2bcd, Gab_2ghij, &
+                                          S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik, &
+                                          QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik, QS, &
+                                          j, i, k, &
+                                          PQax_kj(:, kj0:kj1), PQax_ki(:, ki0:ki1), &
+                                          Nkj, Nki, NVirt)                                    
+                              end if
+                        end do
+                        t_G = t_G + clock_readwall(timer)
+                        call clock_start(timer)
+                        call TrVabijGabij(S2ghij, Wga, Gab_2ghij, Yga, ZXXgij)
+                        t_TrVGabij = t_TrVGabij + clock_readwall(timer)
+                        call clock_start(timer)
+                        call TrVbjaiGajbi(S2bcd, Wga, Gab_2bcd, ZYXgbj, YXgai)
+                        t_TrVGaibj = t_TrVGaibj + clock_readwall(timer)
+                        Ec2ghij = Ec2ghij + S2ghij
+                        Ec2bcd = Ec2bcd + S2bcd
+                  end do
+            end do
+
+      contains
+
+            subroutine TrVabijGabij(D, Wga, Gab, Yga, ZXXgij)
+                  real(F64), intent(out)                             :: D
+                  real(F64), dimension(NGridTHC, NVirt), intent(out) :: Wga
+                  real(F64), dimension(NVirt, NVirt), intent(in)     :: Gab
+                  real(F64), dimension(NGridTHC, NVirt), intent(in)  :: Yga
+                  real(F64), dimension(NGridTHC), intent(in)         :: ZXXgij
+
+                  integer :: a
+                  
+                  call real_ab(Wga, Yga, Gab)
+                  !$omp parallel do private(a)
+                  do a = 1, NVirt
+                        Wga(:, a) = ZXXgij(:) * Wga(:, a)
+                  end do
+                  !$omp end parallel do
+                  call real_vw_x(D, Yga, Wga, NGridTHC*NVirt)
+            end subroutine TrVabijGabij
+
+            subroutine TrVbjaiGajbi(D, Wga, Gab, ZYXgbj, YXgai)
+                  real(F64), intent(out)                             :: D
+                  real(F64), dimension(NGridTHC, NVirt), intent(out) :: Wga
+                  real(F64), dimension(NVirt, NVirt), intent(in)     :: Gab
+                  real(F64), dimension(NGridTHC, NVirt), intent(in)  :: ZYXgbj
+                  real(F64), dimension(NGridTHC, NVirt), intent(in)  :: YXgai
+                  
+                  call real_ab(Wga, ZYXgbj, Gab)
+                  call real_vw_x(D, Wga, YXgai, NGridTHC*NVirt)
+            end subroutine TrVbjaiGajbi
+      end subroutine rpa_JCTC2024_Gaibj_Gabij_v2
+
+
+      subroutine rpa_JCTC2024_S1ab(S1a, S1b, Wgx, Wgy, PQij, YXgai, ZYXgbj, NVirt, NGridTHC, Nij)
+            integer, intent(in)                                :: NVirt, NGridTHC, Nij
+            real(F64), intent(out)                             :: S1a, S1b
+            real(F64), dimension(NGridTHC, Nij), intent(out)   :: Wgx
+            real(F64), dimension(NGridTHC, Nij), intent(out)   :: Wgy
+            real(F64), dimension(NVirt, Nij, 2), intent(in)    :: PQij
+            real(F64), dimension(NGridTHC, NVirt), intent(in)  :: YXgai
+            real(F64), dimension(:, :), intent(in)             :: ZYXgbj
+
+            integer, parameter :: Pij = 1
+            integer, parameter :: Qij = 2
+            integer, parameter :: Pji = 2
+            integer, parameter :: Qji = 1
+            
+            call real_ab(Wgx, YXgai, PQij(:, :, Qij))
+            call real_ab(Wgy, ZYXgbj, PQij(:, :, Pij))
+            call real_vw_x(S1b, Wgx, Wgy, NGridTHC*Nij)
+
+            call real_ab(Wgx, YXgai, PQij(:, :, Qji))
+            call real_ab(Wgy, ZYXgbj, PQij(:, :, Pji))
+            call real_vw_x(S1a, Wgx, Wgy, NGridTHC*Nij)
+      end subroutine rpa_JCTC2024_S1ab
+
+
+      subroutine rpa_JCTC2024_phRPA_Gab_jik( &
+            Gab_2bcd, Gab_2ghij, &
+            S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik, &
+            QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik, QS, &
+            j, i, k, PQ_kj, PQ_ki, &
+            Nkj, Nki, NVirt)
+
+            integer, intent(in)                                 :: Nkj, Nki
+            integer, intent(in)                                 :: NVirt
+            real(F64), dimension(NVirt, NVirt), intent(inout)   :: Gab_2bcd
+            real(F64), dimension(NVirt, NVirt), intent(inout)   :: Gab_2ghij
+            real(F64), dimension(Nkj, Nki), intent(out)         :: S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik
+            real(F64), dimension(NVirt, Nkj), intent(out)       :: QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik
+            real(F64), dimension(NVirt, Nkj, 2), intent(out)    :: QS
+            integer, intent(in)                                 :: j, i, k
+            real(F64), dimension(NVirt, Nkj, 2), intent(in)     :: PQ_kj
+            real(F64), dimension(NVirt, Nki, 2), intent(in)     :: PQ_ki
+
+            real(F64) :: c2g, c2h, c2i, c2j, c2d, c2b, c2c
+            integer :: Pki, Qki, Pik, Qik
+            integer :: Pkj, Qkj, Pjk, Qjk
+            integer :: x
+
+            if (k >= i) then
+                  Pki = 1
+                  Qki = 2
+                  Pik = 2
+                  Qik = 1
+            else
+                  Pki = 2
+                  Qki = 1
+                  Pik = 1
+                  Qik = 2
+            end if
+            if (k >= j) then
+                  Pkj = 1
+                  Qkj = 2
+                  Pjk = 2
+                  Qjk = 1
+            else
+                  Pkj = 2
+                  Qkj = 1
+                  Pjk = 1
+                  Qjk = 2
+            end if
+
+            c2b = -FOUR * (ONE/TWO)
+            c2c = -FOUR * (ONE/TWO)
+            c2d = TWO
+            c2g = -FOUR
+            c2h = -FOUR
+            c2i = TWO
+            c2j = TWO
+
+            call real_aTb(S_jk_ki, PQ_kj(:, :, Qjk), PQ_ki(:, :, Pki))
+            call real_aTb(S_jk_ik, PQ_kj(:, :, Qjk), PQ_ki(:, :, Pik))
+            call real_aTb(S_kj_ki, PQ_kj(:, :, Qkj), PQ_ki(:, :, Pki))
+            call real_aTb(S_kj_ik, PQ_kj(:, :, Qkj), PQ_ki(:, :, Pik))
+
+            call real_abT(QS_jk_ki, PQ_ki(:, :, Qki), S_jk_ki)
+            call real_abT(QS_jk_ik, PQ_ki(:, :, Qik), S_jk_ik)
+            call real_abT(QS_kj_ki, PQ_ki(:, :, Qki), S_kj_ki)
+            call real_abT(QS_kj_ik, PQ_ki(:, :, Qik), S_kj_ik)
+
+            if (i /= j) then
+                  QS(:, :, Pjk) = (TWO * c2g) * QS_jk_ki + (c2i+c2j) * QS_jk_ik  ! factor of 2 in Ec2g accounts for i<->j
+                  QS(:, :, Pkj) = (TWO * c2h) * QS_kj_ik + (c2i+c2j) * QS_kj_ki  ! factor of 2 in Ec2h accounts for i<->j
+                                                                                 ! Ec2i+Ec2j for i<->j
+            else
+                  QS(:, :, Pjk) = c2g * QS_jk_ki + (c2i+c2j) * QS_jk_ik
+                  QS(:, :, Pkj) = c2h * QS_kj_ik
+            end if
+            !
+            ! G(ba,ji)
+            !
+            call real_abT_x(Gab_2ghij, NVirt, PQ_kj, NVirt, QS, NVirt, &
+                  NVirt, NVirt, 2*Nkj, ONE, ONE)
+            !
+            ! G(bj,ai)
+            !
+            if (i /= j) then
+                  QS(:, :, Pkj) = (TWO * c2d) * QS_kj_ik + (c2b+c2c) * QS_kj_ki ! factor of 2 in Ec2d acounts for i<->j
+                  QS(:, :, Pjk) = (c2b+c2c) * QS_jk_ik                          ! Ec2b+Ec2c for i<->j
+                  call real_abT_x(Gab_2bcd, NVirt, PQ_kj, NVirt, QS, NVirt, &
+                        NVirt, NVirt, 2*Nkj, ONE, ONE)
+            else
+                  QS(:, :, Pkj) = c2d * QS_kj_ik + (c2b+c2c) * QS_kj_ki
+                  call real_abT_x(Gab_2bcd, NVirt, PQ_kj(:, :, Pkj), NVirt, QS(:, :, Pkj), NVirt, &
+                        NVirt, NVirt, Nkj, ONE, ONE)
+            end if
+      end subroutine rpa_JCTC2024_phRPA_Gab_jik
       
 
       subroutine rpa_JCTC2024_Tabij(Tabij, Pam, Qam, Uaim, Am, i, j, NOcc, NVirt, NVecsT2)

@@ -80,8 +80,8 @@ contains
                   NAO, NOcc, NAO, ONE, ZERO)
             call real_aTb(LijLoc, Cpi, SUpj)
       end subroutine rpa_LocalizeOrbitals_AquilanteJCP2006
-      
 
+      
       subroutine rpa_ProjectOrbitals(Cpa_Projection, NMO_Projection, Cpa_Full, &
             AOBasis, Subspace, Thresh)
             
