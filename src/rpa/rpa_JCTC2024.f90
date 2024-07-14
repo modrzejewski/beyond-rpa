@@ -671,8 +671,8 @@ contains
                         ProcessedPairs = ProcessedPairs + 1
                         if (10*((10*ProcessedPairs)/NPairs) > JobsDone) then
                               JobsDone = 10*((10*ProcessedPairs)/NPairs)
-                              call msg(rfield(str(JobsDone), 3) // "% completed in " &
-                                    // str(clock_readwall(timer_Job),d=1) // " s")
+                              call msg(rfield(str(JobsDone), 3) // "% completed (" &
+                                    // str(clock_readwall(timer_Job),d=1) // " s)")
                               call clock_start(timer_Job)
                         end if
                   end do
