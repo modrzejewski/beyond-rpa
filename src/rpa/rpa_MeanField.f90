@@ -136,40 +136,6 @@ contains
                   RPAParams%ACQuadPoints, &
                   RPAParams%AC_1RDMQuad)
       end subroutine rpa_MeanField_Semi
-
-
-      subroutine rpa_MeanField_OAOBasisVecs(Qpk, NOAO, LinDepThresh, AOBasis)
-            real(F64), dimension(:, :), allocatable, intent(out) :: Qpk
-            integer, intent(out)                                 :: NOAO
-            real(F64), intent(in)                                :: LinDepThresh
-            type(TAOBasis), intent(in)                           :: AOBasis
-
-            integer :: NAO, k
-            real(F64), dimension(:, :), allocatable :: Spq
-            real(F64), dimension(:), allocatable :: Lambda
-
-            NAO = AOBasis%NAOSpher
-            allocate(Spq(NAO, NAO))
-            allocate(Lambda(NAO))
-            call ints1e_S(Spq, AOBasis)
-            call symmetric_eigenproblem(Lambda, Spq, NAO, .true.)
-            NOAO = 0
-            do k = NAO, 1, -1
-                  if (Lambda(k) > LinDepThresh) then
-                        NOAO = NOAO + 1
-                  else
-                        exit
-                  end if
-            end do
-            if (NOAO == 0) then
-                  call msg("Failed to generate OAO vectors for LinDepThresh=" // str(LinDepThresh,d=1), MSG_ERROR)
-                  error stop
-            end if
-            allocate(Qpk(NAO, NOAO))
-            do k = 1, NOAO
-                  Qpk(:, k) = Spq(:, NAO-k+1) / Sqrt(Lambda(NAO-k+1))
-            end do
-      end subroutine rpa_MeanField_OAOBasisVecs
       
 
       subroutine rpa_MeanField_RefineHF(MeanField, SCFOutput, SCFParams, &
@@ -190,12 +156,16 @@ contains
             real(F64), dimension(:, :), allocatable :: RhoMF_ao
             real(F64), dimension(:, :), allocatable :: Fpl, Fkl
             real(F64), dimension(:, :), allocatable :: Cpi
+            real(F64), dimension(:, :), allocatable :: Spq
             integer, dimension(2) :: NOcc, NVirt
             real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
             real(F64) :: time_F
-
-            call rpa_MeanField_OAOBasisVecs(Qpk, NMO, &
-                  RPAParams%HFRefineLinDepThresh, AOBasis)
+            
+            NAO = AOBasis%NAOSpher
+            allocate(Spq(NAO, NAO))
+            call ints1e_S(Spq, AOBasis)
+            call basis_NonredundantOrthogonal(Qpk, NMO, Spq, &
+                  RPAParams%HFRefineLinDepThresh)
             NGridTHC = THCGrid%NGrid
             NOcc = SCFOutput%NOcc
             do s = 1, 2
@@ -209,7 +179,6 @@ contains
             MeanField%NVirt = NVirt
             NSpins = size(SCFOutput%C_oao, dim=3)
             MeanField%NSpins = NSpins
-            NAO = AOBasis%NAOSpher
             allocate(Rho_ao(NAO, NAO, NSpins))
             do s = 1, NSpins
                   if (NOcc(s) > 0) then

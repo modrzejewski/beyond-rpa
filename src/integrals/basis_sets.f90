@@ -1169,4 +1169,38 @@ contains
                   end if
             end associate
       end subroutine basis_OAO
+
+
+      subroutine basis_NonredundantOrthogonal(Qpk, NOAO, Spq, LinDepThresh)
+            real(F64), dimension(:, :), allocatable, intent(out) :: Qpk
+            integer, intent(out)                                 :: NOAO
+            real(F64), dimension(:, :), intent(in)               :: Spq
+            real(F64), intent(in)                                :: LinDepThresh
+
+            integer :: NAO, k
+            real(F64), dimension(:, :), allocatable :: Wpq
+            real(F64), dimension(:), allocatable :: Lambda
+
+            NAO = size(Spq, dim=1)
+            allocate(Wpq(NAO, NAO))
+            Wpq(:, :) = Spq(:, :)
+            allocate(Lambda(NAO))
+            call symmetric_eigenproblem(Lambda, Wpq, NAO, .true.)
+            NOAO = 0
+            do k = NAO, 1, -1
+                  if (Lambda(k) > LinDepThresh) then
+                        NOAO = NOAO + 1
+                  else
+                        exit
+                  end if
+            end do
+            if (NOAO == 0) then
+                  call msg("Failed to generate OAO vectors for LinDepThresh=" // str(LinDepThresh,d=1), MSG_ERROR)
+                  error stop
+            end if
+            allocate(Qpk(NAO, NOAO))
+            do k = 1, NOAO
+                  Qpk(:, k) = Wpq(:, NAO-k+1) / Sqrt(Lambda(NAO-k+1))
+            end do
+      end subroutine basis_NonredundantOrthogonal
 end module basis_sets

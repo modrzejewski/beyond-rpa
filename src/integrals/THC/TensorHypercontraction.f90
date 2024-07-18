@@ -600,7 +600,7 @@ contains
       subroutine thc_normalize_Xgp(Xgp)
             !
             ! Normalize collocation matrices as in Ref. 1. The sum of squares
-            ! can't be zero because all grid points were screened out during
+            ! can't be zero because all zero grid points were screened out during
             ! Becke grid generation:
             !
             ! Rg: Max|PhiP(Rg)|**2>=PhiSquaredThresh
@@ -857,7 +857,8 @@ contains
                         PivotThreshReduced = -ONE
                   end if
                   call msg("Cholesky absolute pivot threshold Eps**2=" // str(PivotThresh,d=1))
-                  if (QRThreshReduced > ZERO) call msg("Cholesky absolute pivot threshold (reduced grid) Eps**2=" // str(PivotThreshReduced,d=1))
+                  if (QRThreshReduced > ZERO) call msg("Cholesky absolute pivot threshold (reduced grid) Eps**2=" &
+                        // str(PivotThreshReduced,d=1))
                   MaxIters = NCandidates / BlockDim
                   if (modulo(NCandidates, BlockDim) > 0) MaxIters = MaxIters + 1
                   allocate(XhJ(NCandidates))
