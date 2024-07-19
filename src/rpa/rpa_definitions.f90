@@ -575,7 +575,20 @@ contains
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = sqrt(1.0E-7_F64)
-            SCFParams%LinDepThresh = 1.0E-5_F64
+            !
+            ! If the THC Coulomb integrals are used,
+            ! an aggressive removal of linear dependencies
+            ! is required for SCF convergence.
+            !
+            ! The error due to to the removal
+            ! of basis vectors is corrected in the post-SCF
+            ! step by a recomputation of the Fock hamiltonian
+            ! with accurate integrals. This crucial step
+            ! improves both the mean-field component of the
+            ! energy and the orbitals that go to
+            ! the correlation energy.
+            !
+            SCFParams%LinDepThresh = sqrt(1.0E-9_F64)
             SCFParams%ConvThreshRho = 1.0E-6_F64
             Chol2Params%CholeskyTauThresh = 1.0E-5_F64
       end subroutine rpa_Params_Default
