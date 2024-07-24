@@ -306,30 +306,6 @@ module uks_arh
        end subroutine uarh_del
 
 
-       function uarh_DOverlap(Da, Db)
-             !
-             ! Overlap of two vectors representing density matrices
-             ! in OAO basis
-             !
-             real(F64) :: uarh_DOverlap
-             real(F64), dimension(:, :), intent(in) :: Da
-             real(F64), dimension(:, :), intent(in) :: Db
-
-             integer :: p, q, Noao
-             real(F64) :: s
-
-             Noao = size(Da, dim=1)
-             s = ZERO
-             do q = 1, Noao
-                   s = s + (ONE/TWO) * Da(q, q) * Db(q, q)
-                   do p = q + 1, Noao
-                         s = s + Da(p, q) * Db(p, q)
-                   end do
-             end do
-             uarh_DOverlap = TWO * s
-       end function uarh_DOverlap
-       
-       
        subroutine uarh_islindep(lindep, del_list, GramMatrix)
              !
              ! Test if the density matrix from the n-th iteration, Dn,
@@ -387,7 +363,7 @@ module uks_arh
        end subroutine uarh_islindep
 
 
-       subroutine uarh_ov2oao(X_oao, X_ov, Cocc_ov, Cvirt_ov)
+       subroutine uarh_ov2oao(X_oao, Wpi, X_ov, Cocc_ov, Cvirt_ov, NOcc, NVirt, NOAO)
              ! 
              ! Transform X_ov from the occupied-virtual basis to the orthogonalized
              ! atomic orbitals basis. Take into account the virtual-occupied block
@@ -395,32 +371,20 @@ module uks_arh
              !
              ! X_oao = Sum_{ia} (Xia * Ci Ca**H - Conj(Xia) * C_a C_i**H)
              !
-             real(F64), dimension(:, :), contiguous, intent(out) :: X_oao
-             real(F64), dimension(:, :), contiguous, intent(in)  :: X_ov
-             real(F64), dimension(:, :), contiguous, intent(in)  :: Cocc_ov
-             real(F64), dimension(:, :), contiguous, intent(in)  :: Cvirt_ov
+             integer, intent(in)                            :: NOcc, NVirt, NOAO
+             real(F64), dimension(NOAO, NOAO), intent(out)  :: X_oao
+             real(F64), dimension(NOAO, NOcc), intent(out)  :: Wpi
+             real(F64), dimension(NOcc, NVirt), intent(in)  :: X_ov
+             real(F64), dimension(NOAO, NOcc), intent(in)   :: Cocc_ov
+             real(F64), dimension(NOAO, NVirt), intent(in)  :: Cvirt_ov
 
-             integer :: i, a, p, q
-             integer :: Nocc, Nvirt, Noao
-             real(F64) :: Xia, t1, t2
-
-             Noao = size(X_oao, dim=1)
-             Nocc = size(X_ov, dim=1)
-             Nvirt = size(X_ov, dim=2)
-             X_oao = ZERO
-             do a = 1, Nvirt
-                   do i = 1, Nocc
-                         Xia = X_ov(i, a)
-                         do q = 1, Noao
-                               do p = 1, Noao
-                                     t1 = Xia * Cocc_ov(p, i) * Cvirt_ov(q, a)
-                                     t2 = Xia * Cvirt_ov(p, a) * Cocc_ov(q, i)
-                                     X_oao(p, q) = X_oao(p, q) + t1 - t2
-                               end do
-                         end do
-                   end do
-             end do
-             do p = 1, Noao
+             integer :: p
+             
+             call real_abT(Wpi, Cvirt_ov, X_ov)
+             call real_abT(X_oao, Cocc_ov, Wpi)
+             call real_abT_x(X_oao, NOAO, Wpi, NOAO, Cocc_ov, NOAO, NOAO, NOAO, NOcc, &
+                   -ONE, ONE)
+             do p = 1, NOAO
                    X_oao(p, p) = ZERO
              end do
        end subroutine uarh_ov2oao
@@ -500,12 +464,14 @@ module uks_arh
              Nocc = size(A_ov, dim=1)
              Nvirt = size(A_ov, dim=2)
              sij_max = ZERO
+             !$omp parallel do private(a, i, sij) reduction(max:sij_max) collapse(2)
              do a = 1, Nvirt
                    do i = 1, Nocc
                          sij = abs(A_ov(i, a))
                          sij_max = max(sij_max, sij)
                    end do
              end do
+             !$omp end parallel do
              uarh_maxnorm = sij_max
        end function uarh_maxnorm
        
@@ -523,18 +489,11 @@ module uks_arh
              real(F64), dimension(:, :), intent(in) :: A_ov
 
              integer :: Nocc, Nvirt
-             integer :: i, a
-             real(F64) :: sij, sij_sum
+             real(F64) :: sij_sum
 
              Nocc = size(A_ov, dim=1)
              Nvirt = size(A_ov, dim=2)
-             sij_sum = ZERO
-             do a = 1, Nvirt
-                   do i = 1, Nocc
-                         sij = A_ov(i, a)**2
-                         sij_sum = sij_sum + sij
-                   end do
-             end do
+             call real_vw_x(sij_sum, A_ov, A_ov, NVirt*NOcc)
              !
              ! Multiply by two to make up for the remaining
              ! virtal-occupied block
@@ -574,7 +533,7 @@ module uks_arh
        end function uarh_matrixnorm
 
        
-       subroutine uarh_Emodel(Emodel, X_ov, sigma_X, Fn_ov, Fk_ov, Tinv, eig, &
+       subroutine uarh_EnergyModel(Emodel, X_ov, sigma_X, Fn_ov, Fk_ov, Tinv, eig, &
              NStored, OccNumber, SecondOrder)
              real(F64), intent(out)                    :: Emodel
              real(F64), dimension(:, :), intent(in)    :: X_ov
@@ -588,45 +547,50 @@ module uks_arh
              logical, intent(in)                       :: SecondOrder
 
              integer :: Nocc, Nvirt, k, l, i, a
-             real(F64) :: e11, e21, e22, Fnii, Fnaa
+             real(F64) :: e11, e21, e22, e22k, Fnii, Fnaa
              real(F64) :: DeltaFkia
+             real(F64), dimension(NStored) :: TS
 
              Nocc = size(Fn_ov, dim=1)
              Nvirt = size(Fn_ov, dim=2)
              e11 = ZERO
-             do a = 1, Nvirt
-                   do i = 1, Nocc
-                         e11 = e11 + TWO * X_ov(i, a) * Fn_ov(i, a)
-                   end do
-             end do
-             e11 = OccNumber * e11
-
              e21 = ZERO
+             !$omp parallel do private(a, i, Fnaa, Fnii) reduction(+:e11,e21) collapse(2)
              do a = 1, Nvirt
                    do i = 1, Nocc
                          Fnaa = eig(Nocc+a)
                          Fnii = eig(i)
                          e21 = e21 + X_ov(i, a)**2 * (Fnaa - Fnii)
+                         e11 = e11 + TWO * X_ov(i, a) * Fn_ov(i, a)
                    end do
              end do
+             !$omp end parallel do
+             e11 = OccNumber * e11
              e21 = OccNumber * e21
-
              e22 = ZERO
              if (SecondOrder) then
-                   do l = 1, NStored
-                         do k = 1, NStored
-                               do a = 1, Nvirt
-                                     do i = 1, Nocc
-                                           DeltaFkia = Fk_ov(i, a, k) - Fn_ov(i, a)
-                                           e22 = e22 + TWO * DeltaFkia * X_ov(i, a) * Tinv(k, l) * sigma_X(l)
-                                     end do
+                   TS = ZERO
+                   do k = 1, NStored
+                         do l = 1, NStored
+                               TS(k) = TS(k) + Tinv(k, l) * sigma_X(l)
+                         end do
+                   end do
+                   do k = 1, NStored
+                         e22k = ZERO
+                         !$omp parallel do private(a, i, DeltaFkia) reduction(+:e22k) collapse(2)
+                         do a = 1, Nvirt
+                               do i = 1, Nocc
+                                     DeltaFkia = Fk_ov(i, a, k) - Fn_ov(i, a)
+                                     e22k = e22k + TWO * DeltaFkia * X_ov(i, a) * TS(k)
                                end do
                          end do
+                         !$omp end parallel do
+                         e22 = e22 + e22k
                    end do
                    e22 = (ONE/TWO) * OccNumber * e22
              end if
              Emodel = e11 + e21 + e22
-       end subroutine uarh_Emodel
+       end subroutine uarh_EnergyModel
 
 
        subroutine uarh_Omega(Omega, Tinv, FnA_ov, FnB_ov, FkA_ov, FkB_ov, DkA_ov, DkB_ov, &
@@ -682,9 +646,14 @@ module uks_arh
              real(F64) :: DeltaFkia, Dmia
              real(F64) :: Fnaa, Fnii
              integer :: k, m, i, a, Nocc, Nvirt
+             real(F64), dimension(NStored, NStored) :: T
 
              Nocc = size(Fn_ov, dim=1)
              Nvirt = size(Fn_ov, dim=2)
+             T = ZERO
+             !$omp parallel do private(m, k, a, i) &
+             !$omp private(DeltaFkia, Dmia, Fnaa, Fnii) &
+             !$omp reduction(+:T) collapse(4)
              do m = 1, NStored
                    do k = 1, NStored
                          do a = 1, Nvirt
@@ -693,11 +662,13 @@ module uks_arh
                                      Dmia = Dk_ov(i, a, m)
                                      Fnaa = eig(Nocc+a)
                                      Fnii = eig(i)
-                                     tau(k, m) = tau(k, m) - TWO * DeltaFkia * Dmia / (Fnaa - Fnii - shift)
+                                     T(k, m) = T(k, m) - TWO * DeltaFkia * Dmia / (Fnaa - Fnii - shift)
                                end do
                          end do
                    end do
              end do
+             !$omp end parallel do
+             Tau(1:NStored, 1:NStored) = Tau(1:NStored, 1:NStored) + T
        end subroutine uarh_tauA
 
 
@@ -711,18 +682,25 @@ module uks_arh
 
              real(F64) :: Yia, Dkia
              integer :: k, i, a, Nocc, Nvirt
+             real(F64), dimension(NStored) :: S
 
              Nocc = size(Fn_ov, dim=1)
              Nvirt = size(Fn_ov, dim=2)
+             S = ZERO
+             !$omp parallel do private(k, a, i) &
+             !$omp private(Dkia, Yia) reduction(+:S) &
+             !$omp collapse(3)
              do k = 1, NStored
                    do a = 1, Nvirt
                          do i = 1, Nocc
                                Dkia = Dk_ov(i, a, k)
-                               Yia = uarh_Yia(i, a, Fn_ov, eig, shift)
-                               sigma_Y(k) = sigma_Y(k) + TWO * Dkia * Yia
+                               Yia = -Fn_ov(i, a) / (eig(Nocc+a) - eig(i) - shift)
+                               S(k) = S(k) + TWO * Dkia * Yia
                          end do
                    end do
              end do
+             !$omp end parallel do
+             Sigma_Y(1:NStored) = Sigma_Y(1:NStored) + S
        end subroutine uarh_sigma_YA
 
 
@@ -739,27 +717,37 @@ module uks_arh
              real(F64) :: Fnii, Fnaa
              real(F64) :: DeltaFkia
              integer :: k, l, i, a, Nocc, Nvirt
+             real(F64), dimension(NStored) :: TS
 
              Nocc = size(Fn_ov, dim=1)
              Nvirt = size(Fn_ov, dim=2)
+             !$omp parallel do private(a, i) collapse(2)
              do a = 1, Nvirt
                    do i = 1, Nocc
-                         X_ov(i, a) = uarh_Yia(i, a, Fn_ov, eig, shift)
+                         X_ov(i, a) = -Fn_ov(i, a) / (eig(Nocc+a) - eig(i) - shift)
                    end do
              end do
-             
-             do l = 1, NStored
-                   do k = 1, NStored
-                         do a = 1, Nvirt
-                               do i = 1, Nocc
-                                     DeltaFkia = Fk_ov(i, a, k) - Fn_ov(i, a)
-                                     Fnaa = eig(Nocc+a)
-                                     Fnii = eig(i)
-                                     X_ov(i, a) = X_ov(i, a) - ONE / (Fnaa - Fnii - shift) &
-                                           * DeltaFkia * Tinv(k, l) * sigma_X(l)
-                               end do
+             !$omp end parallel do
+             TS = ZERO
+             do k = 1, NStored
+                   do l = 1, NStored
+                         TS(k) = TS(k) + Tinv(k, l) * sigma_X(l)
+                   end do
+             end do
+             do k = 1, NStored
+                   !$omp parallel do private(a, i) &
+                   !$omp private(DeltaFkia, Fnaa, Fnii) &
+                   !$omp collapse(2)
+                   do a = 1, Nvirt
+                         do i = 1, Nocc
+                               DeltaFkia = Fk_ov(i, a, k) - Fn_ov(i, a)
+                               Fnaa = eig(Nocc+a)
+                               Fnii = eig(i)
+                               X_ov(i, a) = X_ov(i, a) - ONE / (Fnaa - Fnii - shift) &
+                                     * DeltaFkia * TS(k)
                          end do
                    end do
+                   !$omp end parallel do
              end do
        end subroutine uarh_XA
 
@@ -803,21 +791,6 @@ module uks_arh
        end subroutine uarh_X
        
 
-       function uarh_Yia(i, a, Fn_ov, eig, shift)
-             real(F64)                              :: uarh_Yia
-             integer, intent(in)                    :: i
-             integer, intent(in)                    :: a
-             real(F64), dimension(:, :), intent(in) :: Fn_ov
-             real(F64), dimension(:), intent(in)    :: eig
-             real(F64), intent(in)                  :: shift
-
-             integer :: Nocc
-
-             Nocc = size(Fn_ov, dim=1)
-             uarh_Yia = -Fn_ov(i, a) / (eig(Nocc+a) - eig(i) - shift)
-       end function uarh_Yia
-
-
        subroutine uarh_YA(Y_ov, Fn_ov, eig, shift)
              real(F64), dimension(:, :), intent(out) :: Y_ov
              real(F64), dimension(:, :), intent(in)  :: Fn_ov
@@ -829,11 +802,13 @@ module uks_arh
 
              Nocc = size(Y_ov, dim=1)
              Nvirt = size(Y_ov, dim=2)
+             !$omp parallel do private(a, i) collapse(2)
              do a = 1, Nvirt
                    do i = 1, Nocc
-                         Y_ov(i, a) = uarh_Yia(i, a, Fn_ov, eig, shift)
+                         Y_ov(i, a) = -Fn_ov(i, a) / (eig(Nocc+a) - eig(i) - shift)
                    end do
              end do
+             !$omp end parallel do
        end subroutine uarh_YA
 
        
@@ -936,6 +911,7 @@ module uks_arh
 
              integer :: Noao, p, k, l, kk, ll
              real(F64) :: TrD
+             real(F64) :: Skl
              
              Noao = size(Dn_oao, dim=1)
              TrD = ZERO
@@ -951,9 +927,11 @@ module uks_arh
                    do k = l+1, NStored
                          kk = idx_map(k)
                          call real_abT(Wk, Ck_oao(:, :, kk), Ck_oao(:, :, kk))
-                         G(k, l) = G(k, l) + uarh_DOverlap(Wk, Wl)
+                         call real_vw_x(Skl, Wk, Wl, NOAO**2)
+                         G(k, l) = G(k, l) + Skl
                    end do
-                   G(NStored+1, l) = G(NStored+1, l) + uarh_DOverlap(Dn_oao, Wl)
+                   call real_vw_x(Skl, Dn_oao, Wl, NOAO**2)
+                   G(NStored+1, l) = G(NStored+1, l) + Skl
              end do
        end subroutine uarh_Overlap
        
@@ -988,32 +966,6 @@ module uks_arh
              call real_ab(C(:, Nocc+1:Nocc+Nvirt), Cvirt, Fvirt)
              deallocate(Fvirt)
        end subroutine uarh_ov_basis
-
-
-       subroutine uarh_expXT_C(C, expX, work)
-             !
-             ! C <- exp(X)**T C
-             !
-             real(F64), dimension(:, :), intent(inout) :: C
-             real(F64), dimension(:, :), intent(in)    :: expX
-             real(F64), dimension(:, :), intent(out)   :: work
-
-             integer :: p, q, k, Noao
-             real(F64) :: a, b
-
-             Noao = size(C, dim=1)
-             work = ZERO
-             do q = 1, Noao
-                   do p = 1, Noao
-                         do k = 1, Noao
-                               a = expX(k, p)
-                               b = C(k, q)
-                               work(p, q) = work(p, q) + a * b
-                         end do
-                   end do
-             end do
-             C = work
-       end subroutine uarh_expXT_C
 
 
        subroutine uarh_DensityMatrix(D_ov, Cocc_oao, C_ov)
@@ -1078,7 +1030,8 @@ module uks_arh
              real(F64) :: GapA, GapB, gap
              real(F64) :: Xnorm0, Xnorm1, Xnorm_mid
              real(F64) :: MaxOverlapA, MaxOverlapB
-             real(F64), dimension(:, :), allocatable :: X_oao, expX_oao, expX_work
+             real(F64), dimension(:, :), allocatable :: X_oao, expX_oao
+             real(F64), dimension(:, :), allocatable :: Wpq, Wpi
              real(F64), dimension(:, :), allocatable :: CA_ov, CB_ov, XA_ov, XB_ov, FnA_ov, FnB_ov
              real(F64), dimension(:, :), allocatable :: Tinv, T, GramMatrix
              real(F64), dimension(:), allocatable :: sigma_X
@@ -1146,7 +1099,8 @@ module uks_arh
                    end if
                    allocate(X_oao(Noao, Noao))
                    allocate(expX_oao(Noao, Noao))
-                   allocate(expX_work(Noao, Noao))
+                   allocate(Wpq(NOAO, NOAO))
+                   allocate(Wpi(NOAO, max(NOccA, NOccB)))
                    allocate(Tinv(NStored, NStored))
                    allocate(T(NStored, NStored))
                    allocate(GramMatrix(NStored+1, NStored+1))
@@ -1184,7 +1138,7 @@ module uks_arh
                          OrbGradMax = max(OrbGradMax, uarh_maxnorm(FnB_ov))
                    end if
                    if (NStored > 0) then
-                         associate (Wk => expX_oao, Wl => expX_work)
+                         associate (Wk => expX_oao, Wl => Wpq)
                                GramMatrix = ZERO
                                call uarh_Overlap(GramMatrix, CkA_oao, Dn_oao(:, :, 1), idx_map, NStored, Wk, Wl)
                                if (SpinUnres) then
@@ -1294,10 +1248,10 @@ module uks_arh
                    !    number of matrices. In that case, recompute X_ov using simpler,
                    !    first-order method.
                    !
-                   call uarh_Emodel(EmodelA, XA_ov, sigma_X, FnA_ov, FkA_ov, Tinv, EigA, &
+                   call uarh_EnergyModel(EmodelA, XA_ov, sigma_X, FnA_ov, FkA_ov, Tinv, EigA, &
                          NStored, OccNumber, SecondOrder)
                    if (SpinUnres) then
-                         call uarh_Emodel(EmodelB, XB_ov, sigma_X, FnB_ov, FkB_ov, Tinv, EigB, &
+                         call uarh_EnergyModel(EmodelB, XB_ov, sigma_X, FnB_ov, FkB_ov, Tinv, EigB, &
                                NStored, OccNumber, SecondOrder)
                    else
                          EmodelB = ZERO
@@ -1339,16 +1293,26 @@ module uks_arh
                    ! atomic orbital basis:
                    ! Xoao = Cocc X Cvirt**H - Cvirt X Xocc**H
                    !
-                   call uarh_ov2oao(X_oao, XA_ov, CA_ov(:, 1:NoccA), CA_ov(:, NoccA+1:))
-                   call matrix_exponential_real(expX_oao, X_oao, expX_work)
+                   call uarh_ov2oao(X_oao, Wpi(:, 1:NOccA), XA_ov, &
+                         CA_ov(:, 1:NoccA), CA_ov(:, NoccA+1:NOccA+NVirtA), &
+                         NOccA, NVirtA, NOAO)
+                   call matrix_exponential_real(expX_oao, X_oao, Wpq)
                    !
                    ! Update molecular orbitals: C <- exp(X**H) C
                    !
-                   call uarh_expXT_C(C_oao(:, :, 1), expX_oao, expX_work)
+                   call real_aTb(Wpq, expX_oao, C_oao(:, :, 1))
+                   C_oao(:, :, 1) = Wpq
                    if (SpinUnres) then
-                         call uarh_ov2oao(X_oao, XB_ov, CB_ov(:, 1:NoccB), CB_ov(:, NoccB+1:))
-                         call matrix_exponential_real(expX_oao, X_oao, expX_work)
-                         call uarh_expXT_C(C_oao(:, :, 2), expX_oao, expX_work)
+                         if (NOccB > 0) then
+                               call uarh_ov2oao(X_oao, Wpi(:, 1:NOccB), XB_ov, &
+                                     CB_ov(:, 1:NoccB), CB_ov(:, NoccB+1:NOccB+NVirtB), &
+                                     NOccB, NVirtB, NOAO)
+                               call matrix_exponential_real(expX_oao, X_oao, Wpq)
+                               call real_aTb(Wpq, expX_oao, C_oao(:, :, 2))
+                               C_oao(:, :, 2) = Wpq
+                         else
+                               C_oao(:, :, 2) = ZERO
+                         end if
                    end if
              end associate
              d%NStored = NStored

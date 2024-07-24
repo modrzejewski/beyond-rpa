@@ -21,3 +21,5 @@ src/CompilerFlags/modules-default
 example.inp
 example.log
 example-intel-coarray.conf
+PBS_barbora_example.sh
+

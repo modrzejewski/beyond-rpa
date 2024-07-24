@@ -919,7 +919,7 @@ contains
                   end do
                   call midrule()
                   if (Converged) then
-                        call msg("Cholesky decomposition converged with " // str(NPivots) // " pivots")
+                        call msg("Rank-revealing decomposition converged with " // str(NPivots) // " pivots")
                         call msg("Average " // str(NPivots/AOBasis%NAtoms) // " points per atom")
                         call msg("NGridTHC/NAO=" // str(real(NPivots,F64)/NAO, d=1))
                         if (QRThreshReduced > ZERO) then
