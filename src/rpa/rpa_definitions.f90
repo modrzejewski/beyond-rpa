@@ -571,7 +571,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-5_F64
             RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-9_F64
-            RPAParams%CutoffThreshPNO = sqrt(1.0E-11_F64)
+            RPAParams%CutoffThreshPNO = 1.0E-6_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = sqrt(1.0E-7_F64)
@@ -603,7 +603,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
-            RPAParams%CutoffThreshPNO = 1.0E-6_F64
+            RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = 1.0E-4_F64
@@ -622,7 +622,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
-            RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
+            RPAParams%CutoffThreshPNO = 1.0E-7_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
             SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
             SCFParams%ConvThreshRho = 1.0E-6_F64
