@@ -16,7 +16,7 @@ module rpa_CCD_Corrections
       
 contains
 
-      subroutine rpa_Corrections(RPAOutput, Zgh, Zgk, Yga, Xgi, &
+      subroutine rpa_Corrections(RPAOutput, Zgk, Yga, Xgi, &
             Uaim, Am, Cpi, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams, AOBasis)
             
             integer, intent(in)                                    :: NOcc
@@ -24,7 +24,6 @@ contains
             integer, intent(in)                                    :: NVecsT2
             integer, intent(in)                                    :: NGridTHC
             type(TRPAOutput), intent(inout)                        :: RPAOutput
-            real(F64), dimension(:, :), intent(in)                 :: Zgh
             real(F64), dimension(:, :), intent(in)                 :: Zgk
             real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
             real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
@@ -34,11 +33,11 @@ contains
             type(TRPAParams), intent(in)                           :: RPAParams
             type(TAOBasis), intent(in)                             :: AOBasis
 
-            real(F64), dimension(:, :), allocatable :: YXUggm
+            real(F64), dimension(:, :), allocatable :: YXUggm, Zgh
             type(TClock) :: timer_total, timer            
             integer, parameter :: BlockDim = 300
             logical, parameter :: Compute_1b2g = .true.
-            logical, parameter :: Compute_2bcd = .true.
+            logical, parameter :: Compute_2bcd = .false.
 
             if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
                   call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
@@ -47,11 +46,13 @@ contains
                   !
                   ! Warning: this code path allocates large matrices
                   !
-                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgh, Zgk, Yga, Xgi, &
+                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgk, Yga, Xgi, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))                  
             else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2023) then
                   call msg("CCD corrections to RPA correlation energy")
                   call clock_start(timer_total)
+                  allocate(Zgh(NGridTHC, NGridTHC))
+                  call real_abT(Zgh, Zgk, Zgk)
                   if (Compute_1b2g) then
                         call clock_start(timer)
                         call rpa_CCD_corrections_1b2g(RPAOutput, Zgh, Xgi, Yga, Uaim, &

@@ -184,37 +184,30 @@ contains
                               call msg("Using spin-restricted closed-shell Kohn-Sham reference")
                         end if
                         if (RPAParams%TensorHypercontraction) then
-                              if ( &
-                                    RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
-                                    RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+                              if (RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .and. k > 1) then
                                     RPAParams%ComputeNaturalOrbitals = .true.
-                                    if (RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS &
-                                          .and. k > 1) then
-                                          RPAParams%ComputeNaturalOrbitals = .false.
-                                    end if                                    
                                     RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
                                     call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                           RPAGrids, THCGrid, T2CutoffCommonThresh)
                                     EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
                                     EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
-                                    if (RPAParams%ComputeNaturalOrbitals) then
-                                          call move_alloc(from=RPAOutput(k)%NaturalOrbitals, to=NOBasis)
-                                    end if
+                                    call move_alloc(from=RPAOutput(k)%NaturalOrbitals, to=NOBasis)
                                     call rpa_ChangeOrbitalSpace(MeanFieldStates(k), NOBasis(:, :, 1))
                                     RPAParams%ComputeNaturalOrbitals = .false.
                                     RPAParams%TheoryLevel = TheoryLevel_NOBasis
                               end if
-                              
+                                                            
                               call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                     RPAGrids, THCGrid, T2CutoffCommonThresh)
-                              
+
                               EcRPA_T2_PNO(k) = RPAOutput(k)%Energy(RPA_ENERGY_PNO_DIRECT_RING)
                               EcRPA_T2_NO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
                               EcRPA_Chi_NO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
-                              if (RPAParams%T2AuxOrbitals==RPA_AUX_MOLECULAR_ORBITALS) then
+                              if (RPAParams%T2AuxOrbitals==RPA_AUX_MOLECULAR_ORBITALS .or. &
+                                    (RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .and. k==1)) then
                                     EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
                                     EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
-                              end if
+                              end if                              
                         else
                               if (RPAParams%CoupledClusters) then
                                     call rpa_CC_Etot(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
@@ -228,24 +221,24 @@ contains
                         end if
                   end do
                   if (RPAParams%TensorHypercontraction) then
-                        call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
-                              EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
-                        call rpa_EstimateT2EigenvalueError(FinishMacroLoop, RPAOutput, RPAParams, &
-                              System, T2CutoffCommonThresh, NSystems)
-                        if (.not. FinishMacroLoop .and. i < MaxMacroIters .and. RPAParams%T2AdaptiveCutoff) then
+                        if (RPAParams%TheoryLevel /= RPA_THEORY_DIRECT_RING) then
+                              call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
+                                    EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
+                              call rpa_EstimateT2EigenvalueError(FinishMacroLoop, RPAOutput, RPAParams, &
+                                    System, T2CutoffCommonThresh, NSystems)
+                              if (.not. FinishMacroLoop .and. i < MaxMacroIters .and. RPAParams%T2AdaptiveCutoff) then
                                     T2CutoffCommonThresh = T2CutoffCommonThresh / 10
                                     call blankline()
                                     call msg("Restarting RPA calculations with T2CutoffThresh = " // str(T2CutoffCommonThresh,d=1))
                                     call blankline()
+                              end if
                         end if
                   else
                         FinishMacroLoop = .true.
                   end if
                   if (FinishMacroLoop) exit MacroIteration
             end do MacroIteration
-            if ( &
-                  RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .or. &
-                  RPAParams%T2AuxOrbitals==RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS) then
+            if (RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS) then
                   !
                   ! If the virual orbital space is truncated,
                   ! use the full-basis EcRPA contribution in the final energy

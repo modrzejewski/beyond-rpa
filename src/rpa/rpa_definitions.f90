@@ -10,7 +10,6 @@ module rpa_definitions
       !
       integer, parameter :: RPA_AUX_MOLECULAR_ORBITALS = 0
       integer, parameter :: RPA_AUX_NATURAL_ORBITALS = 1
-      integer, parameter :: RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS = 2
       !
       ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
       ! or tensor hypercontraction matrices. 
@@ -562,6 +561,24 @@ module rpa_definitions
       
 contains
 
+      subroutine rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(in)      :: SCFParams
+
+            select case (RPAParams%TheoryLevel)
+            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023)
+                  RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+            case (RPA_THEORY_JCTC2024, RPA_THEORY_ALL)
+                  if (SCFParams%XCFunc == XCF_HF) then
+                        RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+                  else
+                        call msg("Selected TheoryLevel can only be applied with HF orbitals", MSG_ERROR)
+                        error stop
+                  end if
+            end select
+      end subroutine rpa_Params_ChooseOrbitals
+
+      
       subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
             type(TRPAParams), intent(inout)   :: RPAParams
             type(TSCFParams), intent(inout)   :: SCFParams
@@ -569,7 +586,6 @@ contains
 
             RPAParams%TargetErrorRandom = sqrt(1.0E-5_F64)
             RPAParams%T2CutoffThresh = 1.0E-5_F64
-            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-9_F64
             RPAParams%CutoffThreshPNO = 1.0E-6_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
@@ -601,7 +617,6 @@ contains
 
             RPAParams%TargetErrorRandom = sqrt(1.0E-7_F64)
             RPAParams%T2CutoffThresh = 1.0E-6_F64
-            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
             RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
@@ -620,7 +635,6 @@ contains
 
             RPAParams%TargetErrorRandom = 1.0E-5_F64
             RPAParams%T2CutoffThresh = 1.0E-6_F64
-            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
             RPAParams%CutoffThreshPNO = 1.0E-7_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64

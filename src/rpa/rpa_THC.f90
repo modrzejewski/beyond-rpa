@@ -65,7 +65,6 @@ contains
             real(F64), dimension(:, :, :), allocatable :: Rkai
             real(F64), dimension(:), allocatable :: Am
             real(F64), dimension(:, :), allocatable :: Uaim
-            real(F64), dimension(:, :), allocatable :: THC_Zgh
             real(F64), dimension(:, :), allocatable :: NOCoeffs_mo
             real(F64), dimension(:, :), allocatable :: NOCoeffs_ao
             real(F64), dimension(:), allocatable :: NOVirtEnergies
@@ -95,12 +94,10 @@ contains
             t_RPA = ZERO
             t_Corrections = ZERO
             t_NO = ZERO
-            allocate(THC_Zgh(NGridTHC, NGridTHC))
             allocate(PiUEigenvecs(NVecsPiU, NVecsPiU, NFreqs))
             allocate(PiUEigenvals(NVecsPiU, NFreqs))
             allocate(Rkai(NVecsPiU, MaxNai, NSpins))
             EcRPA = ZERO
-            call real_abT(THC_Zgh, THC_ZgkFull, THC_ZgkFull)            
             !
             ! Polarizability Chi(u) and T2 amplitudes built from the semicanonical orbitals of hHF(OO+VV)
             ! RPA correlation energy, EcRPA, evaluated analytically from Pi(u)
@@ -152,7 +149,7 @@ contains
                         ! Variant with T's in the full canonical orbital basis
                         ! ---------------------------------------------------------------------------------
                         call clock_start(timer)
-                        call rpa_Corrections(RPAOutput, THC_Zgh, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                        call rpa_Corrections(RPAOutput, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                               Uaim, Am, OccCoeffs(:, 1:NOcc(s), s), NOcc(s), NVirt(s), NVecsT2, NGridTHC, &
                               RPAParams, AOBasis)
                         t_Corrections = clock_readwall(timer)

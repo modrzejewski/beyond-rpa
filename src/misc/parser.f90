@@ -1571,6 +1571,14 @@ contains
                   call SCFParams%ECPFile%set_default(SCFParams%AOBasisPath)
             end if
             !
+            ! Choose the set of orbitals applied in the RPA calculations.
+            ! This adjustment can only be done once the level of beyond-RPA
+            ! corrections is defined (TheoryLevel).
+            !
+            if (RPADefined) then
+                  call rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
+            end if
+            !
             ! Update effective nuclear charges if a pseudopotential is defined
             ! The ECP nuclear charges will be the same as physical charges if there's no pseudopotential
             ! on any of the atoms
@@ -3753,9 +3761,6 @@ contains
                         RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
                   case ("NATURAL-ORBITALS", "NATURALORBITALS", "NO")
                         RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
-                  case ("SUPERMOLECULE-NATURAL-ORBITALS", &
-                        "SUPERMOLECULENATURALORBITALS", "SUPERMOLECULE-NO")
-                        RPAParams%T2AuxOrbitals = RPA_AUX_SUPERMOLECULE_NATURAL_ORBITALS
                   case ("LOCALIZED-ORBITALS", "LOCALIZEDORBITALS", "LO")
                         RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
                   case default
