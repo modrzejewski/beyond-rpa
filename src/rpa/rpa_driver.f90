@@ -220,6 +220,7 @@ contains
                               end if
                         end if
                   end do
+                  FinishMacroLoop = .true.
                   if (RPAParams%TensorHypercontraction) then
                         if (RPAParams%TheoryLevel /= RPA_THEORY_DIRECT_RING) then
                               call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
@@ -233,8 +234,6 @@ contains
                                     call blankline()
                               end if
                         end if
-                  else
-                        FinishMacroLoop = .true.
                   end if
                   if (FinishMacroLoop) exit MacroIteration
             end do MacroIteration
