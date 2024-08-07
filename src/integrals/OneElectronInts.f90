@@ -817,7 +817,7 @@ contains
             integer :: Lb, Nb, b0, b1
             integer :: i, j
             integer :: Lab, Nab
-            real(F64), dimension(3) :: Ra, Rb, Rp, Rc, Rpa, Rpb, Rpc, Rab
+            real(F64), dimension(3) :: Ra, Rb, Rp, Rc, Rpa, Rpb, Rab
             real(F64) :: Prefactor, AlphaA, AlphaB, AlphaAB, Mu
             integer, parameter :: MaxNFunc = ((AUTO2E_MAXL + 1) * (AUTO2E_MAXL + 2)) / 2
             real(F64), dimension(MaxNFunc**2) :: Tab
@@ -854,7 +854,7 @@ contains
                   !$omp private(i, j) &
                   !$omp private(Lab, Nab, AlphaAB) &
                   !$omp private(Tab) &
-                  !$omp private(Rp, Rc, Rpa, Rpb, Rpc, Rab) &
+                  !$omp private(Rp, Rc, Rpa, Rpb, Rab) &
                   !$omp shared(T) &
                   !$omp default(shared)
                   !$omp do schedule(dynamic)

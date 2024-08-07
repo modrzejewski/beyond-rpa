@@ -424,7 +424,8 @@ FileList += [("DFT", ["integrals/Cholesky/ParallelCholesky.f90",
 FileList += [("DFT", ["integrals/Cholesky/TwoStepCholesky.f90"])]
 FileList += [("DFT", ["integrals/grid/BeckeGrid.f90"])]
 FileList += [("DFT", ["integrals/ECP/SOPseudopotential.f90",
-                      "integrals/THC/TensorHypercontraction.f90"])]
+                      "integrals/THC/TensorHypercontraction.f90",
+                      "integrals/Multipoles.f90"])]
 # ---------------------------------------------------
 # End of two-electron integrals
 # ---------------------------------------------------

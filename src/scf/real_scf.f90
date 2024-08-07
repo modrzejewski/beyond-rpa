@@ -29,6 +29,7 @@ module real_scf
       use TwoStepCholesky_definitions
       use OneElectronInts
       use Pseudopotential, only : pp_V
+      use Multipoles
       !$ use omp_lib
       
       implicit none
@@ -943,7 +944,7 @@ contains
             end do
             Rho = OccNumber * Rho
       end subroutine scf_Rho
-      
+
       
       subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
             Noao, Ehomo, Elumo, Hbare_cao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
