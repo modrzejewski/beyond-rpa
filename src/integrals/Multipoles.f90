@@ -210,7 +210,7 @@ contains
             integer :: La, Na, a0, a1
             integer :: Lb, Nb, b0, b1
             integer :: i, j
-            integer :: Lab, Nab
+            integer :: Lab
             real(F64), dimension(3) :: Ra, Rb, Rp, Rpa, Rpb, Rpc, Rab
             real(F64) :: Prefactor, AlphaA, AlphaB, AlphaAB, Mu
             integer, parameter :: MaxNFunc = ((AUTO2E_MAXL + 1) * (AUTO2E_MAXL + 2)) / 2
@@ -248,9 +248,9 @@ contains
                   !$omp private(AlphaA, AlphaB, Mu, Prefactor) &
                   !$omp private(ExAB, EyAB, EzAB) &
                   !$omp private(i, j) &
-                  !$omp private(Lab, Nab, AlphaAB) &
+                  !$omp private(Lab, AlphaAB) &
                   !$omp private(DXab, DYab, DZab) &
-                  !$omp private(Rp, Rc, Rpa, Rpb, Rpc, Rab) &
+                  !$omp private(Rp, Rpa, Rpb, Rpc, Rab) &
                   !$omp shared(DX, DY, DZ) &
                   !$omp default(shared)
                   !$omp do schedule(dynamic)
@@ -273,7 +273,6 @@ contains
                         Rab = Ra - Rb
 
                         Lab = La + Lb
-                        Nab = Na * Nb
                         DXab = ZERO
                         DYab = ZERO
                         DZab = ZERO
@@ -288,10 +287,10 @@ contains
                                     Rp = (AlphaA*Ra + AlphaB*Rb) / AlphaAB
                                     Rpa = Rp - Ra
                                     Rpb = Rp - Rb
-                                    Rpc = Rp - Rc
+                                    Rpc = Rp - Rc                                    
                                     !
-                                    ! Seed for calculating E^{ij}_t coeffs is 1.d+0 instead of
-                                    ! exp(-alpha_reduced * xabsq) as in Helgaker's textbook
+                                    ! Seed for calculating E^{ij}_t coeffs is 1.0 instead of
+                                    ! exp(-Mu * Xab**2) as in Helgaker's textbook
                                     ! because the coeffs are linear functions of the seed so
                                     ! it may be incorporated into the prefactor.
                                     !
@@ -338,8 +337,8 @@ contains
             call real_smfill(Dy_cao)
             call real_smfill(Dz_cao)
             call ints1e_SpherAOTransf(Dx, Dx_cao, AOBasis)
-            call ints1e_SpherAOTransf(Dy, Dx_cao, AOBasis)
-            call ints1e_SpherAOTransf(Dz, Dx_cao, AOBasis)
+            call ints1e_SpherAOTransf(Dy, Dy_cao, AOBasis)
+            call ints1e_SpherAOTransf(Dz, Dz_cao, AOBasis)
       end subroutine multi_ElectronicDipole
 
 
@@ -456,7 +455,7 @@ contains
             integer :: La, Na, a0, a1
             integer :: Lb, Nb, b0, b1
             integer :: i, j
-            integer :: Lab, Nab
+            integer :: Lab
             real(F64), dimension(3) :: Ra, Rb, Rp, Rpa, Rpb, Rpc, Rab
             real(F64) :: Prefactor, AlphaA, AlphaB, AlphaAB, Mu
             integer, parameter :: MaxNFunc = ((AUTO2E_MAXL + 1) * (AUTO2E_MAXL + 2)) / 2
@@ -497,9 +496,9 @@ contains
                   !$omp private(AlphaA, AlphaB, Mu, Prefactor) &
                   !$omp private(ExAB, EyAB, EzAB) &
                   !$omp private(i, j) &
-                  !$omp private(Lab, Nab, AlphaAB) &
+                  !$omp private(Lab, AlphaAB) &
                   !$omp private(QYXab, QZXab, QZYab, QXXab, QYYab, QZZab) &
-                  !$omp private(Rp, Rc, Rpa, Rpb, Rpc, Rab) &
+                  !$omp private(Rp, Rpa, Rpb, Rpc, Rab) &
                   !$omp shared(QYX, QZX, QZY, QXX, QYY, QZZ) &
                   !$omp default(shared)
                   !$omp do schedule(dynamic)
@@ -522,7 +521,6 @@ contains
                         Rab = Ra - Rb
 
                         Lab = La + Lb
-                        Nab = Na * Nb
                         QYXab = ZERO
                         QZXab = ZERO
                         QZYab = ZERO
@@ -599,9 +597,9 @@ contains
             call real_smfill(QYX_cao)
             call real_smfill(QZX_cao)
             call real_smfill(QZY_cao)
-            call real_smfill(QYX_cao)
-            call real_smfill(QZX_cao)
-            call real_smfill(QZY_cao)
+            call real_smfill(QXX_cao)
+            call real_smfill(QYY_cao)
+            call real_smfill(QZZ_cao)
             call ints1e_SpherAOTransf(QYX, QYX_cao, AOBasis)
             call ints1e_SpherAOTransf(QZX, QZX_cao, AOBasis)
             call ints1e_SpherAOTransf(QZY, QZY_cao, AOBasis)

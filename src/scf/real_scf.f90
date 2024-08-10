@@ -365,6 +365,45 @@ contains
       end subroutine scf_TableRow
 
 
+      subroutine scf_DisplayMultipoles(D, Q)
+            real(F64), dimension(3), intent(in)    :: D
+            real(F64), dimension(3, 3), intent(in) :: Q
+
+            character(:), allocatable :: line
+            real(F64) :: x, y, z
+            character(:), allocatable :: sx, sy, sz
+            integer :: i
+            integer, parameter :: w = 15
+            character(1), dimension(3), parameter :: Row = ["x", "y", "z"]
+
+            x = todebye(D(1))
+            y = todebye(D(2))
+            z = todebye(D(3))
+            sx = rfield(str(x, d=3), w)
+            sy = rfield(str(y, d=3), w)
+            sz = rfield(str(z, d=3), w)
+            call blankline()
+            call msg("dipole moment (Debye)")
+            call msg(cfield("x", w) // cfield("y", w) // cfield("z", w))
+            line = sx // sy // sz
+            call msg(line)
+            call blankline()
+            call msg("traceless quadrupole moment (Debye*Angs)")
+            call msg(cfield("", w) // cfield("x", w) // cfield("y", w) // cfield("z", w))
+            do i = 1, 3
+                  x = toang(todebye(Q(i, 1)))
+                  y = toang(todebye(Q(i, 2)))
+                  z = toang(todebye(Q(i, 3)))
+                  sx = rfield(str(x, d=3), w)
+                  sy = rfield(str(y, d=3), w)
+                  sz = rfield(str(z, d=3), w)
+                  line = lfield(Row(i), w) // sx // sy // sz
+                  call msg(line)
+            end do
+            call blankline()
+      end subroutine scf_DisplayMultipoles
+
+      
       subroutine scf_XCInfo(XCModel)
             type(TXCDef), intent(in) :: XCModel
             
@@ -1026,6 +1065,8 @@ contains
             real(F64), dimension(:), allocatable :: BufferRho1D
             integer :: ThisImage, NImages, NThreads
             logical :: TrustRadiusUpdated
+            real(F64), dimension(3) :: Dipole
+            real(F64), dimension(3, 3) :: Quadrupole, QTraceless
             logical, parameter :: GenerateGuessOrbitals = .true.
 
             ThisImage = this_image()
@@ -1445,6 +1486,9 @@ contains
                   call dmsg("Ehomo [eV]", toev(Ehomo))
                   call dmsg("Elumo [eV]", toev(Elumo))
             end if
+            call multi_TotalMultipoles(Dipole, Quadrupole, RhoN_sao, System, AOBasis)
+            call multi_TracelessQuadrupole(QTraceless, Quadrupole, MULTI_QUAD_TRACELESS_BUCKINGHAM)
+            call scf_DisplayMultipoles(Dipole, QTraceless)
             call midrule()
             call msg("Total time for SCF: " // str(clock_readwall(timer_Total), d=1) // " seconds")
             call msg("Detailed timings in seconds")
