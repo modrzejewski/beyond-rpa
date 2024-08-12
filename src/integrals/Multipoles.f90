@@ -5,6 +5,8 @@ module Multipoles
       use basis_sets
       use sys_definitions
       use OneElectronInts
+      use string
+      use display
 
       implicit none
       !
@@ -39,6 +41,45 @@ module Multipoles
       integer, parameter :: MULTI_QUAD_TRACELESS_SHORTLEY = 2
 
 contains
+
+      subroutine multi_Display(D, Q)
+            real(F64), dimension(3), intent(in)    :: D
+            real(F64), dimension(3, 3), intent(in) :: Q
+
+            character(:), allocatable :: line
+            real(F64) :: x, y, z
+            character(:), allocatable :: sx, sy, sz
+            integer :: i
+            integer, parameter :: w = 15
+            character(1), dimension(3), parameter :: Row = ["x", "y", "z"]
+
+            x = todebye(D(1))
+            y = todebye(D(2))
+            z = todebye(D(3))
+            sx = rfield(str(x, d=3), w)
+            sy = rfield(str(y, d=3), w)
+            sz = rfield(str(z, d=3), w)
+            call blankline()
+            call msg("dipole moment (Debye)")
+            call msg(cfield("x", w) // cfield("y", w) // cfield("z", w))
+            line = sx // sy // sz
+            call msg(line)
+            call blankline()
+            call msg("traceless quadrupole moment (Debye*Angs)")
+            call msg(cfield("", w) // cfield("x", w) // cfield("y", w) // cfield("z", w))
+            do i = 1, 3
+                  x = toang(todebye(Q(i, 1)))
+                  y = toang(todebye(Q(i, 2)))
+                  z = toang(todebye(Q(i, 3)))
+                  sx = rfield(str(x, d=3), w)
+                  sy = rfield(str(y, d=3), w)
+                  sz = rfield(str(z, d=3), w)
+                  line = lfield(Row(i), w) // sx // sy // sz
+                  call msg(line)
+            end do
+            call blankline()
+      end subroutine multi_Display
+      
 
       subroutine multi_TotalMultipoles(D, Q, Rho, System, AOBasis)
             real(F64), dimension(3), intent(out)      :: D

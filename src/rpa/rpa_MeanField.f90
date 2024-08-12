@@ -153,14 +153,17 @@ contains
             integer :: i0, i1, a0, a1, s
             real(F64), dimension(:, :, :), allocatable :: Rho_ao, DeltaRho_ao
             real(F64), dimension(:, :), allocatable :: Qpk
-            real(F64), dimension(:, :), allocatable :: RhoMF_ao
+            real(F64), dimension(:, :, :), allocatable :: RhoRefined_ao
             real(F64), dimension(:, :), allocatable :: Fpl, Fkl
             real(F64), dimension(:, :), allocatable :: Cpi
             real(F64), dimension(:, :), allocatable :: Spq
             integer, dimension(2) :: NOcc, NVirt
             real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
             real(F64) :: time_F
-            
+            real(F64), dimension(3) :: Dipole
+            real(F64), dimension(3, 3) :: Quadrupole, QTraceless
+
+            call msg(cfield("HF refinement for " // sys_ChemicalFormula(System), 76))
             NAO = AOBasis%NAOSpher
             allocate(Spq(NAO, NAO))
             call ints1e_S(Spq, AOBasis)
@@ -222,13 +225,18 @@ contains
                         MeanField%OrbEnergies(:, s) = ZERO
                   end if
             end do
-            allocate(RhoMF_ao(NAO, NAO))
+            allocate(RhoRefined_ao(NAO, NAO, NSpins))
             allocate(DeltaRho_ao(NAO, NAO, NSpins))
             do s = 1, NSpins
                   if (NOcc(s) > 0) then
-                        call real_abT(RhoMF_ao, MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), &
+                        call real_abT(RhoRefined_ao(:, :, s), MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), &
                               MeanField%OccCoeffs_ao(:, 1:NOcc(s), s))
-                        DeltaRho_ao(:, :, s) = RhoMF_ao - (ONE/TWO) * Rho_ao(:, :, s)
+                        if (NSpins == 1) then
+                              DeltaRho_ao(:, :, s) = RhoRefined_ao(:, :, s) - (ONE/TWO) * Rho_ao(:, :, s)
+                              RhoRefined_ao(:, :, s) = TWO * RhoRefined_ao(:, :, s)
+                        else
+                              DeltaRho_ao(:, :, s) = RhoRefined_ao(:, :, s) - Rho_ao(:, :, s)
+                        end if
                   else
                         DeltaRho_ao(:, :, s) = ZERO
                   end if
@@ -237,6 +245,9 @@ contains
                   MeanField%Ec1RDM_Linear, &
                   MeanField%Ec1RDM_Quadratic, &
                   DeltaRho_ao, MeanField%F_ao, NOcc, THCGrid)
+            call multi_TotalMultipoles(Dipole, Quadrupole, RhoRefined_ao, System, AOBasis)
+            call multi_TracelessQuadrupole(QTraceless, Quadrupole, MULTI_QUAD_TRACELESS_BUCKINGHAM)
+            call multi_Display(Dipole, QTraceless)
       end subroutine rpa_MeanField_RefineHF
 
       
