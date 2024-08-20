@@ -1285,6 +1285,31 @@ contains
             deallocate(work)
             deallocate(iwork)
       end subroutine symmetric_eigenproblem
+
+
+      subroutine real_GershgorinCircle(LambdaMin, LambdaMax, A)
+            real(F64), intent(out)                 :: LambdaMin
+            real(F64), intent(out)                 :: LambdaMax
+            real(F64), dimension(:, :), intent(in) :: A
+
+            integer :: n, p, q
+            real(F64) :: s
+
+            n = size(A, dim=1)
+            LambdaMin = huge(ONE)
+            LambdaMax = -huge(ONE)
+            !$omp parallel do private(q, s, p) reduction(min:LambdaMin) reduction(max:LambdaMax)
+            do q = 1, n
+                  s = ZERO
+                  do p = 1, n
+                        s = s + Abs(A(p, q))                        
+                  end do
+                  s = s - Abs(A(q, q))
+                  LambdaMin = min(LambdaMin, A(q, q)-s)
+                  LambdaMax = max(LambdaMax, A(q, q)+s)
+            end do
+            !$omp end parallel do
+      end subroutine real_GershgorinCircle
       
 
       subroutine real_bta_rect(a, b)

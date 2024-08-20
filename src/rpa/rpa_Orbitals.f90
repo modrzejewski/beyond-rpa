@@ -7,42 +7,230 @@ module rpa_Orbitals
       use OneElectronInts
       use basis_sets
       use rpa_definitions
+      use sys_definitions
+      use Multipoles
+      use matexp
 
       implicit none
       
 contains
 
-      ! subroutine rpa_LocalizedOrbitals(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
-      !       real(F64), dimension(:, :), intent(out) :: LijLoc
-      !       real(F64), dimension(:, :), intent(in)  :: Cpi
-      !       integer, intent(in)                     :: NOcc
-      !       type(TRPAParams), intent(in)            :: RPAParams
-      !       type(TAOBasis), intent(in)              :: AOBasis
+      subroutine rpa_LocalizeOrbitals_FosterBoys(LijCL, Cpi, RPAParams, AOBasis)
+            real(F64), dimension(:, :), intent(out)    :: LijCL
+            real(F64), dimension(:, :), intent(in)     :: Cpi
+            type(TRPAParams), intent(in)               :: RPAParams
+            type(TAOBasis), intent(in)                 :: AOBasis
 
-      !       real(F64), dimension(:, :), allocatable :: Spq, Qkp, Uik
-      !       real(F64), dimension(:, :), allocatable :: Dpq, Dkq, Dkl
-      !       real(F64), dimension(:, :), allocatable :: Cki
-      !       integer :: NAO, NOAO, NOccLoc
+            real(F64), dimension(:, :, :), allocatable :: RijCC, RijCL, RijLL
+            real(F64), dimension(:, :), allocatable :: R2ijCC, R2ijCL, R2ijLL
+            real(F64), dimension(:, :), allocatable :: dFdLij, dFdKij
+            real(F64), dimension(:, :), allocatable :: Wij, Kij, ExpKij, Hij
+            real(F64) :: F
+            integer :: u
+            integer :: Algorithm
+            integer :: NOcc
+            integer, parameter :: MaxNIters = 2000
+            integer, parameter :: p = 2
+            integer, parameter :: PolyOrder = 8
+            integer, parameter :: STEEPEST_DESCENT = 0
+            integer, parameter :: CONJUGATE_GRADIENT = 1
+            
+            NOcc = size(LijCL, dim=2)
+            allocate(RijCC(NOcc, NOcc, 3))
+            allocate(RijCL(NOcc, NOcc, 3))
+            allocate(RijLL(NOcc, NOcc, 3))
+            allocate(R2ijCC(NOcc, NOcc))
+            allocate(R2ijCL(NOcc, NOcc))
+            allocate(R2ijLL(NOcc, NOcc))
+            allocate(dFdLij(NOcc, NOcc))
+            allocate(dFdKij(NOcc, NOcc))
+            allocate(Wij(NOcc, NOcc))
+            allocate(Kij(NOcc, NOcc))
+            allocate(Hij(NOcc, NOcc))
+            allocate(ExpKij(NOcc, NOcc))
+            call rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
+            Algorithm = STEEPEST_DESCENT
+            do u = 1, MaxNIters
+                  call rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, LijCL)
+                  call rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, p, NOcc)
+                  if (Algorithm == STEEPEST_DESCENT) then
+                        Hij = -dFdKij
+                  else if (Algorithm == CONJUGATE_GRADIENT) then
+                        continue
+                  end if
+                  Hij = -dFdKij
+                  call rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
+                        RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
+                        Hij, F, p, PolyOrder)
+            end do
+      end subroutine rpa_LocalizeOrbitals_FosterBoys
 
-      !       NAO = AOBasis%NAOSpher
-      !       allocate(Spq(NAO, NAO))
-      !       call ints1e_S(Spq, AOBasis)
-      !       call real_PivotedCholesky(Qkp, Spq, NOAO, RPAParams%LOLinDepThresh)
-      !       allocate(Dpq(NAO, NAO))
-      !       allocate(Dkq(NOAO, NAO))
-      !       allocate(Dkl(NOAO, NOAO))
-      !       call real_abT(Dpq, Cpi(:, 1:NOcc), Cpi(:, 1:NOcc))
-      !       call real_ab(Dkq, Qkp, Dpq)
-      !       call real_abT(Dkl, Dkq, Qkp)
-      !       call real_PivotedCholesky(Uik, Dkl, NOccLoc, 0.1_F64)
-      !       if (NOccLoc /= NOcc) then
-      !             call msg("Cholesky decomposition produced wrong number of occupied orbitals: "//str(NOccLoc), MSG_ERROR)
-      !             error stop
-      !       end if
-      !       allocate(Cki(NOAO, NOcc))
-      !       call real_ab(Cki, Qkp, Cpi(:, 1:NOcc))
-      !       call real_aTbT(LijLoc, Cki, Uik)
-      ! end subroutine rpa_LocalizedOrbitals
+
+      subroutine rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
+            RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
+            Hij, F0, p, PolyOrder)
+            
+            real(F64), dimension(:, :), intent(inout)  :: LijCL
+            real(F64), dimension(:, :), intent(out)    :: ExpKij
+            real(F64), dimension(:, :), intent(out)    :: Wij
+            real(F64), dimension(:, :), intent(out)    :: Kij
+            real(F64), dimension(:, :, :), intent(out) :: RijCL
+            real(F64), dimension(:, :), intent(out)    :: R2ijCL
+            real(F64), dimension(:, :, :), intent(out) :: RijLL
+            real(F64), dimension(:, :), intent(out)    :: R2ijLL
+            real(F64), dimension(:, :, :), intent(in)  :: RijCC
+            real(F64), dimension(:, :), intent(in)     :: R2ijCC
+            real(F64), dimension(:, :), intent(in)     :: Hij
+            real(F64), intent(in)                      :: F0
+            integer, intent(in)                        :: p
+            integer, intent(in)                        :: PolyOrder
+
+            real(F64) :: Tmax, Tk, LambdaMin, LambdaMax, OmegaMax
+            integer :: k, l
+            real(F64), dimension(PolyOrder, 1) :: b
+            real(F64), dimension(PolyOrder, PolyOrder) :: A
+            integer :: Rank
+            real(F64), parameter :: RCond = 1.0E-6_F64
+            integer :: NOcc
+
+            NOcc = size(Kij, dim=1)
+            call real_GershgorinCircle(LambdaMin, LambdaMax, Hij)
+            OmegaMax = Max(Abs(LambdaMin), Abs(LambdaMax))
+            Tmax = TWO*Pi/(4*p*OmegaMax)
+            do k = 1, PolyOrder
+                  Tk = k * (Tmax/PolyOrder)
+                  if (k == 1) then
+                        Kij = Tk * Hij
+                        call matrix_exponential_real(ExpKij, Kij, Wij)
+                        call real_ab(Wij, LijCL, ExpKij)
+                  else
+                        call real_ab(Kij, Wij, ExpKij)
+                        Wij = Kij
+                  end if
+                  call rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, Wij)
+                  call rpa_FosterBoys_ObjectiveFunction(b(k, 1), RijLL, R2ijLL, p)
+                  do l = 1, PolyOrder
+                        A(k, l) = Tk**l
+                  end do
+            end do
+            do k = 1, PolyOrder
+                  b(k, 1) = b(k, 1) - F0
+            end do
+            call real_LeastSquares(b, Rank, A, RCond)
+      end subroutine rpa_FosterBoys_LineSearch
+
+
+      subroutine rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijLL, p)
+            real(F64), intent(out)                     :: F
+            real(F64), dimension(:, :, :), intent(in)  :: RijLL
+            real(F64), dimension(:, :), intent(in)     :: R2ijLL
+            integer, intent(in)                        :: p
+
+            real(F64) :: Fi
+            integer :: i
+            integer :: NOcc
+
+            NOcc = size(RijLL, dim=1)
+            F = ZERO
+            !$omp parallel do private(i, Fi) reduction(+:F)
+            do i = 1, NOcc
+                  Fi = R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
+                  F = F + Fi**p
+            end do
+            !$omp end parallel do
+      end subroutine rpa_FosterBoys_ObjectiveFunction
+      
+
+      subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, p, NOcc)
+            real(F64), intent(out)                     :: F
+            real(F64), dimension(:, :), intent(out)    :: dFdKij
+            real(F64), dimension(:, :), intent(out)    :: dFdLij
+            real(F64), dimension(:, :), intent(in)     :: LijCL
+            real(F64), dimension(:, :, :), intent(in)  :: RijLL
+            real(F64), dimension(:, :), intent(in)     :: R2ijLL
+            real(F64), dimension(:, :, :), intent(in)  :: RijCL
+            real(F64), dimension(:, :), intent(in)     :: R2ijCL
+            integer, intent(in)                        :: p
+            integer, intent(in)                        :: NOcc
+
+            real(F64) :: Fi, Ti
+            integer :: i, x
+
+            F = ZERO
+            dFdLij = ZERO
+            !$omp parallel do private(i, x, Fi, Ti) reduction(+:F)
+            do i = 1, NOcc
+                  Fi = R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
+                  Ti = p*Fi**(p-1)
+                  F = F + Fi**p
+                  dFdLij(:, i) = dFdLij(:, i) + R2ijCL(:, i) * TWO*Ti
+                  do x = 1, 3
+                        dFdLij(:, i) = dFdLij(:, i) + RijCL(:, i, x) * (-FOUR*RijLL(i, i, x)*Ti)
+                  end do
+            end do
+            !$omp end parallel do
+            dFdKij = ZERO
+            call real_aTb_x(dFdKij, NOcc, LijCL, NOcc, dFdLij, NOcc, &
+                  NOcc, NOcc, NOcc, ONE, ZERO)
+            call real_aTb_x(dFdKij, NOcc, dFdLij, NOcc, LijCL, NOcc, &
+                  NOcc, NOcc, NOcc, -ONE, ONE)
+      end subroutine rpa_FosterBoys_Grad
+
+      
+      subroutine rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, LijCL)
+            real(F64), dimension(:, :, :), intent(out) :: RijCL
+            real(F64), dimension(:, :), intent(out)    :: R2ijCL
+            real(F64), dimension(:, :, :), intent(out) :: RijLL
+            real(F64), dimension(:, :), intent(out)    :: R2ijLL
+            real(F64), dimension(:, :, :), intent(in)  :: RijCC
+            real(F64), dimension(:, :), intent(in)     :: R2ijCC
+            real(F64), dimension(:, :), intent(in)     :: LijCL
+
+            integer :: x
+
+            do x = 1, 3
+                  call real_ab(RijCL(:, :, x), RijCC(:, :, x), LijCL)
+                  call real_aTb(RijLL(:, :, x), LijCL, RijCL(:, :, x))
+            end do
+            call real_ab(R2ijCL, R2ijCC, LijCL)
+            call real_aTb(R2ijLL, LijCL, R2ijCL)
+      end subroutine rpa_FosterBoys_Transform
+
+      
+      subroutine rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
+            real(F64), dimension(:, :), intent(out)    :: LijCL
+            real(F64), dimension(:, :, :), intent(out) :: RijCC
+            real(F64), dimension(:, :), intent(out)    :: R2ijCC
+            real(F64), dimension(:, :), intent(in)     :: Cpi
+            type(TRPAParams), intent(in)               :: RPAParams
+            type(TAOBasis), intent(in)                 :: AOBasis
+
+            real(F64), dimension(:, :, :), allocatable :: D
+            real(F64), dimension(:, :, :), allocatable :: Q
+            real(F64), dimension(:, :), allocatable :: TrQ
+            real(F64), dimension(3), parameter :: Rc = [ZERO, ZERO, ZERO]
+            real(F64), dimension(:, :), allocatable :: Wpi
+            integer :: NAO, NOcc
+            integer :: x
+
+            NOcc = size(LijCL, dim=2)
+            NAO = AOBasis%NAOSpher
+            allocate(D(NAO, NAO, 3))
+            call multi_ElectronicDipole(D(:, :, 1), D(:, :, 2), D(:, :, 3), Rc, AOBasis)
+            allocate(Q(NAO, NAO, 6))
+            call multi_ElectronicQuadrupole(Q(:, :, 1), Q(:, :, 2), Q(:, :, 3), &
+                  Q(:, :, 4), Q(:, :, 5), Q(:, :, 6), Rc, AOBasis)
+            allocate(TrQ(NAO, NAO))
+            TrQ = Q(:, :, 4) + Q(:, :, 5) + Q(:, :, 6)
+            allocate(Wpi(NAO, NOcc))
+            do x = 1, 3
+                  call real_ab(Wpi, D(:, :, x), Cpi)
+                  call real_aTb(RijCC(:, :, x), Cpi, Wpi)
+            end do
+            call real_ab(Wpi, TrQ, Cpi)
+            call real_aTb(R2ijCC, Cpi, Wpi)
+            call rpa_LocalizeOrbitals_AquilanteJCP2006(LijCL, Cpi, NOcc, RPAParams, AOBasis)
+      end subroutine rpa_FosterBoys_Init
 
 
       subroutine rpa_LocalizeOrbitals_AquilanteJCP2006(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
@@ -150,8 +338,7 @@ contains
             real(F64), dimension(NVecsT2), intent(in)               :: Am
             real(F64), intent(in)                                   :: NOCutoffThresh
 
-            integer :: mu, a
-            real(F64) :: Bm
+            integer :: a
             real(F64), dimension(:, :), allocatable :: RhoVV
             real(F64), dimension(:), allocatable :: OccNumbers
             real(F64) :: TraceError, ExactTrace, ApproxTrace
@@ -211,7 +398,7 @@ contains
             real(F64), dimension(NVecsT2), intent(in)              :: Am
             logical, intent(in)                                    :: XContrib
             
-            integer :: mu, a, b, i, j
+            integer :: mu, i, j
             real(F64) :: Bm, Alpha
             real(F64), dimension(:, :), allocatable :: Tab
 
@@ -243,81 +430,4 @@ contains
                   end do
             end if
       end subroutine rpa_RhoVV_RPAX
-
-
-      subroutine rpa_OccupiedNO(Cij, Uaim, Am, NVecsT2, NOcc, NVirt)
-            !
-            ! Compute RPA natural orbitals in the occupied subspace,
-            ! computed using the coupled-cluster
-            ! expression for the RPA 1-RDM of Ref. 1.
-            !
-            ! 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
-            ! Post-Kohn-Sham Random-Phase Approximation and Correction Terms
-            ! in the Expectation-Value Coupled-Cluster Formulation
-            ! J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
-            !
-            integer, intent(in)                                     :: NVecsT2
-            integer, intent(in)                                     :: NOcc
-            integer, intent(in)                                     :: NVirt
-            real(F64), dimension(NOcc, NOcc), intent(out)           :: Cij
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in)  :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)               :: Am
-
-            integer :: mu, i
-            real(F64), dimension(:, :), allocatable :: RhoOO
-            real(F64), dimension(:), allocatable :: OccNumbers
-            logical, parameter :: OneRDM_Exchange = .false.
-
-            allocate(RhoOO(NOcc, NOcc))
-            allocate(OccNumbers(NOcc))
-            call rpa_RhoOO_RPAX(RhoOO, Uaim, Am, NOcc, NVirt, NVecsT2, OneRDM_Exchange)
-            call symmetric_eigenproblem(OccNumbers, RhoOO, NOcc, .true.)
-            do i = 1, NOcc
-                  Cij(:, i) = RhoOO(:, NOcc-i+1)
-            end do
-      end subroutine rpa_OccupiedNO
-
-      
-      subroutine rpa_RhoOO_RPAX(RhoOO, Uaim, Am, NOcc, NVirt, NVecsT2, XContrib)
-            integer, intent(in)                                    :: NOcc, NVirt, NVecsT2
-            real(F64), dimension(NOcc, NOcc), intent(out)          :: RhoOO
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(NVecsT2), intent(in)              :: Am
-            logical, intent(in)                                    :: XContrib
-            
-            integer :: mu, a, b, i, j
-            real(F64) :: Bm, Alpha
-            real(F64), dimension(:, :), allocatable :: Tab
-
-            RhoOO = ZERO
-            do i = 1, NOcc
-                  RhoOO(i, i) = TWO
-            end do
-            do mu = 1, NVecsT2
-                  !                  
-                  ! Rho(i,j) = Delta(i,j) + Sum(a) Sum(bk) (-4)*S(ai,bk)*T(bk,aj)
-                  ! = Delta(i,j) + Sum(a)*Sum(mu) U(ai,mu) * (-4)*A(mu)**2/(1-4*A(mu)**2) * U(aj,mu)
-                  ! Auxiliary amplitude: S = T/(1-4*T**2), see Eq. 59 in the SI for Ref. 1
-                  !
-                  Bm = (-FOUR) * Am(mu)**2 / (ONE - FOUR * Am(mu)**2)
-                  call real_aTb_x(RhoOO, NOcc, Uaim(:, :, mu), NVirt, &
-                        Uaim(:, :, mu), NVirt, NOcc, NOcc, NVirt, Bm, ONE)
-            end do
-            ! if (XContrib) then
-            !       allocate(Tab(NVirt, NVirt))
-            !       do j = 1, NOcc
-            !             do i = 1, NOcc
-            !                   Tab = ZERO
-            !                   do mu = 1, NVecsT2
-            !                         call real_vwT(Tab, Uaim(:, i, mu), Uaim(:, j, mu), Am(mu))
-            !                   end do
-            !                   !
-            !                   ! Rho(a,b) = -2 * Sum(ij) Sum(c) T(ac;ij) * T(cb;ij)
-            !                   !
-            !                   Alpha = -TWO
-            !                   call real_ab_x(RhoVV, NVirt, Tab, NVirt, Tab, NVirt, NVirt, NVirt, NVirt, Alpha, ONE)
-            !             end do
-            !       end do
-            ! end if
-      end subroutine rpa_RhoOO_RPAX
 end module rpa_Orbitals

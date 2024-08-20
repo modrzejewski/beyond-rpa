@@ -590,7 +590,7 @@ contains
             RPAParams%CutoffThreshPNO = 1.0E-6_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
-            SCFParams%THC_QRThresh = sqrt(1.0E-7_F64)
+            SCFParams%THC_QRThresh = 1.0E-4_F64
             !
             ! If the THC Coulomb integrals are used,
             ! an aggressive removal of linear dependencies
@@ -604,7 +604,7 @@ contains
             ! energy and the orbitals that go to
             ! the correlation energy.
             !
-            SCFParams%LinDepThresh = sqrt(1.0E-9_F64)
+            SCFParams%LinDepThresh = 1.0E-5_F64
             SCFParams%ConvThreshRho = 1.0E-6_F64
             Chol2Params%CholeskyTauThresh = 1.0E-5_F64
       end subroutine rpa_Params_Default

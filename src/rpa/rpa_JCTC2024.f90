@@ -81,6 +81,9 @@ contains
             allocate(UaimLoc(NVirt, NOcc, NVecsT2))
             allocate(XgiLoc(NGridTHC, NOcc))
             allocate(Lik(NOcc, NOcc))
+            ! print *, "================== DEBUG ========================"
+            ! call rpa_LocalizeOrbitals_FosterBoys(Lik, Cpi, RPAParams, AOBasis)
+            ! print *, "=============== END DEBUG ======================="
             call rpa_LocalizeOrbitals_AquilanteJCP2006(Lik, Cpi, NOcc, RPAParams, AOBasis)
             call real_ab(XgiLoc, Xgi, Lik)
             !$omp parallel do private(mu)
