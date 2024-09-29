@@ -361,7 +361,7 @@ module rpa_definitions
             ! Set to true if the Cholesky vectors aren't
             ! already computed at the SCF step.
             !
-            logical :: ComputeCholeskyBasis = .true.
+            logical :: ComputeCholeskyBasis = .false.
             !
             ! Correction for non-constant density along
             ! the adiabatic connection

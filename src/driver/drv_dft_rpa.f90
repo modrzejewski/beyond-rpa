@@ -84,27 +84,29 @@ contains
             else
                   call chol2_Algo_Koch_JCP2019(CholeskyBasis, AOBasis, Chol2Params)
                   call chol2_FullDimVectors(CholeskyVecs, CholeskyBasis, AOBasis, Chol2Params)
-                  THCParams%THC_QuadraticMemory = .false.
-                  call thc_Grid( &
-                        THCGrid%Xgp, &
-                        THCGrid%NGrid, &
-                        THCGrid%NGridReduced, &
-                        THCParams%THC_BeckeGridKind, &
-                        THCParams%PhiSquaredThresh, &
-                        THCParams%QRThresh, &          
-                        THCParams%QRThreshReduced, &
-                        THCParams%THC_BlockDim, &
-                        AOBasis, System)
-                  call thc_Z( &
-                        THCGrid%Zgk, &
-                        THCGrid%ZgkReduced, &
-                        THCGrid%NGrid, &
-                        THCGrid%NGridReduced, &
-                        THCGrid%Xgp, &
-                        CholeskyVecs, CholeskyBasis, Chol2Params, &
-                        AOBasis, THCParams)
-                  allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
-                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
+                  if (RPAParams%TensorHypercontraction) then
+                        THCParams%THC_QuadraticMemory = .false.
+                        call thc_Grid( &
+                              THCGrid%Xgp, &
+                              THCGrid%NGrid, &
+                              THCGrid%NGridReduced, &
+                              THCParams%THC_BeckeGridKind, &
+                              THCParams%PhiSquaredThresh, &
+                              THCParams%QRThresh, &          
+                              THCParams%QRThreshReduced, &
+                              THCParams%THC_BlockDim, &
+                              AOBasis, System)
+                        call thc_Z( &
+                              THCGrid%Zgk, &
+                              THCGrid%ZgkReduced, &
+                              THCGrid%NGrid, &
+                              THCGrid%NGridReduced, &
+                              THCGrid%Xgp, &
+                              CholeskyVecs, CholeskyBasis, Chol2Params, &
+                              AOBasis, THCParams)
+                        allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
+                        call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
+                  end if
             end if
             do k = 1, NSystems
                   if (k > 1) then
