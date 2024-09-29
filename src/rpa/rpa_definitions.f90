@@ -238,9 +238,10 @@ module rpa_definitions
       integer, parameter :: MP3_ENERGY_TOTAL        = 66
       
       integer, parameter :: RPA_THEORY_DIRECT_RING = 0        ! RPA
-      integer, parameter :: RPA_THEORY_JCTC2023 = 1           ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_THEORY_JCTC2024 = 2           ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
-      integer, parameter :: RPA_THEORY_ALL      = 3           ! all third-order corrections
+      integer, parameter :: RPA_THEORY_RPT2        = 1        ! RPA + SOSEX + singles correction (Ren et al.)
+      integer, parameter :: RPA_THEORY_JCTC2023    = 2        ! RPA + 1b (SOSEX) + 2g
+      integer, parameter :: RPA_THEORY_JCTC2024    = 3        ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
+      integer, parameter :: RPA_THEORY_ALL         = 4        ! all third-order corrections
       
       type TRPAParams
             logical :: MOAlgorithm = .true.
@@ -566,7 +567,7 @@ contains
             type(TSCFParams), intent(in)      :: SCFParams
 
             select case (RPAParams%TheoryLevel)
-            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023)
+            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023, RPA_THEORY_RPT2)
                   RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
             case (RPA_THEORY_JCTC2024, RPA_THEORY_ALL)
                   if (SCFParams%XCFunc == XCF_HF) then

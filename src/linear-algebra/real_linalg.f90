@@ -452,6 +452,27 @@ contains
       end subroutine real_Axb_robust
 
 
+      subroutine real_Axb_symmetric_posv(b, A)
+            !
+            ! Solve a linear system Ax = b, where A is a symmetric
+            ! positive definite matrix.
+            !
+            real(F64), dimension(:, :), intent(inout) :: b
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            integer :: N, NRHS, Info
+            external :: dposv
+
+            N = size(A, dim=1)
+            NRHS = size(b, dim=2)
+            call dposv("L", N, NRHS, A, N, b, N, Info)
+            if (Info > 0) then
+                  call msg("Cholesky solver encountered a linear system with a non-positive definite matrix A", MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Axb_symmetric_posv
+      
+
       subroutine real_Axb_symmetric_sysv(b, A)
             !
             ! Solve a linear system Ax = b, where A is a symmetric

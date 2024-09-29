@@ -3720,6 +3720,7 @@ contains
                   RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
                   RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
                   RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
+                  RPAParams%TheoryLevel = RPA_THEORY_RPT2
             case ("TENSORHYPERCONTRACTION", "THC", "TENSOR-HYPERCONTRACTION")
                   RPAParams%TensorHypercontraction = .true.
             case ("THC_QRTHRESH", "THCQRTHRESH")
@@ -3826,6 +3827,16 @@ contains
                   select case (uppercase(val))
                   case ("RPA", "DIRECT-RING")
                         RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
+                  case ("RPT2")
+                        RPAParams%TensorHypercontraction = .false.
+                        RPAParams%CoupledClusters = .true.
+                        RPAParams%T1Approx = RPA_T1_MEAN_FIELD
+                        RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
+                        RPAParams%ChiOrbitals = RPA_ORBITALS_CANONICAL
+                        RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
+                        RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
+                        RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
+                        RPAParams%TheoryLevel = RPA_THEORY_RPT2
                   case ("JCTC2023", "DEFAULT")
                         RPAParams%TheoryLevel = RPA_THEORY_JCTC2023
                   case ("JCTC2024")

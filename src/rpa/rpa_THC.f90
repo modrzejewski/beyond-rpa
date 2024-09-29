@@ -130,7 +130,8 @@ contains
                         call blankline()
                         call msg("Computing natural orbitals by diagonalization of the vv block of 1-RDM")
                         call msg("1-RDM: Table S2 in Ref. 2")
-                        call msg("1. Ramberger, Sukurma, Schäfer, J. Chem. Phys. 151, 214106 (2019); doi: 10.1063/1.5128415")
+                        call msg("1. Ramberger, Sukurma, Schäfer, Kresse, " &
+                              // "J. Chem. Phys. 151, 214106 (2019); doi: 10.1063/1.5128415")
                         call msg("2. Cieśliński, Tucholska, Modrzejewski, " &
                               // "J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496")
                         call clock_start(timer)
