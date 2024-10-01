@@ -592,6 +592,7 @@ contains
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = 1.0E-4_F64
+            RPAParams%THC_QRThresh = 1.0E-3_F64
             !
             ! If the THC Coulomb integrals are used,
             ! an aggressive removal of linear dependencies
@@ -623,6 +624,7 @@ contains
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = 1.0E-4_F64
+            RPAParams%THC_QRThresh = 1.0E-3_F64
             SCFParams%LinDepThresh = 1.0E-5_F64
             SCFParams%ConvThreshRho = 1.0E-6_F64
             Chol2Params%CholeskyTauThresh = 1.0E-6_F64
@@ -639,6 +641,7 @@ contains
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
             RPAParams%CutoffThreshPNO = 1.0E-7_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
+            RPAParams%THC_QRThresh = 1.0E-4_F64
             SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
             SCFParams%ConvThreshRho = 1.0E-6_F64
             Chol2Params%CholeskyTauThresh = 1.0E-7_F64

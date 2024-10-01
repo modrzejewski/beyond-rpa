@@ -1146,14 +1146,19 @@ contains
                   end if
                   call msg("error for each approximation is defined as energy(i)-energy(i-1)")
                   call blankline()
-                  call msg(lfield("i", 3) // lfield("", 30)    // rfield("direct-ring energy", 20)  // rfield("error", 20))
+                  call msg(lfield("i", 3) // lfield("", 30) // &
+                        rfield("direct-ring energy", 20)  // rfield("error", 20))
             end if
             call msg(lfield("1", 3) // lfield("accurate", 30) // rfield(str(Chi_MO,d=6), 20))
-            call msg(lfield("2", 3) //lfield("natural orbitals", 30) // rfield(str(Chi_NO,d=6),20) // rfield(str(Error_NO, d=1), 20))
-            call msg(lfield("3", 3) //lfield("eigendecomposition of T2", 30) // rfield(str(T2_NO,d=6),20) // rfield(str(Error_T2,d=1), 20))
+            call msg(lfield("2", 3) //lfield("natural orbitals", 30) // &
+                  rfield(str(Chi_NO,d=6),20) // rfield(str(Error_NO, d=1), 20))
+            call msg(lfield("3", 3) //lfield("eigendecomposition of T2", 30) // &
+                  rfield(str(T2_NO,d=6),20) // rfield(str(Error_T2,d=1), 20))
             if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
-                  call msg(lfield("4", 3) // lfield("pair-natural orbitals", 30) // rfield(str(T2_PNO,d=6),20) // rfield(str(Error_PNO,d=1), 20))
+                  call msg(lfield("4", 3) // lfield("pair-natural orbitals", 30) // &
+                        rfield(str(T2_PNO,d=6),20) // rfield(str(Error_PNO,d=1), 20))
             end if
+            call blankline()
       end subroutine rpa_SummaryOfErrors
 
 

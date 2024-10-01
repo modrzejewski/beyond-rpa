@@ -614,20 +614,26 @@ contains
             real(F64), dimension(:, :), intent(inout) :: Xgp
             
             integer :: NAO, NGrid
-            real(F64) :: p
+            integer :: p, g
             real(F64), dimension(:), allocatable :: N
             
             NGrid = size(Xgp, dim=1)
             NAO = size(Xgp, dim=2)
             allocate(N(NGrid))
-            N = ZERO
-            do p = 1, NAO
-                  N = N + Xgp(:, p)**2
+            !
+            ! Numerically stable evaluation of L2 norm
+            !
+            N = norm2(Xgp, dim=2)
+            !$omp parallel do private(g)
+            do g = 1, NGrid
+                  N(g) = ONE / N(g)
             end do
-            N = ONE / Sqrt(N)
+            !$omp end parallel do
+            !$omp parallel do private(p)
             do p = 1, NAO
-                  Xgp(:, p) = N * Xgp(:, p)
+                  Xgp(:, p) = N(:) * Xgp(:, p)
             end do
+            !$omp end parallel do
       end subroutine thc_normalize_Xgp
 
 
