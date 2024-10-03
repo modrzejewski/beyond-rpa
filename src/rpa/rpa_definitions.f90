@@ -641,6 +641,16 @@ contains
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
             RPAParams%CutoffThreshPNO = 1.0E-7_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
+            !
+            ! QRThresh for THC integrals used in the post-SCF step
+            ! is tightened to 1.0E-4 to improve accuracy when
+            ! the energy difference involves nonidentical sets of
+            ! THC vectors. In such cases, one can no longer count on
+            ! a near-perfect cancellation of errors as in noncovalent
+            ! energies. Tested example: geometry relaxation of
+            ! crystalline benzene. QRThresh=1.0E-4 results in the same
+            ! EcRPA and EcSOSEX as in the variant without THC.
+            !
             RPAParams%THC_QRThresh = 1.0E-4_F64
             SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
             SCFParams%ConvThreshRho = 1.0E-6_F64
