@@ -2891,6 +2891,26 @@ contains
             end do
       end subroutine cheb_precalc
 
+      
+      pure function tintab(r, tp)
+            real(F64)              :: tintab
+            real(F64), intent(in)  :: r
+            type(TINT_PARAMS), intent(in) :: tp
+
+            real(F64) :: fa, fb, ul
+
+            associate (phia => tp%phia, phib => tp%phib, &
+                  lambdaa => tp%lambdaa, lambdab => tp%lambdab, l => tp%l, &
+                  ecpcenter => tp%ecpcenter, lena => tp%lena, lenb => tp%lenb, &
+                  k0 => tp%k0, alpha => tp%alpha, beta => tp%beta)
+                  
+                  ul = ulpot(r, l, ecpcenter, k0)
+                  fa = falambda(r, lambdaa, phia, lena, alpha)
+                  fb = falambda(r, lambdab, phib, lenb, beta)
+                  tintab = fa * fb * ul
+            end associate
+      end function tintab
+      
 
       subroutine cheb_integrate(val, eps, nmax, npoint, conv, &
             integrand, tp)
@@ -3029,26 +3049,6 @@ contains
             rla = r**la
             falambda = falambda * rla
       end function falambda
-
-
-      pure function tintab(r, tp)
-            real(F64)              :: tintab
-            real(F64), intent(in)  :: r
-            type(TINT_PARAMS), intent(in) :: tp
-
-            real(F64) :: fa, fb, ul
-
-            associate (phia => tp%phia, phib => tp%phib, &
-                  lambdaa => tp%lambdaa, lambdab => tp%lambdab, l => tp%l, &
-                  ecpcenter => tp%ecpcenter, lena => tp%lena, lenb => tp%lenb, &
-                  k0 => tp%k0, alpha => tp%alpha, beta => tp%beta)
-                  
-                  ul = ulpot(r, l, ecpcenter, k0)
-                  fa = falambda(r, lambdaa, phia, lena, alpha)
-                  fb = falambda(r, lambdab, phib, lenb, beta)
-                  tintab = fa * fb * ul
-            end associate
-      end function tintab
 
 
       pure function tintac(r, tp)
