@@ -619,7 +619,7 @@ contains
                   deallocate(F_cao, F_sao, Rho_sao, TransfWork)
                   call msg("HF part of RPA completed in " // str(clock_readwall(t_rpaexch), d=1) // " seconds")
                   call msg(lfield("HF contribution (EtotHF)", 50) // lfield(str(EtotHF, d=10), 20))
-                  if (RPAParams%SinglesCorrection) then
+                  if (RPAParams%SinglesCorrection /= RPA_SINGLES_NONE) then
                         call msg(lfield("Singles correction (EcSingles)", 50) // lfield(str(EcSingles, d=10), 20))
                   end if
                   if (.not. RPAParams%DisableCorrelation) then
@@ -666,7 +666,7 @@ contains
                   EtotRPA = EtotHF + EcSingles + EcRPA
                   call msg("RPA Single-Point Energies", underline=.true.)
                   call msg(lfield("HF contribution (EtotHF)", 50) // lfield(str(EtotHF, d=10), 20))
-                  if (RPAParams%SinglesCorrection) then
+                  if (RPAParams%SinglesCorrection /= RPA_SINGLES_NONE) then
                         call msg(lfield("Singles correction (EcSingles)", 50) // lfield(str(EcSingles, d=10), 20))
                         call msg(lfield("Direct RPA correlation (EcRPA)", 50) // lfield(str(EcRPA, d=10), 20))
                         call msg(lfield("Total energy (EtotRPA=EtotHF+EcSingles+EcRPA)", 50) // lfield(str(EtotRPA, d=10), 20))
