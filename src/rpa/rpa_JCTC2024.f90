@@ -81,10 +81,15 @@ contains
             allocate(UaimLoc(NVirt, NOcc, NVecsT2))
             allocate(XgiLoc(NGridTHC, NOcc))
             allocate(Lik(NOcc, NOcc))
-            ! print *, "================== DEBUG ========================"
-            ! call rpa_LocalizeOrbitals_FosterBoys(Lik, Cpi, RPAParams, AOBasis)
-            ! print *, "=============== END DEBUG ======================="
-            call rpa_LocalizeOrbitals_AquilanteJCP2006(Lik, Cpi, NOcc, RPAParams, AOBasis)
+            if (RPAParams%LocalizedOrbitals == RPA_LOCALIZED_ORBITALS_BOYS) then
+                  call blankline()
+                  call msg("Localized occupied orbitals: Boys")
+                  call rpa_LocalizeOrbitals_FosterBoys(Lik, Cpi, RPAParams, AOBasis)
+            else if (RPAParams%LocalizedOrbitals == RPA_LOCALIZED_ORBITALS_CHOLESKY) then
+                  call blankline()
+                  call msg("Localized occupied orbitals: Cholesky")
+                  call rpa_LocalizeOrbitals_AquilanteJCP2006(Lik, Cpi, NOcc, RPAParams, AOBasis)
+            end if
             call real_ab(XgiLoc, Xgi, Lik)
             !$omp parallel do private(mu)
             do mu = 1, NVecsT2

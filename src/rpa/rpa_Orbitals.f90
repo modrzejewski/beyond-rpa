@@ -16,32 +16,41 @@ module rpa_Orbitals
 contains
 
       subroutine rpa_LocalizeOrbitals_FosterBoys(LijCL, Cpi, RPAParams, AOBasis)
+            !
+            ! Compute the orthogonal matrix LijCL for the transformation of orbitals:
+            !
+            ! canonical occupied orbitals (C) -> Foster-Boys localized occupied orbitals (L)
+            !
+            ! The localiation procedure is carried out with the Boys objective
+            ! function. See Ref. 1 for a review of localization methods.
+            !
+            ! 1. Pipek, J. and Mezey, P.G. J. Chem. Phys. 90, 4916 (1989);
+            !    doi: 10.1063/1.456588
+            !
             real(F64), dimension(:, :), intent(out)    :: LijCL
             real(F64), dimension(:, :), intent(in)     :: Cpi
             type(TRPAParams), intent(in)               :: RPAParams
             type(TAOBasis), intent(in)                 :: AOBasis
 
-            real(F64), dimension(:, :, :), allocatable :: RijCC, RijCL, RijLL
-            real(F64), dimension(:, :), allocatable :: R2ijCC, R2ijCL, R2ijLL
+            real(F64), dimension(:, :, :), allocatable :: RijCC, RijLL
+            real(F64), dimension(:, :), allocatable :: R2ijCC
             real(F64), dimension(:, :), allocatable :: dFdLij, dFdKij
             real(F64), dimension(:, :), allocatable :: Wij, Kij, ExpKij, Hij
-            real(F64) :: F
+            real(F64), dimension(:, :), allocatable :: OptLijCL
+            real(F64) :: F, OptF, InitF
             integer :: u
-            integer :: Algorithm
             integer :: NOcc
-            integer, parameter :: MaxNIters = 2000
-            integer, parameter :: p = 2
+            integer, parameter :: MaxNIters = 100
             integer, parameter :: PolyOrder = 8
             integer, parameter :: STEEPEST_DESCENT = 0
             integer, parameter :: CONJUGATE_GRADIENT = 1
+            real(F64), parameter :: Gamma = 0.05_F64
             
             NOcc = size(LijCL, dim=2)
+            allocate(OptLijCL(NOcc, NOcc))
             allocate(RijCC(NOcc, NOcc, 3))
-            allocate(RijCL(NOcc, NOcc, 3))
             allocate(RijLL(NOcc, NOcc, 3))
             allocate(R2ijCC(NOcc, NOcc))
-            allocate(R2ijCL(NOcc, NOcc))
-            allocate(R2ijLL(NOcc, NOcc))
             allocate(dFdLij(NOcc, NOcc))
             allocate(dFdKij(NOcc, NOcc))
             allocate(Wij(NOcc, NOcc))
@@ -49,153 +58,295 @@ contains
             allocate(Hij(NOcc, NOcc))
             allocate(ExpKij(NOcc, NOcc))
             call rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
-            Algorithm = STEEPEST_DESCENT
+            call rpa_FosterBoys_Transform(RijLL, Wij, RijCC, LijCL)
+            call rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijCC)
+            InitF = F
+            OptF = F
             do u = 1, MaxNIters
-                  call rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, LijCL)
-                  call rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, p, NOcc)
-                  if (Algorithm == STEEPEST_DESCENT) then
-                        Hij = -dFdKij
-                  else if (Algorithm == CONJUGATE_GRADIENT) then
-                        continue
+                  call rpa_FosterBoys_Sweep(LijCL, RijLL)
+                  call rpa_FosterBoys_Transform(RijLL, Wij, RijCC, LijCL)
+                  call rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijCC)
+                  if (F < OptF) then
+                        OptF = F
+                        OptLijCL = LijCL
                   end if
-                  Hij = -dFdKij
-                  call rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
-                        RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
-                        Hij, F, p, PolyOrder)
+                  ! call msg(lfield(str(u), 10) // lfield(str(F,d=1), 30))
+                  
+                  ! call rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, NOcc)
+
+                  ! Kij = -Gamma * dFdKij
+                  ! call matrix_exponential_real(ExpKij, Kij, Wij)
+                  ! call real_ab(Wij, LijCL, ExpKij)
+                  ! LijCL = Wij
+                  
+                  ! else if (Algorithm == CONJUGATE_GRADIENT) then
+                  !       continue
+                  ! end if
+                  ! Hij = -dFdKij
+                  ! call rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
+                  !       RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
+                  !       Hij, F, p, PolyOrder)
             end do
+            call msg("Objective function (initial): " // str(InitF, d=1))
+            call msg("Objective function (minimum): " // str(OptF, d=1))
+            LijCL = OptLijCL
       end subroutine rpa_LocalizeOrbitals_FosterBoys
 
 
-      subroutine rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
-            RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
-            Hij, F0, p, PolyOrder)
-            
-            real(F64), dimension(:, :), intent(inout)  :: LijCL
-            real(F64), dimension(:, :), intent(out)    :: ExpKij
-            real(F64), dimension(:, :), intent(out)    :: Wij
-            real(F64), dimension(:, :), intent(out)    :: Kij
-            real(F64), dimension(:, :, :), intent(out) :: RijCL
-            real(F64), dimension(:, :), intent(out)    :: R2ijCL
-            real(F64), dimension(:, :, :), intent(out) :: RijLL
-            real(F64), dimension(:, :), intent(out)    :: R2ijLL
-            real(F64), dimension(:, :, :), intent(in)  :: RijCC
-            real(F64), dimension(:, :), intent(in)     :: R2ijCC
-            real(F64), dimension(:, :), intent(in)     :: Hij
-            real(F64), intent(in)                      :: F0
-            integer, intent(in)                        :: p
-            integer, intent(in)                        :: PolyOrder
+      subroutine rpa_FosterBoys_Sweep(LijCL, RijLL)
+            !
+            ! Perform a single sweep of two-dimensinal rotations to
+            ! get an estimate of the orbital transformation matrix.
+            !
+            ! The orbital rotation procedure of the Boys localization
+            ! is programmed according to paper of Pipek and Mezey.
+            !
+            ! 1. Pipek, J. and Mezey, P.G. J. Chem. Phys. 90, 4916 (1989);
+            !    doi: 10.1063/1.456588
+            !
+            real(F64), dimension(:, :), intent(inout)    :: LijCL            
+            real(F64), dimension(:, :, :), intent(inout) :: RijLL
 
-            real(F64) :: Tmax, Tk, LambdaMin, LambdaMax, OmegaMax
-            integer :: k, l
-            real(F64), dimension(PolyOrder, 1) :: b
-            real(F64), dimension(PolyOrder, PolyOrder) :: A
-            integer :: Rank
-            real(F64), parameter :: RCond = 1.0E-6_F64
+            real(F64) :: Alpha, FourAlpha
+            real(F64) :: Aij, Bij, D2, SinFourAlpha, CosFourAlpha
+            real(F64) :: CosAlpha, SinAlpha
+            real(F64), dimension(:), allocatable :: Wi, Wj, Wk
+            integer :: x
+            integer :: i, j
             integer :: NOcc
 
-            NOcc = size(Kij, dim=1)
-            call real_GershgorinCircle(LambdaMin, LambdaMax, Hij)
-            OmegaMax = Max(Abs(LambdaMin), Abs(LambdaMax))
-            Tmax = TWO*Pi/(4*p*OmegaMax)
-            do k = 1, PolyOrder
-                  Tk = k * (Tmax/PolyOrder)
-                  if (k == 1) then
-                        Kij = Tk * Hij
-                        call matrix_exponential_real(ExpKij, Kij, Wij)
-                        call real_ab(Wij, LijCL, ExpKij)
-                  else
-                        call real_ab(Kij, Wij, ExpKij)
-                        Wij = Kij
-                  end if
-                  call rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, Wij)
-                  call rpa_FosterBoys_ObjectiveFunction(b(k, 1), RijLL, R2ijLL, p)
-                  do l = 1, PolyOrder
-                        A(k, l) = Tk**l
+            NOcc = size(LijCL, dim=1)
+            allocate(Wi(NOcc))
+            allocate(Wj(NOcc))
+            allocate(Wk(NOcc))
+            do j = 1, NOcc
+                  do i = j+1, NOcc
+                        Aij = ZERO
+                        Bij = ZERO
+                        do x = 1, 3
+                              !
+                              ! Aij and Bij are defined in Eqs. 15a and 15b in Ref. 1
+                              !
+                              Aij = Aij + RijLL(i, j, x)**2 - (ONE/FOUR) * (RijLL(i, i, x) - RijLL(j, j, x))**2
+                              Bij = Bij + RijLL(i, j, x) * (RijLL(i, i, x) - RijLL(j, j, x))
+                        end do
+                        D2 = Aij**2 + Bij**2
+                        if (D2 > ZERO) then
+                              !
+                              ! Compute the mixing angle according to Eqs. 16 and 40 in Ref. 1.
+                              ! Note that we are maximizing the efficient variant of the objective
+                              ! function, i.e., Sum(i) <i|R|i>**2, denoted as B2 in Ref. 1.
+                              !
+                              SinFourAlpha = Bij / Sqrt(D2)
+                              CosFourAlpha = -Aij / Sqrt(D2)
+                              !
+                              ! The value of Acos(4*Alpha) falls within the interval (0, Pi)
+                              ! according to the standard of the programming language.
+                              ! To solve the system of equations 13a and 13b in Ref. 1
+                              ! we need to additionally check the sign of Sin(4*Alpha)
+                              ! and shift the angle accordingly. As a result we get
+                              ! 0 <= Alpha <= Pi/2, Eq. 13c in Ref. 1.
+                              !
+                              FourAlpha = Acos(max(-ONE, min(ONE, CosFourAlpha)))
+                              if (SinFourAlpha < ZERO) FourAlpha = TWO*PI - FourAlpha
+                              Alpha = FourAlpha / FOUR
+                        else
+                              Alpha = ZERO
+                        end if
+                        CosAlpha = Cos(Alpha)
+                        SinAlpha = Sin(Alpha)
+                        Wi = LijCL(:, i)
+                        Wj = LijCL(:, j)
+                        Wk = CosAlpha*Wi + SinAlpha*Wj
+                        LijCL(:, i) = Wk
+                        Wk = -SinAlpha*Wi + CosAlpha*Wj
+                        LijCL(:, j) = Wk
+                        do x = 1, 3
+                              Wi = RijLL(:, i, x)
+                              Wj = RijLL(:, j, x)
+                              Wk = CosAlpha*Wi + SinAlpha*Wj
+                              RijLL(:, i, x) = Wk
+                              Wk = -SinAlpha*Wi + CosAlpha*Wj
+                              RijLL(:, j, x) = Wk
+                              Wi = RijLL(i, :, x)
+                              Wj = RijLL(j, :, x)
+                              Wk = CosAlpha*Wi + SinAlpha*Wj
+                              RijLL(i, :, x) = Wk
+                              Wk = -SinAlpha*Wi + CosAlpha*Wj
+                              RijLL(j, :, x) = Wk
+                        end do
                   end do
             end do
-            do k = 1, PolyOrder
-                  b(k, 1) = b(k, 1) - F0
-            end do
-            call real_LeastSquares(b, Rank, A, RCond)
-      end subroutine rpa_FosterBoys_LineSearch
+      end subroutine rpa_FosterBoys_Sweep
+      
+
+      ! subroutine rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
+      !       RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
+      !       Hij, F0, p, PolyOrder)
+            
+      !       real(F64), dimension(:, :), intent(inout)  :: LijCL
+      !       real(F64), dimension(:, :), intent(out)    :: ExpKij
+      !       real(F64), dimension(:, :), intent(out)    :: Wij
+      !       real(F64), dimension(:, :), intent(out)    :: Kij
+      !       real(F64), dimension(:, :, :), intent(out) :: RijCL
+      !       real(F64), dimension(:, :), intent(out)    :: R2ijCL
+      !       real(F64), dimension(:, :, :), intent(out) :: RijLL
+      !       real(F64), dimension(:, :), intent(out)    :: R2ijLL
+      !       real(F64), dimension(:, :, :), intent(in)  :: RijCC
+      !       real(F64), dimension(:, :), intent(in)     :: R2ijCC
+      !       real(F64), dimension(:, :), intent(in)     :: Hij
+      !       real(F64), intent(in)                      :: F0
+      !       integer, intent(in)                        :: p
+      !       integer, intent(in)                        :: PolyOrder
+
+      !       real(F64) :: Tmax, Tk, LambdaMin, LambdaMax, OmegaMax
+      !       integer :: k, l
+      !       real(F64), dimension(PolyOrder, 1) :: b
+      !       real(F64), dimension(PolyOrder, PolyOrder) :: A
+      !       integer :: Rank
+      !       real(F64), parameter :: RCond = 1.0E-6_F64
+      !       integer :: NOcc
+
+      !       NOcc = size(Kij, dim=1)
+      !       call real_GershgorinCircle(LambdaMin, LambdaMax, Hij)
+      !       OmegaMax = Max(Abs(LambdaMin), Abs(LambdaMax))
+      !       Tmax = TWO*Pi/(4*p*OmegaMax)
+      !       do k = 1, PolyOrder
+      !             Tk = k * (Tmax/PolyOrder)
+      !             if (k == 1) then
+      !                   Kij = Tk * Hij
+      !                   call matrix_exponential_real(ExpKij, Kij, Wij)
+      !                   call real_ab(Wij, LijCL, ExpKij)
+      !             else
+      !                   call real_ab(Kij, Wij, ExpKij)
+      !                   Wij = Kij
+      !             end if
+      !             call rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, Wij)
+      !             call rpa_FosterBoys_ObjectiveFunction(b(k, 1), RijLL, R2ijLL)
+      !             do l = 1, PolyOrder
+      !                   A(k, l) = Tk**l
+      !             end do
+      !       end do
+      !       do k = 1, PolyOrder
+      !             b(k, 1) = b(k, 1) - F0
+      !       end do
+      !       call real_LeastSquares(b, Rank, A, RCond)
+      ! end subroutine rpa_FosterBoys_LineSearch
 
 
-      subroutine rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijLL, p)
+      subroutine rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijLL)
             real(F64), intent(out)                     :: F
             real(F64), dimension(:, :, :), intent(in)  :: RijLL
             real(F64), dimension(:, :), intent(in)     :: R2ijLL
-            integer, intent(in)                        :: p
 
-            real(F64) :: Fi
             integer :: i
             integer :: NOcc
 
             NOcc = size(RijLL, dim=1)
             F = ZERO
-            !$omp parallel do private(i, Fi) reduction(+:F)
+            !$omp parallel do private(i) reduction(+:F)
             do i = 1, NOcc
-                  Fi = R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
-                  F = F + Fi**p
+                  F = F + R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
             end do
             !$omp end parallel do
       end subroutine rpa_FosterBoys_ObjectiveFunction
       
 
-      subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, p, NOcc)
+      subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, NOcc)
             real(F64), intent(out)                     :: F
             real(F64), dimension(:, :), intent(out)    :: dFdKij
             real(F64), dimension(:, :), intent(out)    :: dFdLij
             real(F64), dimension(:, :), intent(in)     :: LijCL
             real(F64), dimension(:, :, :), intent(in)  :: RijLL
             real(F64), dimension(:, :), intent(in)     :: R2ijLL
-            real(F64), dimension(:, :, :), intent(in)  :: RijCL
-            real(F64), dimension(:, :), intent(in)     :: R2ijCL
-            integer, intent(in)                        :: p
             integer, intent(in)                        :: NOcc
 
-            real(F64) :: Fi, Ti
             integer :: i, x
 
             F = ZERO
             dFdLij = ZERO
-            !$omp parallel do private(i, x, Fi, Ti) reduction(+:F)
+            !$omp parallel do private(i, x) reduction(+:F)
             do i = 1, NOcc
-                  Fi = R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
-                  Ti = p*Fi**(p-1)
-                  F = F + Fi**p
-                  dFdLij(:, i) = dFdLij(:, i) + R2ijCL(:, i) * TWO*Ti
+                  F = F + R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
+                  dFdLij(:, i) = TWO * R2ijLL(:, i)
                   do x = 1, 3
-                        dFdLij(:, i) = dFdLij(:, i) + RijCL(:, i, x) * (-FOUR*RijLL(i, i, x)*Ti)
+                        dFdLij(:, i) = dFdLij(:, i) - (FOUR*RijLL(i, i, x)) *  RijLL(:, i, x)
                   end do
             end do
             !$omp end parallel do
-            dFdKij = ZERO
-            call real_aTb_x(dFdKij, NOcc, LijCL, NOcc, dFdLij, NOcc, &
-                  NOcc, NOcc, NOcc, ONE, ZERO)
-            call real_aTb_x(dFdKij, NOcc, dFdLij, NOcc, LijCL, NOcc, &
-                  NOcc, NOcc, NOcc, -ONE, ONE)
+            dFdKij = -transpose(dFdLij)
+            dFdKij = dFdKij + dFdLij
       end subroutine rpa_FosterBoys_Grad
 
+
+      ! subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, NOcc)
+      !       real(F64), intent(out)                     :: F
+      !       real(F64), dimension(:, :), intent(out)    :: dFdKij
+      !       real(F64), dimension(:, :), intent(out)    :: dFdLij
+      !       real(F64), dimension(:, :), intent(in)     :: LijCL
+      !       real(F64), dimension(:, :, :), intent(in)  :: RijLL
+      !       real(F64), dimension(:, :), intent(in)     :: R2ijLL
+      !       real(F64), dimension(:, :, :), intent(in)  :: RijCL
+      !       real(F64), dimension(:, :), intent(in)     :: R2ijCL
+      !       integer, intent(in)                        :: NOcc
+
+      !       integer :: i, x
+
+      !       F = ZERO
+      !       dFdLij = ZERO
+      !       !$omp parallel do private(i, x) reduction(+:F)
+      !       do i = 1, NOcc
+      !             F = F + R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
+      !             dFdLij(:, i) = TWO * R2ijCL(:, i)
+      !             do x = 1, 3
+      !                   dFdLij(:, i) = dFdLij(:, i) - (FOUR*RijLL(i, i, x)) *  RijCL(:, i, x)
+      !             end do
+      !       end do
+      !       !$omp end parallel do
+      !       dFdKij = ZERO
+      !       call real_aTb_x(dFdKij, NOcc, LijCL, NOcc, dFdLij, NOcc, &
+      !             NOcc, NOcc, NOcc, ONE, ZERO)
+      !       call real_aTb_x(dFdKij, NOcc, dFdLij, NOcc, LijCL, NOcc, &
+      !             NOcc, NOcc, NOcc, -ONE, ONE)
+      ! end subroutine rpa_FosterBoys_Grad
+
       
-      subroutine rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, LijCL)
-            real(F64), dimension(:, :, :), intent(out) :: RijCL
-            real(F64), dimension(:, :), intent(out)    :: R2ijCL
+      subroutine rpa_FosterBoys_Transform(RijLL, Wij, RijCC, LijCL)
             real(F64), dimension(:, :, :), intent(out) :: RijLL
-            real(F64), dimension(:, :), intent(out)    :: R2ijLL
+            real(F64), dimension(:, :), intent(out)    :: Wij
             real(F64), dimension(:, :, :), intent(in)  :: RijCC
-            real(F64), dimension(:, :), intent(in)     :: R2ijCC
             real(F64), dimension(:, :), intent(in)     :: LijCL
 
             integer :: x
 
             do x = 1, 3
-                  call real_ab(RijCL(:, :, x), RijCC(:, :, x), LijCL)
-                  call real_aTb(RijLL(:, :, x), LijCL, RijCL(:, :, x))
+                  call real_ab(Wij, RijCC(:, :, x), LijCL)
+                  call real_aTb(RijLL(:, :, x), LijCL, Wij)
             end do
-            call real_ab(R2ijCL, R2ijCC, LijCL)
-            call real_aTb(R2ijLL, LijCL, R2ijCL)
       end subroutine rpa_FosterBoys_Transform
 
+
+      ! subroutine rpa_FosterBoys_Transform(RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, LijCL)
+      !       real(F64), dimension(:, :, :), intent(out) :: RijCL
+      !       real(F64), dimension(:, :), intent(out)    :: R2ijCL
+      !       real(F64), dimension(:, :, :), intent(out) :: RijLL
+      !       real(F64), dimension(:, :), intent(out)    :: R2ijLL
+      !       real(F64), dimension(:, :, :), intent(in)  :: RijCC
+      !       real(F64), dimension(:, :), intent(in)     :: R2ijCC
+      !       real(F64), dimension(:, :), intent(in)     :: LijCL
+
+      !       integer :: x
+
+      !       do x = 1, 3
+      !             call real_ab(RijCL(:, :, x), RijCC(:, :, x), LijCL)
+      !             call real_aTb(RijLL(:, :, x), LijCL, RijCL(:, :, x))
+      !       end do
+      !       call real_ab(R2ijCL, R2ijCC, LijCL)
+      !       call real_aTb(R2ijLL, LijCL, R2ijCL)
+      ! end subroutine rpa_FosterBoys_Transform
+
+
+      
       
       subroutine rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
             real(F64), dimension(:, :), intent(out)    :: LijCL
@@ -233,6 +384,43 @@ contains
       end subroutine rpa_FosterBoys_Init
 
 
+      !       subroutine rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
+      !       real(F64), dimension(:, :), intent(out)    :: LijCL
+      !       real(F64), dimension(:, :, :), intent(out) :: RijCC
+      !       real(F64), dimension(:, :), intent(out)    :: R2ijCC
+      !       real(F64), dimension(:, :), intent(in)     :: Cpi
+      !       type(TRPAParams), intent(in)               :: RPAParams
+      !       type(TAOBasis), intent(in)                 :: AOBasis
+
+      !       real(F64), dimension(:, :, :), allocatable :: D
+      !       real(F64), dimension(:, :, :), allocatable :: Q
+      !       real(F64), dimension(:, :), allocatable :: TrQ
+      !       real(F64), dimension(3), parameter :: Rc = [ZERO, ZERO, ZERO]
+      !       real(F64), dimension(:, :), allocatable :: Wpi
+      !       integer :: NAO, NOcc
+      !       integer :: x
+
+      !       NOcc = size(LijCL, dim=2)
+      !       NAO = AOBasis%NAOSpher
+      !       allocate(D(NAO, NAO, 3))
+      !       call multi_ElectronicDipole(D(:, :, 1), D(:, :, 2), D(:, :, 3), Rc, AOBasis)
+      !       allocate(Q(NAO, NAO, 6))
+      !       call multi_ElectronicQuadrupole(Q(:, :, 1), Q(:, :, 2), Q(:, :, 3), &
+      !             Q(:, :, 4), Q(:, :, 5), Q(:, :, 6), Rc, AOBasis)
+      !       allocate(TrQ(NAO, NAO))
+      !       TrQ = Q(:, :, 4) + Q(:, :, 5) + Q(:, :, 6)
+      !       allocate(Wpi(NAO, NOcc))
+      !       do x = 1, 3
+      !             call real_ab(Wpi, D(:, :, x), Cpi)
+      !             call real_aTb(RijCC(:, :, x), Cpi, Wpi)
+      !       end do
+      !       call real_ab(Wpi, TrQ, Cpi)
+      !       call real_aTb(R2ijCC, Cpi, Wpi)
+      !       call rpa_LocalizeOrbitals_AquilanteJCP2006(LijCL, Cpi, NOcc, RPAParams, AOBasis)
+      ! end subroutine rpa_FosterBoys_Init
+
+
+
       subroutine rpa_LocalizeOrbitals_AquilanteJCP2006(LijLoc, Cpi, NOcc, RPAParams, AOBasis)
             real(F64), dimension(:, :), intent(out) :: LijLoc
             real(F64), dimension(:, :), intent(in)  :: Cpi
@@ -255,7 +443,7 @@ contains
                   MaxDpp = max(MaxDpp, Dpq(p, p))
             end do
             !$omp end parallel do
-            CholeskyThresh = RPAParams%LoLinDepThresh * MaxDpp
+            CholeskyThresh = RPAParams%LocCholeskyLinDepThresh * MaxDpp
             call real_PivotedCholesky(Uip, Dpq, NOccLoc, CholeskyThresh)
             if (NOccLoc < NOcc) then
                   call msg("Cholesky decomposition produced wrong number of occupied orbitals: "//str(NOccLoc), MSG_ERROR)

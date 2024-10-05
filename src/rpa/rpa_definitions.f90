@@ -11,6 +11,11 @@ module rpa_definitions
       integer, parameter :: RPA_AUX_MOLECULAR_ORBITALS = 0
       integer, parameter :: RPA_AUX_NATURAL_ORBITALS = 1
       !
+      ! Localization algorithm for occupied orbitals
+      !
+      integer, parameter :: RPA_LOCALIZED_ORBITALS_BOYS = 0
+      integer, parameter :: RPA_LOCALIZED_ORBITALS_CHOLESKY = 1
+      !
       ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
       ! or tensor hypercontraction matrices. 
       !
@@ -482,10 +487,10 @@ module rpa_definitions
             real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
             logical :: ComputeNaturalOrbitals = .false.
             !
-            ! Localized orbitals
+            ! Localized occupied orbitals
             !
-            real(F64) :: LOLinDepThresh = 1.0E-6_F64
-            real(F64) :: LOCoulombThresh = 1.0E-8_F64
+            integer :: LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
+            real(F64) :: LocCholeskyLinDepThresh = 1.0E-6_F64
             real(F64) :: CutoffThreshPNO = 1.0E-5_F64
             !
             ! Refinement of approximate Hartree-Fock orbitals and

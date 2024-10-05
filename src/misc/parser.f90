@@ -3784,6 +3784,16 @@ contains
                         call msg("Invalid value of T2AuxLOCutoffThresh", MSG_ERROR)
                         error stop
                   end if
+            case ("LOCALIZEDORBITALS", "LOCALIZED-ORBITALS", "LOCALIZED_ORBITALS")
+                  select case (uppercase(val))
+                  case ("CHOLESKY")
+                        RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
+                  case ("BOYS")
+                        RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
+                  case default
+                        call msg("Invalid value of LocalizedOrbitals", MSG_ERROR)
+                        error stop
+                  end select
             case ("CUTOFFTHRESHPNO", "TCUTPNO")
                   read(val, *) m
                   if (m >= ZERO) then

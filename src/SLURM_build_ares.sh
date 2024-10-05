@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=48
 #SBATCH --mem 100000
 #SBATCH --time=1:00:00
-#SBATCH -A plgrpa2024-cpu
+#SBATCH -A plgrpa2025-cpu
 #SBATCH -p plgrid-now
 #SBATCH --output="build.log"
 #SBATCH --error="build.log"
