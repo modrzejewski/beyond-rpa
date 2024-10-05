@@ -1,0 +1,1 @@
+ftn -O3 -hfp3 -s real64 -s integer64 -fopenmp -I./obj/ -o
