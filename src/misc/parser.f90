@@ -3794,6 +3794,14 @@ contains
                         call msg("Invalid value of LocalizedOrbitals", MSG_ERROR)
                         error stop
                   end select
+            case ("CUTOFFTHRESHVABIJ")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%CutoffThreshVabij = m
+                  else
+                        call msg("Invalid value of CutoffThreshVabij", MSG_ERROR)
+                        error stop
+                  end if
             case ("CUTOFFTHRESHPNO", "TCUTPNO")
                   read(val, *) m
                   if (m >= ZERO) then
