@@ -21,7 +21,7 @@ module real_linalg
       use arithmetic
       use math_constants
       use display
-      use gparam
+      use string
       use clock                              
 
       implicit none
@@ -33,38 +33,89 @@ module real_linalg
 
 contains
 
-      subroutine real_PivotedCholesky(A, P, Rank, Eps)
+      subroutine real_Cholesky(A)
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            integer :: n, info
+            integer :: i, j
+            external :: dpotrf
+
+            n = size(A, dim=1)
+            call dpotrf("L", n, A, n, info)
+            do j = 1, n
+                  do i = 1, j - 1
+                        A(i, j) = ZERO
+                  end do
+            end do
+            if (info /= 0) then
+                  call msg("Cholesky factorization failed with exit code info=" // str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Cholesky
+
+
+      subroutine real_LowerTriangularInverse(L)
+            real(F64), dimension(:, :), intent(inout) :: L
+
+            integer :: n, info
+            external :: dtrtri
+
+            n = size(L, dim=1)
+            call dtrtri("L", "N", n, L, n, info)
+            if (info /= 0) then
+                  call msg("Lower triangular inverse failed with exit code info=" // str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_LowerTriangularInverse
+      
+            
+      subroutine real_PivotedCholesky(U, A, Rank, Eps)
             !
             ! Perform pivoted Cholesky decompostion of A
             ! 
             ! Pi**T * A * Pi = U**T * U
             !
-            ! where Pi is the permuation matrix
+            ! The algorithm terminates if the largest diagonal
+            ! element in the current iteration <= Eps.
             !
-            ! Pi(k,l) = KroneckerDelta(P(l),k)
-            !
-            ! The output array P is a compressed storage form
-            ! of the permutation matrix Pi.
-            !
-            ! The algorithm terminates if the current diagonal
-            ! element at U <= Eps.
-            !
-            real(F64), dimension(:, :), intent(inout) :: A
-            integer, dimension(:), intent(out)        :: P
-            integer, intent(out)                      :: Rank
-            real(F64), intent(in)                     :: Eps
+            real(F64), dimension(:, :), allocatable, intent(out) :: U
+            real(F64), dimension(:, :), intent(inout)            :: A
+            integer, intent(out)                                 :: Rank
+            real(F64), intent(in)                                :: Eps
 
             integer :: N, info
+            integer :: k, l
             real(F64), dimension(:), allocatable :: Work
+            integer, dimension(:), allocatable :: P
             external :: dpstrf
             
             N = size(A, dim=1)
             allocate(Work(2*N))
+            allocate(P(N))
             call dpstrf("U", N, A, N, P, Rank, Eps, Work, info)
             if (info < 0) then
                   call msg("Pivoted Cholesky decomposition returned with info="//str(info), MSG_ERROR)
                   error stop
             end if
+            do k = 1, N - 1
+                  A(k+1:, k) = ZERO
+            end do
+            !
+            ! We now eliminate the permutation matrix Pi in
+            !
+            ! Pi**T * A * Pi = U**T * U
+            !
+            ! The output array P is a compressed storage form
+            ! of the permutation matrix Pi.
+            !
+            ! Pi(k,l) = KroneckerDelta(P(l),k)
+            !
+            allocate(U(Rank, N))
+            U = ZERO
+            do k = 1, N
+                  l = P(k)
+                  U(:, l) = A(1:Rank, k)
+            end do
       end subroutine real_PivotedCholesky
       
 
@@ -401,6 +452,27 @@ contains
       end subroutine real_Axb_robust
 
 
+      subroutine real_Axb_symmetric_posv(b, A)
+            !
+            ! Solve a linear system Ax = b, where A is a symmetric
+            ! positive definite matrix.
+            !
+            real(F64), dimension(:, :), intent(inout) :: b
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            integer :: N, NRHS, Info
+            external :: dposv
+
+            N = size(A, dim=1)
+            NRHS = size(b, dim=2)
+            call dposv("L", N, NRHS, A, N, b, N, Info)
+            if (Info > 0) then
+                  call msg("Cholesky solver encountered a linear system with a non-positive definite matrix A", MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Axb_symmetric_posv
+      
+
       subroutine real_Axb_symmetric_sysv(b, A)
             !
             ! Solve a linear system Ax = b, where A is a symmetric
@@ -450,6 +522,37 @@ contains
             end if
       end subroutine real_Axb_symmetric_sysv
 
+
+      subroutine real_Axb_nonsymmetric_gesv(b, A)
+            !
+            ! Solve a linear system Ax = b, where A is a nonsymmetric
+            ! matrix.
+            !
+            real(F64), dimension(:, :), intent(inout) :: b
+            real(F64), dimension(:, :), intent(inout) :: a
+
+            integer :: N, NRHS, info
+            integer, dimension(:), allocatable :: ipiv
+            
+            external :: dgesv
+
+            N = size(A, dim=1)
+            NRHS = size(b, dim=2)
+            allocate(ipiv(N))
+            call dgesv(N, &
+                  NRHS, &
+                  A, &
+                  N, &
+                  ipiv, &
+                  b, &
+                  N, &
+                  info)
+            if (info /= 0) then
+                  call msg("Linear system solver returned with info="//str(info), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine real_Axb_nonsymmetric_gesv
+      
       
       subroutine real_Pack(MPacked, MFull, NVecs)
             !
@@ -564,7 +667,7 @@ contains
       end subroutine real_QR_query
 
       
-      subroutine real_QR(a, lda, m, n, qrwork, lqrwork)
+      subroutine real_QR_x(a, lda, m, n, qrwork, lqrwork)
             !
             ! Compute the Q matrix of the QR matrix factorization.
             ! The size of the work array *must* be computed using
@@ -592,14 +695,30 @@ contains
                   call dgeqrf(m, n, a, lda, tau, work, lwork, info)
                   if (info .ne. 0) then
                         call msg("DGEQRF returned error code " // str(info), MSG_ERROR)
-                        stop
+                        error stop
                   end if
                   call dorgqr(m, n, k, a, lda, tau, work, lwork, info)
                   if (info .ne. 0) then
                         call msg("DORGQR returned error code " // str(info), MSG_ERROR)
-                        stop
+                        error stop
                   end if
             end associate
+      end subroutine real_QR_x
+
+
+      subroutine real_QR(A)
+            real(F64), dimension(:, :), intent(inout) :: A
+
+            real(F64), dimension(:), allocatable :: qrwork
+            integer :: lqrwork
+            integer :: m, n, lda
+
+            m = size(A, dim=1)
+            n = size(A, dim=2)
+            lda = m
+            call real_QR_query(lqrwork, lda, m, n)
+            allocate(qrwork(lqrwork))
+            call real_QR_x(A, lda, m, n, qrwork, lqrwork)
       end subroutine real_QR
       
 
@@ -620,6 +739,24 @@ contains
             call dger(m, n, alpha, v, 1, w, 1, a, m)
       end subroutine real_vwT
 
+
+      subroutine real_vwT_x(a, lda, v, w, m, n, alpha)
+            !
+            ! A <- alpha * v*w**T + A
+            !
+            real(F64), dimension(lda, *), intent(inout) :: a
+            integer, intent(in)                         :: lda
+            real(F64), dimension(*), intent(in)         :: v
+            real(F64), dimension(*), intent(in)         :: w
+            integer, intent(in)                         :: m
+            integer, intent(in)                         :: n
+            real(F64), intent(in)                       :: alpha
+
+            external :: dger
+
+            call dger(m, n, alpha, v, 1, w, 1, a, lda)
+      end subroutine real_vwT_x
+      
       
       subroutine real_aTba(c, a, b, scratch)
             real(F64), dimension(:, :), contiguous, intent(out) :: c
@@ -1168,8 +1305,32 @@ contains
             end if
             deallocate(work)
             deallocate(iwork)
-            TIMINGS(TIME_EIGEN) = TIMINGS(TIME_EIGEN) + clock_readwall(t_eigen)
       end subroutine symmetric_eigenproblem
+
+
+      subroutine real_GershgorinCircle(LambdaMin, LambdaMax, A)
+            real(F64), intent(out)                 :: LambdaMin
+            real(F64), intent(out)                 :: LambdaMax
+            real(F64), dimension(:, :), intent(in) :: A
+
+            integer :: n, p, q
+            real(F64) :: s
+
+            n = size(A, dim=1)
+            LambdaMin = huge(ONE)
+            LambdaMax = -huge(ONE)
+            !$omp parallel do private(q, s, p) reduction(min:LambdaMin) reduction(max:LambdaMax)
+            do q = 1, n
+                  s = ZERO
+                  do p = 1, n
+                        s = s + Abs(A(p, q))                        
+                  end do
+                  s = s - Abs(A(q, q))
+                  LambdaMin = min(LambdaMin, A(q, q)-s)
+                  LambdaMax = max(LambdaMax, A(q, q)+s)
+            end do
+            !$omp end parallel do
+      end subroutine real_GershgorinCircle
       
 
       subroutine real_bta_rect(a, b)

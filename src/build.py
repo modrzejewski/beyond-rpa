@@ -5,6 +5,7 @@
 #
 from subprocess import Popen
 import datetime
+from datetime import timezone
 import argparse
 from os import path
 import os
@@ -84,7 +85,7 @@ f = open(DefaultModules, "w")
 f.write(",".join(sorted(CompiledModules)) + "\n")
 f.close()
 
-datetime_start = datetime.datetime.utcnow()
+datetime_start = datetime.datetime.now(timezone.utc)
 
 def move_files(BaseName, DstDir):
     ObjFileFrom = BaseName + ".o"
@@ -111,7 +112,8 @@ def remove_files(RelSrcPath):
     remove_list = []
     remove_list.append(path.join(ObjDir, BaseName + ".o"))
     remove_list.append(path.join(ObjDir, BaseName + ".mod"))
-    remove_list.append(path.join(ObjDir, BaseName.lower() + ".mod"))
+    remove_list.append(path.join(ObjDir, BaseName.lower() + ".mod")) # Intel compiler changes module file names to lower case
+    remove_list.append(path.join(ObjDir, BaseName.upper() + ".mod")) # Cray compiler changes module file names to upper case
     for p in remove_list:
         if path.exists(p):
             os.remove(p)
@@ -196,12 +198,17 @@ for module, batch in FileList:
             error_code = processes[ncompiled].wait()
             if error_code != 0:
                 sys.exit(error_code)
+            #
+            # Move the object (.o) and module (.mod) to the obj directory.
+            # The names of the .o and .mod files are compiler dependent.
+            # There are three possibilities:
+            # (1) compiler does not change the camel case name
+            # (2) compiler changes camel case to lower case (Intel compiler)
+            # (3) compiler changes camel case to upper case (Cray compiler)
+            #
             move_files(outfiles[ncompiled], ObjDir)
-            #
-            # When the camel case convention is used for module names,
-            # the compiler may produce lower case names for the mod files
-            #
             move_files(outfiles[ncompiled].lower(), ObjDir)
+            move_files(outfiles[ncompiled].upper(), ObjDir)
             ncompiled += 1
     if ncompiled > 0:
         RecompCascade = True
@@ -231,7 +238,7 @@ error_code = p.wait()
 if error_code != 0:
     sys.exit(error_code)
 
-datetime_finish = datetime.datetime.utcnow()
+datetime_finish = datetime.datetime.now(timezone.utc)
 td = datetime_finish - datetime_start
 dateformat = "%a %b %d %H:%M:%S UTC %Y"
 datestr_finish = datetime_finish.strftime(dateformat)

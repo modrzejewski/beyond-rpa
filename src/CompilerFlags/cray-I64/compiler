@@ -1,0 +1,1 @@
+ftn -m4 -O3 -hfp3 -s default64 -fopenmp -I./obj/ -c 

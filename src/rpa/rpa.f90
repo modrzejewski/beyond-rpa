@@ -8,6 +8,7 @@ module rpa
       use Auto2e
       use GaussPRNG
       use ParallelCholesky
+      use TwoStepCholesky_definitions
       use SpherGTO
       use basis_sets
       use OrbDiffHist
@@ -97,7 +98,7 @@ contains
                         call GRAND(G, NCholesky*NCholesky)
                         do q = 1, NSubspaceIters
                               call real_ab_x(RWRG, NCholesky, RWR, NCholesky, G, NCholesky, NCholesky, NCholesky, NCholesky)
-                              call real_QR(RWRG, NCholesky, NCholesky, NCholesky, QRWork, LQRWork)
+                              call real_QR_x(RWRG, NCholesky, NCholesky, NCholesky, QRWork, LQRWork)
                               G = RWRG
                         end do
                         call real_ab_x(RWRG, NCholesky, RWR, NCholesky, G, NCholesky, NCholesky, NCholesky, NCholesky)
@@ -1715,7 +1716,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             associate ( &
@@ -1783,7 +1784,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TCholeskyBasis), intent(inout)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
             
             integer :: NSpins, NAtoms, NAO, NShells
@@ -2040,10 +2041,10 @@ contains
       end subroutine rpa_Ecorr_1
 
 
-      subroutine rpa_THC_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-            hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid)
+      subroutine rpa_THC_Ecorr_2(RPAOutput, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
+            hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
 
-            real(F64), dimension(:), intent(inout)                    :: Energy
+            type(TRPAOutput), intent(inout)                           :: RPAOutput
             real(F64), dimension(:, :, :), intent(in)                 :: OccCoeffs
             real(F64), dimension(:, :, :), intent(in)                 :: VirtCoeffs
             real(F64), dimension(:, :), intent(in)                    :: OccEnergies
@@ -2055,8 +2056,12 @@ contains
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
+            real(F64), intent(inout)                                  :: T2CutoffCommonThresh
             
-            integer :: NSpins, NAO
+            integer :: NSpins, NAO, NMO
+            real(F64), dimension(:, :, :), allocatable :: VirtNO
+            integer, dimension(2) :: NVirtNO
+            integer :: i0, i1, a0, a1
             integer :: MaxNOcc, MaxNVirt
             integer, dimension(2) :: NCore
             integer :: s
@@ -2066,6 +2071,7 @@ contains
             real(F64), dimension(:, :, :), allocatable :: OccActCoeffs, VirtActCoeffs
             type(tclock) :: timer
             real(F64) :: CoreOrbThresh
+            real(F64), dimension(2) :: FermiEnergy
             logical :: ComputeGrids, ComputePiUVecs
 
             call clock_start(timer)
@@ -2099,9 +2105,11 @@ contains
             allocate(OccActCoeffs(NAO, MaxNOcc, NSpins))
             allocate(VirtActCoeffs(NAO, MaxNVirt, NSpins))
             allocate(Ea(MaxNVirt, NSpins))
+            FermiEnergy = ZERO
             do s = 1, NSpins
                   if (NOccAct(s) > 0) then
                         Ef = (VirtEnergies(1, s)+OccEnergies(NOcc(s), s)) / TWO
+                        FermiEnergy(s) = Ef
                         Ei(1:NOccAct(s), s) = OccEnergies(NCore(s)+1:NCore(s)+NOccAct(s), s) - Ef
                         Ea(1:NVirt(s), s) = VirtEnergies(1:NVirt(s), s) - Ef
                         OccActCoeffs(:, 1:NOccAct(s), s) = OccCoeffs(:, NCore(s)+1:NCore(s)+NOccAct(s), s)
@@ -2120,7 +2128,7 @@ contains
             ! 1. ring approximation of the correlation energy
             ! 2. MBPT3 corrections
             !
-            call rpa_THC_Ecorr_1(Energy, OccActCoeffs, VirtActCoeffs, Ei, Ea, &
+            call rpa_THC_Ecorr_1(RPAOutput, OccActCoeffs, VirtActCoeffs, Ei, Ea, FermiEnergy, &
                   hHF_ao, NOccAct, NVirt, NSpins, &
                   
                   RPAParams%TargetErrorLaplace, &
@@ -2129,7 +2137,6 @@ contains
                   RPAParams%TargetErrorFreq, &
                   RPAParams%TargetRelErrorFreq, &
                   RPAParams%RWRBasisType, &
-                  RPAParams%CumulantApprox, &
                   
                   ComputeGrids, &
                   RPAParams%GridLimitDai, &
@@ -2148,42 +2155,79 @@ contains
                   THCGrid%Zgk, &
                   THCGrid%ZgkPiU, &
                   RPAParams%THC_BlockDim, &
-                  RPAParams%THC_QRThresh_T2, &
                   
                   RPAParams%SmallEigenvalCutoffT2, &
                   RPAParams%GuessNVecsT2, &
-                  RPAParams%MaxBatchDimT2)
+                  RPAParams%MaxBatchDimT2, &
+
+                  RPAParams%T2CutoffThresh, &
+                  RPAParams%T2CutoffType, &
+                  RPAParams%T2CutoffSmoothStep, &
+                  RPAParams%T2CutoffSteepness, &
+                  T2CutoffCommonThresh, &
+                  RPAParams%T2CouplingStrength, &
+                  RPAParams%T2AuxOrbitals, &
+                  RPAParams%T2AuxNOCutoffThresh, &
+                  RPAParams%T2AuxLOCutoffThresh, &
+                  
+                  RPAParams%PT_Order2, &
+                  RPAParams%PT_Order3, &
+                  VirtNO, &
+                  NVirtNO, &
+                  RPAParams, &
+                  AOBasis &
+                  )
+            if (RPAParams%ComputeNaturalOrbitals) then
+                  NMO = NOcc(1) + NVirtNO(1)
+                  allocate(RPAOutput%NaturalOrbitals(NAO, NMO, NSpins))                        
+                  do s = 1, NSpins                              
+                        if (NOccAct(s) > 0) then
+                              i0 = 1
+                              i1 = NOcc(s)
+                              a0 = NOcc(s) + 1
+                              a1 = NOcc(s) + NVirtNO(s)
+                              RPAOutput%NaturalOrbitals(:, i0:i1, s) = OccCoeffs(:, 1:NOcc(s), s)
+                              RPAOutput%NaturalOrbitals(:, a0:a1, s) = VirtNO(:, 1:NVirtNO(s), s)                                    
+                        else
+                              RPAOutput%NaturalOrbitals(:, :, s) = ZERO
+                        end if
+                  end do
+            end if
             !
             ! Prevent recomputation of quadrature grids. The frequency grid is computed only
             ! once for the combined system and shared between its subsystems to retain
             ! size-extensive energy.
             !
             RPAGrids%ComputeGrids = .false.
-            call msg("Total time for ring+MBPT3 correlation: " // str(clock_readwall(timer), d=1) // " seconds")
-            call blankline()
       end subroutine rpa_THC_Ecorr_2
 
       
-      subroutine rpa_THC_Ecorr_1(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-            hHF_ao, NOcc, NVirt, NSpins, &
+      subroutine rpa_THC_Ecorr_1(RPAOutput, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
+            FermiEnergy, hHF_ao, NOcc, NVirt, NSpins, &
 
             TargetErrorLaplace, TargetRelErrorLaplace, TargetErrorRandom, TargetErrorFreq, &
-            TargetRelErrorFreq, RWRBasisType, CumulantApprox, &
+            TargetRelErrorFreq, RWRBasisType, &
             
             ComputeGrids, GridLimitDai, NFreqs, Freqs, FreqWeights, NLaplace, LaplaceX, LaplaceW, &
             daiValues, daiWeights, &
             
             ComputePiUVecs, &
 
-            THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, THC_QRThresh_T2, &
+            THC_Xgp, THC_Zgk, THC_ZgkPiU, THC_BlockDim, &
 
-            SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2)
+            SmallEigenvalsCutoffT2, GuessNVecsT2, MaxBatchDimT2, &
+            T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, &
+            T2CutoffSteepness, T2CutoffCommonThresh, &
+            T2CouplingStrength, T2AuxOrbitals, T2AuxNOCutoffThresh, T2AuxLOCutoffThresh, &
+            PT_Order2, PT_Order3, NaturalOrbitals, NVirtNO, &
+            RPAParams, AOBasis)
 
-            real(F64), dimension(:), intent(inout)                       :: Energy
+            type(TRPAOutput), intent(inout)                              :: RPAOutput
             real(F64), dimension(:, :, :), intent(in)                    :: OccCoeffs_ao
             real(F64), dimension(:, :, :), intent(in)                    :: VirtCoeffs_ao
             real(F64), dimension(:, :), intent(in)                       :: OccEnergies
             real(F64), dimension(:, :), intent(in)                       :: VirtEnergies
+            real(F64), dimension(:), intent(in)                          :: FermiEnergy
             real(F64), dimension(:, :, :), intent(in)                    :: hHF_ao
             integer, dimension(:), intent(in)                            :: NOcc
             integer, dimension(:), intent(in)                            :: NVirt
@@ -2195,7 +2239,6 @@ contains
             real(F64), intent(in)                                        :: TargetErrorFreq
             real(F64), intent(in)                                        :: TargetRelErrorFreq
             integer, intent(in)                                          :: RWRBasisType
-            integer, intent(in)                                          :: CumulantApprox
 
             logical, intent(in)                                          :: ComputeGrids
             logical, intent(in)                                          :: GridLimitDai
@@ -2214,17 +2257,34 @@ contains
             real(F64), dimension(:, :), intent(in)                       :: THC_Zgk
             real(F64), dimension(:, :), allocatable, intent(inout)       :: THC_ZgkPiU
             integer, intent(in)                                          :: THC_BlockDim
-            real(F64), intent(in)                                        :: THC_QRThresh_T2
 
             real(F64), intent(in)                                        :: SmallEigenvalsCutoffT2
             real(F64), intent(in)                                        :: GuessNVecsT2
             integer, intent(in)                                          :: MaxBatchDimT2
 
-            integer :: NAO, NCholesky, NVecsPiU, MaxNai, s
+            real(F64), intent(in)                                        :: T2CutoffThresh
+            integer, intent(in)                                          :: T2CutoffType
+            logical, intent(in)                                          :: T2CutoffSmoothStep
+            real(F64), intent(in)                                        :: T2CutoffSteepness
+            real(F64), intent(inout)                                     :: T2CutoffCommonThresh
+            real(F64), intent(in)                                        :: T2CouplingStrength
+            integer, intent(in)                                          :: T2AuxOrbitals
+            real(F64), intent(in)                                        :: T2AuxNOCutoffThresh
+            real(F64), intent(in)                                        :: T2AuxLOCutoffThresh
+            
+            logical, intent(in)                                          :: PT_Order2
+            logical, intent(in)                                          :: PT_Order3
+
+            real(F64), dimension(:, :, :), allocatable, intent(out)      :: NaturalOrbitals
+            integer, dimension(2), intent(out)                           :: NVirtNO
+            
+            type(TRPAParams), intent(in)                                 :: RPAParams
+            type(TAOBasis), intent(in)                                   :: AOBasis
+
+            integer :: NAO, NCholesky, NVecsPiU, s
             integer :: THC_NGrid
             real(F64), dimension(:, :, :), allocatable :: THC_Xga, THC_Xgi
             real(F64), dimension(:, :, :), allocatable :: Rkai, PiU
-            real(F64), dimension(:, :), allocatable :: hHFai
             real(F64), dimension(:, :), allocatable :: G
             real(F64), dimension(1) :: LowestFreq
             
@@ -2241,7 +2301,7 @@ contains
             THC_NGrid = size(THC_Zgk, dim=1)
             allocate(THC_Xga(THC_NGrid, max(NVirt(1), NVirt(2)), NSpins))
             allocate(THC_Xgi(THC_NGrid, max(NOcc(1), NOcc(2)), NSpins))
-            call rpa_THC_MOTransf(THC_Xga, THC_Xgi, THC_Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)
+            call rpa_THC_MOTransf(THC_Xga, THC_Xgi, THC_Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)            
             if (ComputePiUVecs) then
                   !
                   ! Generate basis for the Pi(u) matrix. In all tests NVecsPiU was just
@@ -2261,21 +2321,15 @@ contains
                   deallocate(G, PiU, Rkai)
             end if
             NVecsPiU = size(THC_ZgkPiU, dim=2)
-            if (CumulantApprox >= RPA_CUMULANT_LEVEL_2_HALF_THC) then
-                  MaxNai = max(NVirt(1)*NOcc(1), NVirt(2)*NOcc(2))
-                  allocate(hHFai(MaxNai, NSpins))
-                  do s = 1, NSpins
-                        call rpa_MeanField_hHFai(hHFai(:, s), hHF_ao(:, :, s), OccCoeffs_ao(:, :, s), &
-                              VirtCoeffs_ao(:, :, s), NOcc(s), NVirt(s), NAO)
-                  end do
-            else
-                  allocate(hHFai(0, 0))
-            end if
-            call rpa_THC_MBPT3(Energy, THC_Xgp, THC_Xga, THC_Xgi, THC_Zgk, THC_ZgkPiU, &
-                  THC_BlockDim, THC_QRThresh_T2, hHFai, &
-                  Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, &
-                  NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
-                  SmallEigenvalsCutoffT2, MaxBatchDimT2, CumulantApprox)
-            Energy(RPA_ENERGY_CORR) = sum(Energy(RPA_CORRELATION_TERMS(1):RPA_CORRELATION_TERMS(2)))
+            call rpa_THC_MBPT3(RPAOutput, THC_Xgp, THC_Xga, THC_Xgi, THC_Zgk, THC_ZgkPiU, &
+                  THC_BlockDim, &
+                  Freqs, FreqWeights, NFreqs, OccEnergies, VirtEnergies, FermiEnergy, &
+                  OccCoeffs_ao, VirtCoeffs_ao, &
+                  hHF_ao, NOcc, NVirt, ceiling(GuessNVecsT2*NVecsPiU), &
+                  SmallEigenvalsCutoffT2, MaxBatchDimT2, &
+                  T2CutoffThresh, T2CutoffType, T2CutoffSmoothStep, T2CutoffSteepness, &
+                  T2CutoffCommonThresh, T2CouplingStrength, T2AuxOrbitals, T2AuxNOCutoffThresh, &
+                  T2AuxLOCutoffThresh, PT_Order2, PT_Order3, &
+                  NaturalOrbitals, NVirtNO, RPAParams, AOBasis)
       end subroutine rpa_THC_Ecorr_1
 end module rpa

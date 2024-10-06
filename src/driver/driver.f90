@@ -15,6 +15,8 @@ program driver
       use sys_definitions
       use scf_definitions
       use rpa_definitions
+      use thc_definitions
+      use TwoStepCholesky_definitions
       use drv_dft
       use drv_dft_rpa
       use drv_dft_disp
@@ -30,6 +32,8 @@ program driver
       type(TSystem) :: System
       type(TSCFParams) :: SCFParams
       type(TRPAParams) :: RPAParams
+      type(TChol2Params) :: Chol2Params
+      type(TTHCParams) :: THCParams
       type(tmolecule) :: geom_a, geom_b, geom_ab
       type(tsystemdep_params) :: par
       integer, parameter :: max_ncells = 10
@@ -66,7 +70,7 @@ program driver
       WORKDIR = dirname(INPUTFILE) // DIRSEP
       JOBTITLE = io_argv(4)
       call io_set_scratchdir(io_argv(2))
-      call read_inputfile(System, SCFParams, RPAParams, INPUTFILE)
+      call read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, INPUTFILE)
       call sys_Init(System, SYS_TOTAL)
       ! ---------------------------------------------------------
       ! Compute spherically-averaged densities of isolated atoms
@@ -106,7 +110,7 @@ program driver
             end do
 
       case (JOB_REAL_UKS_RPA)
-            call task_uks_rpa(System, SCFParams, RPAParams)
+            call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
             
       case (JOB_REAL_UKS_SP)
             call task_dft_UKS(System, SCFParams)

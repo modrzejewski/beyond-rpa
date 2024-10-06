@@ -13,6 +13,8 @@ module parser
       use sys_definitions
       use scf_definitions
       use rpa_definitions
+      use thc_definitions
+      use TwoStepCholesky_definitions
       use Pseudopotential, only: pp_ZNumbers
       use grid_definitions
 
@@ -1084,11 +1086,13 @@ contains
       end function isnew_element
 
 
-      subroutine read_inputfile(System, SCFParams, RPAParams, filename)
-            type(TSystem), intent(out)   :: System
-            type(TSCFParams), intent(out) :: SCFParams
-            type(TRPAParams), intent(out) :: RPAParams
-            character(len=*), intent(in) :: filename
+      subroutine read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, filename)
+            type(TSystem), intent(out)      :: System
+            type(TSCFParams), intent(out)   :: SCFParams
+            type(TRPAParams), intent(out)   :: RPAParams
+            type(TChol2Params), intent(out) :: Chol2Params
+            type(TTHCParams), intent(out)   :: THCParams
+            character(len=*), intent(in)    :: filename
 
             integer :: OldXYZFormat
             character(len=DEFLEN) :: line
@@ -1098,7 +1102,6 @@ contains
             integer :: current_block
             integer :: k, z
             integer :: AtomIdx, ChargeIdx
-            type(TXCDef) :: SelfConsistentXC
             logical :: RPADefined, XYZDefined
             integer, parameter :: block_none = 0
             integer, parameter :: block_auxint = 1
@@ -1168,25 +1171,6 @@ contains
                               error stop
                         end if
                         RPADefined = .true.
-                        !
-                        ! Check if the exchange-correlation model is defined.
-                        ! Enable Cholesky decomposition by default if the xc functional is pure
-                        ! (does not include Hartree-Fock exchange)
-                        !
-                        if (SCFParams%XCFunc == XCF_XC_NONE) then
-                              call msg("Exchange-correlation model needs to be defined before the RPA block", MSG_ERROR)
-                              error stop                              
-                        else
-                              call xcf_define(SelfConsistentXC, SCFParams%XCFunc, AUX_NONE, .false.)
-                              if (.not. SelfConsistentXC%EXX > ZERO) then
-                                    !
-                                    ! Pure xc model set, enable Cholesky decomposition
-                                    ! for the SCF step
-                                    !
-                                    RPAParams%ComputeCholeskyBasis = .false.
-                                    SCFParams%UseCholeskyBasis = .true.
-                              end if
-                        end if
                         current_block = block_RPA
                         cycle lines
                   case ("SCF")
@@ -1258,7 +1242,7 @@ contains
                               end if
                         end if
                   else if (current_block == block_RPA) then
-                        call read_block_RPA(RPAParams, SCFParams, line)
+                        call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
                   else if (current_block == block_SCF) then
                         call read_block_SCF(SCFParams, line)
                   else if (current_block == block_XYZ) then
@@ -1585,6 +1569,14 @@ contains
             !
             if (SCFParams%ECPFile%get_default() == "") then
                   call SCFParams%ECPFile%set_default(SCFParams%AOBasisPath)
+            end if
+            !
+            ! Choose the set of orbitals applied in the RPA calculations.
+            ! This adjustment can only be done once the level of beyond-RPA
+            ! corrections is defined (TheoryLevel).
+            !
+            if (RPADefined) then
+                  call rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
             end if
             !
             ! Update effective nuclear charges if a pseudopotential is defined
@@ -3665,10 +3657,12 @@ contains
       end subroutine read_block_RhoSpher
 
 
-      subroutine read_block_RPA(RPAParams, SCFParams, line)
-            type(TRPAParams), intent(inout) :: RPAParams
-            type(TSCFParams), intent(inout) :: SCFParams
-            character(*), intent(in)        :: Line
+      subroutine read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
+            type(TTHCParams), intent(inout)   :: THCParams
+            character(*), intent(in)          :: Line
             
             character(:), allocatable :: key, val
             real(F64) :: m
@@ -3689,11 +3683,11 @@ contains
             case ("ACCURACY")
                   select case (uppercase(val))
                   case ("DEFAULT")
-                        call rpa_Params_Default(RPAParams)
+                        call rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
                   case ("TIGHT")
-                        call rpa_Params_Tight(RPAParams)
+                        call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
                   case ("LUDICROUS")
-                        call rpa_Params_Ludicrous(RPAParams)
+                        call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
                   case default
                         call msg("Invalid RPA accuracy level", MSG_ERROR)
                         error stop
@@ -3716,7 +3710,7 @@ contains
             case ("RPA+MBPT3", "MBPT3", "RPA+MBPT-3")
                   RPAParams%TensorHypercontraction = .true.
                   RPAParams%CoupledClusters = .true.
-                  RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+                  RPAParams%TheoryLevel = RPA_THEORY_JCTC2023
             case ("RPT2")
                   RPAParams%TensorHypercontraction = .false.
                   RPAParams%CoupledClusters = .true.
@@ -3726,33 +3720,96 @@ contains
                   RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
                   RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
                   RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
+                  RPAParams%TheoryLevel = RPA_THEORY_RPT2
             case ("TENSORHYPERCONTRACTION", "THC", "TENSOR-HYPERCONTRACTION")
                   RPAParams%TensorHypercontraction = .true.
-            case ("THC_QRTHRESH")
+            case ("THC_QRTHRESH", "THCQRTHRESH")
                   read(val, *) m
                   RPAParams%THC_QRThresh = m
-            case ("THC_QRTHRESH_T2")
+            case ("THC_PHISQUAREDTHRESH")
                   read(val, *) m
-                  RPAParams%THC_QRThresh_T2 = m                  
+                  THCParams%PhiSquaredThresh = m
             case ("THC_BLOCKDIM")
                   read(val, *) i
                   RPAParams%THC_BlockDim = i
+                  THCParams%THC_BlockDim = i
             case ("THC_BECKEGRIDKIND")
                   select case (uppercase(val))
                   case ("SG1", "SG-1")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
                   case ("MEDIUM")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
                   case ("FINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
                   case ("XFINE")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
                   case ("THC")
                         RPAParams%THC_BeckeGridKind = BECKE_PARAMS_THC
+                        THCParams%THC_BeckeGridKind = BECKE_PARAMS_THC
                   case default
                         call msg("Unknown grid kind", priority=MSG_ERROR)
                         error stop
                   end select
+            case ("T2AUXORBITALS", "T2-AUXILIARY-ORBITALS", "T2AUXILIARYORBITALS", &
+                  "T2AUXBASIS", "T2-AUXILIARY-BASIS", "T2AUXILIARYBASIS")
+                  
+                  select case (uppercase(val))
+                  case ("MOLECULAR-ORBITALS", "MOLECULARORBITALS", "MO")
+                        RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+                  case ("NATURAL-ORBITALS", "NATURALORBITALS", "NO")
+                        RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+                  case ("LOCALIZED-ORBITALS", "LOCALIZEDORBITALS", "LO")
+                        RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+                  case default
+                        call msg("Invalid value of T2AuxOrbitals", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2AUXNOCUTOFFTHRESH")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%T2AuxNOCutoffThresh = m
+                  else
+                        call msg("Invalid value of T2AuxNOCutoffThresh", MSG_ERROR)
+                        error stop
+                  end if
+            case ("T2AUXLOCUTOFFTHRESH")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%T2AuxLOCutoffThresh = m
+                  else
+                        call msg("Invalid value of T2AuxLOCutoffThresh", MSG_ERROR)
+                        error stop
+                  end if
+            case ("LOCALIZEDORBITALS", "LOCALIZED-ORBITALS", "LOCALIZED_ORBITALS")
+                  select case (uppercase(val))
+                  case ("CHOLESKY")
+                        RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
+                  case ("BOYS")
+                        RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
+                  case default
+                        call msg("Invalid value of LocalizedOrbitals", MSG_ERROR)
+                        error stop
+                  end select
+            case ("CUTOFFTHRESHVABIJ")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%CutoffThreshVabij = m
+                  else
+                        call msg("Invalid value of CutoffThreshVabij", MSG_ERROR)
+                        error stop
+                  end if
+            case ("CUTOFFTHRESHPNO", "TCUTPNO")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%CutoffThreshPNO = m
+                  else
+                        call msg("Invalid value of CutoffThreshPNO", MSG_ERROR)
+                        error stop
+                  end if
             case ("ADIABATIC-CONNECTION", "ADIABATICCONNECTION", "ADIABATIC_CONNECTION", "COUPLEDCLUSTERS", "COUPLED-CLUSTERS")
                   RPAParams%CoupledClusters = .true.
             case ("ACQUADPOINTS")
@@ -3782,32 +3839,75 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
-            case ("CCD-CORRECTIONS", "CCDCORRECTIONS")                  
+            case ("CCD-CORRECTIONS", "CCDCORRECTIONS", "THEORY-LEVEL", "THEORYLEVEL")
+                  RPAParams%TensorHypercontraction = .true.
+                  RPAParams%CoupledClusters = .true.
                   select case (uppercase(val))
-                  case ("LEVEL-0")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_0
-                  case ("LEVEL-1-HALF-THC", "LEVEL-1-HALFTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
-                  case ("LEVEL-1-FULL-THC", "LEVEL-1-FULLTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_FULL_THC
-                  case ("LEVEL-2-HALF-THC", "LEVEL-2-HALFTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_2_HALF_THC
-                  case ("LEVEL-3-HALF-THC", "LEVEL-3-HALFTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_3_HALF_THC
-                  case ("LEVEL-3-FULL-THC", "LEVEL-3-FULLTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_3_FULL_THC
-                  case ("LEVEL-4-HALF-THC", "LEVEL-4-HALFTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_4_HALF_THC
-                  case ("LEVEL-5-HALF-THC", "LEVEL-5-HALFTHC")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
-                  case ("DEFAULT")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+                  case ("RPA", "DIRECT-RING")
+                        RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
+                  case ("RPT2")
+                        RPAParams%TensorHypercontraction = .false.
+                        RPAParams%CoupledClusters = .true.
+                        RPAParams%T1Approx = RPA_T1_MEAN_FIELD
+                        RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
+                        RPAParams%ChiOrbitals = RPA_ORBITALS_CANONICAL
+                        RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
+                        RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
+                        RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
+                        RPAParams%TheoryLevel = RPA_THEORY_RPT2
+                  case ("JCTC2023", "DEFAULT")
+                        RPAParams%TheoryLevel = RPA_THEORY_JCTC2023
+                  case ("JCTC2024")
+                        RPAParams%TheoryLevel = RPA_THEORY_JCTC2024
                   case ("ALL")
-                        RPAParams%CumulantApprox = RPA_CUMULANT_LEVEL_5_HALF_THC
+                        RPAParams%TheoryLevel = RPA_THEORY_ALL
                   case default
-                        call msg("Invalid label of the cumulant approximation", MSG_ERROR)
+                        call msg("Invalid value of TheoryLevel", MSG_ERROR)
                         error stop
                   end select
+            case ("PT2", "PT_ORDER2", "PT-ORDER2", "PT-ORDER-2")
+                  RPAParams%PT_Order2 = .true.
+            case ("PT3", "PT_ORDER3", "PT-ORDER3", "PT-ORDER-3")
+                  RPAParams%PT_Order3 = .true.
+            case ("T2_EIGENVALUETHRESH", "T2_EIGENVALUE_THRESH", "T2-EIGENVALUE-THRESH", "T2EIGENVALUETHRESH", &
+                  "T2_CUTOFFTHRESH", "T2_CUTOFF_THRESH", "T2-CUTOFF-THRESH", "T2CUTOFFTHRESH")
+                  read(val, *) m
+                  RPAParams%T2CutoffThresh = m
+            case ("T2CUTOFFTYPE", "T2_CUTOFF_TYPE", "T2-CUTOFF-TYPE")
+                  select case (uppercase(val))
+                  case ("EIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG
+                  case ("EIG/MAXEIG")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_MAXEIG
+                  case ("EIG/NELECTRON", "EIG/NOCC")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_EIG_DIV_NELECTRON
+                  case ("SUM-REJECTED", "SUM_REJECTED")
+                        RPAParams%T2CutoffType = RPA_T2_CUTOFF_SUM_REJECTED
+                  case default
+                        call msg("Invalid value of T2CutoffThresh", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2CUTOFFSMOOTHSTEP", "T2-CUTOFF-SMOOTH-STEP")
+                  select case (uppercase(val))
+                  case ("", "TRUE", "ENABLED")
+                        RPAParams%T2CutoffSmoothStep = .true.
+                  case ("FALSE", "DISABLED")
+                        RPAParams%T2CutoffSmoothStep = .false.
+                  case default
+                        call msg("Invalid value of T2CutoffSmoothStep", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2CUTOFFSTEEPNESS")
+                  read(val, *) m
+                  if (m >= ZERO) then 
+                        RPAParams%T2CutoffSteepness = m
+                  else
+                        call msg("Invalid value of T2CutoffSteepness", MSG_ERROR)
+                        error stop
+                  end if
+            case ("T2COUPLINGSTRENGTH")
+                  read(val, *) m
+                  RPAParams%T2CouplingStrength = m
             case ("MEANFIELDPARTITIONING")
                   select case (uppercase(val))
                   case ("KS-TYPE", "KS", "KOHN-SHAM", "LINEAR-SWITCHING")
@@ -3856,6 +3956,24 @@ contains
                         call msg("Invalid value of T2Interp", MSG_ERROR)
                         error stop
                   end select
+            case ("T2ADAPTIVECUTOFF")
+                  select case (uppercase(val))
+                  case ("TRUE", "ENABLE", "ENABLED", "")
+                        RPAParams%T2AdaptiveCutoff = .true.
+                  case ("FALSE", "DISABLE", "DISABLED")
+                        RPAParams%T2AdaptiveCutoff = .false.                        
+                  case default
+                        call msg("Invalid value of T2AdaptiveCutoff", MSG_ERROR)
+                        error stop
+                  end select
+            case ("T2ADAPTIVECUTOFFTARGETKCAL")
+                  read(val, *) m
+                  if (m >= ZERO) then 
+                        RPAParams%T2AdaptiveCutoffTargetKcal = m
+                  else
+                        call msg("Invalid value of T2AdaptiveCutoffTargetKcal", MSG_ERROR)
+                        error stop
+                  end if
             case ("EC1RDMAPPROX", "EC1RDM-APPROX", "EC1RDM-APPROXIMATION")
                   select case (uppercase(val))
                   case ("LINEAR")
@@ -3910,18 +4028,6 @@ contains
                         call msg("Invalid value of SinglesCorrection", MSG_ERROR)
                         error stop
                   end select
-            case ("CHOLESKY")
-                  select case (uppercase(val))
-                  case ("RPA-ONLY")
-                        RPAParams%ComputeCholeskyBasis = .true.
-                        SCFParams%UseCholeskyBasis = .false.
-                  case ("FULL")
-                        RPAParams%ComputeCholeskyBasis = .false.
-                        SCFParams%UseCholeskyBasis = .true.
-                  case default
-                        call msg("Invalid value of Cholesky", MSG_ERROR)
-                        error stop
-                  end select
             case ("GRIDLIMITDAI")
                   select case (uppercase(val))
                   case ("TRUE", "")
@@ -3946,6 +4052,7 @@ contains
             case ("CHOLESKYTAUTHRESH", "CHOLESKYTAUTHRESHOLD")
                   read(val, *) m
                   RPAParams%CholeskyTauThresh = m
+                  Chol2Params%CholeskyTauThresh = m
             case ("TARGETERRORFREQ")
                   read(val, *) m
                   RPAParams%TargetErrorFreq = m
@@ -3964,6 +4071,7 @@ contains
             case ("MAXBLOCKDIM")
                   read(val, *) i
                   RPAParams%MaxBlockDim = i
+                  Chol2Params%MaxBlockDim = i
             case default
                   call msg("Unknown keyword in RPA block: " // key, MSG_ERROR)
                   stop
@@ -4092,6 +4200,18 @@ contains
                         call msg("Invalid asymptotic correction", MSG_ERROR)
                         error stop
                   end select
+            case ("ALGORITHM", "ERI_ALGORITHM", "ERI-ALGORITHM")
+                  select case (uppercase(val))
+                  case ("THC", "TENSORHYPERCONTRACTION", "TENSOR-HYPERCONTRACTION", "TENSOR_HYPERCONTRACTION")
+                        SCFParams%ERI_Algorithm = SCF_ERI_THC
+                  case ("CHOLESKY")
+                        SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+                  case ("EXACT")
+                        SCFParams%ERI_Algorithm = SCF_ERI_EXACT
+                  end select
+            case ("THC_QRTHRESH", "THCQRTHRESH")
+                  read(val, *) a
+                  SCFParams%THC_QRThresh = a
             case ("ASYMPVXCOMEGA")
                   read(val, *) a
                   if (a > ZERO) then
@@ -4134,6 +4254,8 @@ contains
                         call msg("Invalid value of SpherAO", MSG_ERROR)
                         error stop
                   end select
+            case default
+                  call msg("Invalid keyword: " // key)
             end select
       end subroutine read_block_SCF
       

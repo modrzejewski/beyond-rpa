@@ -1,8 +1,26 @@
 module rpa_definitions
       use arithmetic
       use grid_definitions
+      use scf_definitions
+      use TwoStepCholesky_definitions
       
       implicit none
+      !
+      ! Auxiliary orbital basis used to transform the RPA amplitudes
+      !
+      integer, parameter :: RPA_AUX_MOLECULAR_ORBITALS = 0
+      integer, parameter :: RPA_AUX_NATURAL_ORBITALS = 1
+      !
+      ! Localization algorithm for occupied orbitals
+      !
+      integer, parameter :: RPA_LOCALIZED_ORBITALS_BOYS = 0
+      integer, parameter :: RPA_LOCALIZED_ORBITALS_CHOLESKY = 1
+      !
+      ! Form of the RPA doubles amplitudes: decomposed into eigenvectors
+      ! or tensor hypercontraction matrices. 
+      !
+      integer, parameter :: RPA_T2_DECOMPOSITION_EIGENVECS = 0
+      integer, parameter :: RPA_T2_DECOMPOSITION_THC = 1
       !
       ! Mean-field part of the adiabatic connection hamiltonian
       ! ---
@@ -115,9 +133,17 @@ module rpa_definitions
       integer, parameter :: RPA_SINGLES_KLIMES = 1
       integer, parameter :: RPA_SINGLES_REN = 2
       ! ---------------------------------------------------------
+      ! Algorithms used to cutoff T2 eigenvectors corresponding
+      ! to small eigenvalues
+      ! ---------------------------------------------------------
+      integer, parameter :: RPA_T2_CUTOFF_EIG = 0
+      integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_MAXEIG = 1
+      integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_NELECTRON = 2
+      integer, parameter :: RPA_T2_CUTOFF_SUM_REJECTED = 3
+      ! ---------------------------------------------------------
       !         RPA and beyond-RPA energy components
-      !----------------------------------------------------------
-      integer, parameter :: RPA_ENERGY_NCOMPONENTS = 36 ! includes some unused fields
+      !----------------------------------------------------------      
+      integer, parameter :: RPA_ENERGY_NCOMPONENTS = 100 ! includes some unused fields
       !
       ! Total energy of the SCF step preceeding RPA calculations
       !
@@ -169,12 +195,14 @@ module rpa_definitions
       ! ------------------------------------------------------------------
       integer, parameter :: RPA_ENERGY_DIRECT_RING = 20
       integer, parameter :: RPA_ENERGY_CUMULANT_1B = 21
+      integer, parameter :: RPA_ENERGY_CUMULANT_SOSEX = 21
       integer, parameter :: RPA_ENERGY_CUMULANT_2B = 22
       integer, parameter :: RPA_ENERGY_CUMULANT_2C = 23
       integer, parameter :: RPA_ENERGY_CUMULANT_2D = 24
       integer, parameter :: RPA_ENERGY_CUMULANT_2E = 25
       integer, parameter :: RPA_ENERGY_CUMULANT_2F = 26      
       integer, parameter :: RPA_ENERGY_CUMULANT_2G = 27
+      integer, parameter :: RPA_ENERGY_CUMULANT_PH3 = 27
       integer, parameter :: RPA_ENERGY_CUMULANT_2H = 28
       integer, parameter :: RPA_ENERGY_CUMULANT_2I = 29
       integer, parameter :: RPA_ENERGY_CUMULANT_2J = 30
@@ -184,18 +212,41 @@ module rpa_definitions
       integer, parameter :: RPA_ENERGY_CUMULANT_2N = 34
       integer, parameter :: RPA_ENERGY_CUMULANT_2O = 35
       integer, parameter :: RPA_ENERGY_CUMULANT_2P = 36
-
+      
       integer, dimension(2), parameter :: RPA_CORRELATION_TERMS = [RPA_ENERGY_DIRECT_RING, RPA_ENERGY_CUMULANT_2P]
-
-      integer, parameter :: RPA_CUMULANT_LEVEL_0 = 0          ! RPA
-      integer, parameter :: RPA_CUMULANT_LEVEL_1_HALF_THC = 1 ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_CUMULANT_LEVEL_1_FULL_THC = 2 ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_CUMULANT_LEVEL_2_HALF_THC = 3 ! RPA + 1b (SOSEX) + 2g + 2m + 2n + 2o + 2p
-      integer, parameter :: RPA_CUMULANT_LEVEL_3_HALF_THC = 4 ! RPA + 1b (SOSEX) + 2g + 2b + 2c
-      integer, parameter :: RPA_CUMULANT_LEVEL_3_FULL_THC = 5 ! RPA + 1b (SOSEX) + 2g + 2b + 2c
-      integer, parameter :: RPA_CUMULANT_LEVEL_4_HALF_THC = 6 ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2e + 2h + 2k
-      integer, parameter :: RPA_CUMULANT_LEVEL_4_FULL_THC = 7 ! RPA + 1b (SOSEX) + 2g + 2b + 2c + 2e + 2h + 2k
-      integer, parameter :: RPA_CUMULANT_LEVEL_5_HALF_THC = 8
+      !
+      ! Diagnostics
+      !
+      integer, parameter :: RPA_ENERGY_T2_DIRECT_RING = 50  ! EcRPA with T2 decomposed into eigenvectors
+      integer, parameter :: RPA_ENERGY_PNO_DIRECT_RING = 49 ! EcRPA with approximate T2 in the PNO basis
+      
+      ! -------------------------------------------------------------------
+      ! Perturbation theory contributions
+      ! Slow implementation, should be used only for testing
+      ! -------------------------------------------------------------------            
+      integer, parameter :: MP2_ENERGY_SINGLET_PAIR = 50
+      integer, parameter :: MP2_ENERGY_TRIPLET_PAIR = 51
+      integer, parameter :: MP2_ENERGY_DIRECT       = 52
+      integer, parameter :: MP2_ENERGY_TOTAL        = 53
+      integer, parameter :: MP3_ENERGY_A            = 54
+      integer, parameter :: MP3_ENERGY_B            = 55
+      integer, parameter :: MP3_ENERGY_C            = 56
+      integer, parameter :: MP3_ENERGY_D            = 57
+      integer, parameter :: MP3_ENERGY_E            = 58
+      integer, parameter :: MP3_ENERGY_F            = 59
+      integer, parameter :: MP3_ENERGY_G            = 60
+      integer, parameter :: MP3_ENERGY_H            = 61
+      integer, parameter :: MP3_ENERGY_I            = 62
+      integer, parameter :: MP3_ENERGY_J            = 63
+      integer, parameter :: MP3_ENERGY_K            = 64
+      integer, parameter :: MP3_ENERGY_L            = 65
+      integer, parameter :: MP3_ENERGY_TOTAL        = 66
+      
+      integer, parameter :: RPA_THEORY_DIRECT_RING = 0        ! RPA
+      integer, parameter :: RPA_THEORY_RPT2        = 1        ! RPA + SOSEX + singles correction (Ren et al.)
+      integer, parameter :: RPA_THEORY_JCTC2023    = 2        ! RPA + 1b (SOSEX) + 2g
+      integer, parameter :: RPA_THEORY_JCTC2024    = 3        ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
+      integer, parameter :: RPA_THEORY_ALL         = 4        ! all third-order corrections
       
       type TRPAParams
             logical :: MOAlgorithm = .true.
@@ -215,7 +266,7 @@ module rpa_definitions
             ! Eq. 17 in J. Chem. Phys. 150, 194112 (2019);
             ! doi: 10.1063/1.5083802
             !
-            real(F64) :: CholeskyTauThresh = 1.0E-7_F64
+            real(F64) :: CholeskyTauThresh = 1.0E-5_F64
             !
             ! Accuracy threshold for the numerical grid optimization
             ! for the Laplace transform of dai/(dai**2+u**2)
@@ -272,7 +323,7 @@ module rpa_definitions
             !
             ! Type of vectors used for the effective dielectric matrix
             !
-            integer :: RWRBasisType = RPA_BASIS_RANDOM
+            integer :: RWRBasisType = RPA_BASIS_EIGEN
             !
             ! Maximum size of a block of the matrix W(pq,rs). W is partitioned into blocks,
             ! which are then passed to the matrix multiplication subroutine to compute
@@ -282,6 +333,11 @@ module rpa_definitions
             ! yields better shared-memory parallel computation of W(pq,rs) within each block.
             ! 
             integer :: MaxBlockDim = 4000
+            !
+            ! Block size of Cholesky vectors used during the two-step Cholesky
+            ! factorization
+            !
+            integer :: CholVecsBlock = 500
             !
             ! Maximum size of a single batch of T2 eigenvectors processed at the same time.
             ! See the algorithm used for the diagonalization of the T2 amplitude matrix.
@@ -310,12 +366,12 @@ module rpa_definitions
             ! Set to true if the Cholesky vectors aren't
             ! already computed at the SCF step.
             !
-            logical :: ComputeCholeskyBasis = .true.
+            logical :: ComputeCholeskyBasis = .false.
             !
             ! Correction for non-constant density along
             ! the adiabatic connection
             !
-            logical :: CoupledClusters = .false.
+            logical :: CoupledClusters = .true.
             !
             ! Number of points of the Gauss-Legendre quadrature
             ! used for the adiabatic connection integral on the (0,1)
@@ -387,18 +443,65 @@ module rpa_definitions
             !    J. Chem. Theory Comput. 16, 1382 (2020);
             !    doi: 10.1021/acs.jctc.9b01205 
             !
-            logical :: TensorHypercontraction = .false.
+            logical :: TensorHypercontraction = .true.
             integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
+            !
+            ! THC decomposition threshold for RPA. This can differ
+            ! from the THC threshold for the SCF step.
+            !
             real(F64) :: THC_QRThresh = 1.0E-3_F64
-            real(F64) :: THC_QRThresh_T2 = 1.0E-5_F64
             integer   :: THC_BlockDim = 500
-            integer :: CumulantApprox = RPA_CUMULANT_LEVEL_1_HALF_THC
+            integer :: TheoryLevel = RPA_THEORY_JCTC2024
             !
             ! Use numerical integration to evaluate Ec1RDMQuad.
             ! If false, the integrand is evaluated only at Lambda=1
             ! with weight equal to 1.
             !
             logical :: AC_1RDMQuad = .false.
+            !
+            ! Perturbation theory terms: MP2 and MP3
+            !
+            logical :: PT_Order2 = .false.
+            logical :: PT_Order3 = .false.
+            !
+            ! Removal of small eigenvalues of T2
+            !
+            real(F64) :: T2CutoffThresh = 1.0E-4_F64
+            integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
+            logical :: T2CutoffSmoothStep = .false.
+            real(F64) :: T2CutoffSteepness = 0.1_F64
+            !
+            ! Coupling strength Lambda passed to the T2 solver.
+            ! A value different from 1.0 should be used only
+            ! for debugging.
+            !
+            real(F64) :: T2CouplingStrength = 1.0_F64
+            logical :: T2AdaptiveCutoff = .false.
+            real(F64) :: T2AdaptiveCutoffTargetKcal = 0.05_F64
+            !
+            ! Transformation of the RPA amplitudes to an auxiliary basis
+            !
+            integer :: T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+            real(F64) :: T2AuxNOCutoffThresh = 1.0E-8_F64
+            real(F64) :: T2AuxLOCutoffThresh = 0.0_F64
+            real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
+            logical :: ComputeNaturalOrbitals = .false.
+            !
+            ! Localized occupied orbitals
+            !
+            integer :: LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
+            real(F64) :: LocCholeskyLinDepThresh = 1.0E-6_F64
+            real(F64) :: LocBoysConvergenceThresh = 1.0E-5_F64
+            integer   :: LocBoysMaxNIters = 300
+            real(F64) :: CutoffThreshVabij = 1.0E-6_F64
+            real(F64) :: CutoffThreshPNO = 1.0E-5_F64
+            !
+            ! Refinement of approximate Hartree-Fock orbitals and
+            ! orbital energies. The refinement subroutine is applied
+            ! prior to the correlation energy calculation if the SCF
+            ! was computed with the tensor-hypercontraction algorithm.
+            !
+            real(F64) :: HFRefineLinDepThresh = 1.0E-6_F64
       end type TRPAParams
 
       type TRPAGrids
@@ -441,26 +544,127 @@ module rpa_definitions
             integer, dimension(2) :: NOcc = 0
             integer, dimension(2) :: NVirt = 0
       end type TMeanField
+
+      type TRPAOutput
+            !
+            ! Single-point energy components
+            !
+            real(F64), dimension(RPA_ENERGY_NCOMPONENTS) :: Energy
+            !
+            ! Energy components resolved into contributions from
+            ! the eigenvectors of
+            !
+            ! T2(ai,bj) = Sum(mu=1,...,NVecsT2) U(ai,mu) * U(bj,mu) * A(mu)
+            !
+            ! For example,
+            !
+            ! EigRPA(mu) = 2 * Sum(ai,bj) U(ai,mu) (ai|bj) U(bj,mu) A(mu)
+            !
+            integer :: NVecsT2
+            real(F64), dimension(:), allocatable :: Am
+            real(F64), dimension(:), allocatable :: EigRPA
+            real(F64), dimension(:), allocatable :: EigSOSEX
+            real(F64), dimension(:), allocatable :: Eig2g
+            real(F64), dimension(:, :, :), allocatable :: NaturalOrbitals
+      end type TRPAOutput
       
 contains
 
-      subroutine rpa_Params_Default(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(in)      :: SCFParams
 
-            p%TargetErrorRandom = min(sqrt(1.0E-5_F64), p%TargetErrorRandom)
+            select case (RPAParams%TheoryLevel)
+            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023, RPA_THEORY_RPT2)
+                  RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+            case (RPA_THEORY_JCTC2024, RPA_THEORY_ALL)
+                  if (SCFParams%XCFunc == XCF_HF) then
+                        RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+                  else
+                        call msg("Selected TheoryLevel can only be applied with HF orbitals", MSG_ERROR)
+                        error stop
+                  end if
+            end select
+      end subroutine rpa_Params_ChooseOrbitals
+
+      
+      subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
+
+            RPAParams%TargetErrorRandom = sqrt(1.0E-5_F64)
+            RPAParams%T2CutoffThresh = 1.0E-5_F64
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-9_F64
+            RPAParams%CutoffThreshPNO = 1.0E-6_F64
+            RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+            SCFParams%THC_QRThresh = 1.0E-4_F64
+            RPAParams%THC_QRThresh = 1.0E-3_F64
+            !
+            ! If the THC Coulomb integrals are used,
+            ! an aggressive removal of linear dependencies
+            ! is required for SCF convergence.
+            !
+            ! The error due to to the removal
+            ! of basis vectors is corrected in the post-SCF
+            ! step by a recomputation of the Fock hamiltonian
+            ! with accurate integrals. This crucial step
+            ! improves both the mean-field component of the
+            ! energy and the orbitals that go to
+            ! the correlation energy.
+            !
+            SCFParams%LinDepThresh = 1.0E-5_F64
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-5_F64
       end subroutine rpa_Params_Default
 
       
-      subroutine rpa_Params_Tight(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
 
-            p%TargetErrorRandom = min(sqrt(1.0E-7_F64), p%TargetErrorRandom)
+            RPAParams%TargetErrorRandom = sqrt(1.0E-7_F64)
+            RPAParams%T2CutoffThresh = 1.0E-6_F64
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
+            RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
+            RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+            SCFParams%THC_QRThresh = 1.0E-4_F64
+            RPAParams%THC_QRThresh = 1.0E-3_F64
+            SCFParams%LinDepThresh = 1.0E-5_F64
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-6_F64
       end subroutine rpa_Params_Tight
 
 
-      subroutine rpa_Params_Ludicrous(p)
-            type(TRPAParams), intent(inout) :: p
+      subroutine rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+            type(TRPAParams), intent(inout)   :: RPAParams
+            type(TSCFParams), intent(inout)   :: SCFParams
+            type(TChol2Params), intent(inout) :: Chol2Params
 
-            p%TargetErrorRandom = min(1.0E-5_F64, p%TargetErrorRandom)
+            RPAParams%TargetErrorRandom = 1.0E-5_F64
+            RPAParams%T2CutoffThresh = 1.0E-6_F64
+            RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
+            RPAParams%CutoffThreshPNO = 1.0E-7_F64
+            RPAParams%CutoffThreshVabij = ZERO
+            RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
+            !
+            ! QRThresh for THC integrals used in the post-SCF step
+            ! is tightened to 1.0E-4 to improve accuracy when
+            ! the energy difference involves nonidentical sets of
+            ! THC vectors. In such cases, one can no longer count on
+            ! a near-perfect cancellation of errors as in noncovalent
+            ! energies. Tested example: geometry relaxation of
+            ! crystalline benzene. QRThresh=1.0E-4 results in the same
+            ! EcRPA and EcSOSEX as in the variant without THC.
+            !
+            RPAParams%THC_QRThresh = 1.0E-4_F64
+            SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+            SCFParams%ConvThreshRho = 1.0E-6_F64
+            Chol2Params%CholeskyTauThresh = 1.0E-7_F64
       end subroutine rpa_Params_Ludicrous
 end module rpa_definitions

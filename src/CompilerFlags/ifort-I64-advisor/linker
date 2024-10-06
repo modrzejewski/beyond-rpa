@@ -1,1 +1,1 @@
-ifort -g -O3 -xHost -no-prec-div -i8 -qopenmp -qmkl -coarray -o
+ifx -g -O3 -xHost -no-prec-div -i8 -qopenmp -qmkl -coarray -o

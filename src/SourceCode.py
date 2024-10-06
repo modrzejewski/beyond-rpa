@@ -43,12 +43,13 @@ FileList += [("DFT", ["common/string.f90",
                       "common/qnewton.f90",
                       "common/gaussquad.f90",
                       "integrals/grid/grid_definitions.f90",
-                      "integrals/THC/thc_definitions.f90"])]
+                      "integrals/Cholesky/TwoStepCholesky_definitions.f90"])]
+FileList += [("DFT", ["integrals/THC/thc_definitions.f90"])]
 FileList += [("DFT", ["common/display.f90"])]
 FileList += [("DFT", ["common/journal.f90"])]
 FileList += [("DFT", ["common/h_xcfunc.f90"])]
-FileList += [("DFT", ["scf/scf_definitions.f90",
-                      "rpa/rpa_definitions.f90"])]
+FileList += [("DFT", ["scf/scf_definitions.f90"])]
+FileList += [("DFT", ["rpa/rpa_definitions.f90"])]
 FileList += [("DFT", ["common/gparam.f90"])]
 FileList += [("DFT", ["common/io.f90",
                       "common/periodic.f90",
@@ -413,13 +414,18 @@ FileList += [("DFT", ["integrals/OverlapIntegrals.f90"])]
 FileList += [("DFT", ["integrals/sphergto.f90"])]
 FileList += [("DFT", ["integrals/basis_sets.f90"])]
 FileList += [("DFT", ["integrals/ECP/PseudopotentialData.f90"])]
-FileList += [("DFT", ["integrals/ParallelCholesky.f90",
+
+FileList += [("DFT", ["integrals/Cholesky/ParallelCholesky.f90",
                       "integrals/ECP/Pseudopotential.f90",
                       "integrals/OneElectronInts.f90",
-                      "integrals/grid/GridFunctions.f90"])]
+                      "integrals/grid/GridFunctions.f90",
+                      "integrals/Cholesky/TwoStepCholesky_Step1.f90",
+                      "integrals/Cholesky/TwoStepCholesky_Step2.f90"])]
+FileList += [("DFT", ["integrals/Cholesky/TwoStepCholesky.f90"])]
 FileList += [("DFT", ["integrals/grid/BeckeGrid.f90"])]
 FileList += [("DFT", ["integrals/ECP/SOPseudopotential.f90",
-                      "integrals/THC/TensorHypercontraction.f90"])]
+                      "integrals/THC/TensorHypercontraction.f90",
+                      "integrals/Multipoles.f90"])]
 # ---------------------------------------------------
 # End of two-electron integrals
 # ---------------------------------------------------
@@ -514,7 +520,8 @@ FileList += [("DFT", ["hamiltonian/Exchange.f90",
                       "hamiltonian/KohnShamGGA.f90",
                       "hamiltonian/KohnShamMGGA.f90",
                       "hamiltonian/CholeskyCoulomb.f90",
-                      "hamiltonian/CholeskyExchange.f90"])]
+                      "hamiltonian/CholeskyExchange.f90",
+                      "hamiltonian/THCFock.f90"])]
 FileList += [("DFT", ["hamiltonian/Fock.f90",
                       "hamiltonian/KohnSham.f90",
                       "hamiltonian/CholeskyFock.f90"])]
@@ -538,12 +545,16 @@ FileList += [("DFT", ["rpa/GaussPRNG.f90",
                       "rpa/OrbDiffHist.f90"])]
 FileList += [("DFT", ["rpa/rpa_core.f90",
                       "rpa/rpa_core_SpinUnres.f90",
-                      "rpa/rpa_core_MO.f90"])]
+                      "rpa/rpa_core_MO.f90",
+                      "rpa/rpa_Orbitals.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC_Singles.f90",
                       "rpa/rpa_CC_Doubles.f90",
                       "rpa/rpa_CC_Exchange.f90",
                       "rpa/rpa_MeanField.f90",
-                      "rpa/rpa_CCD_Corrections_Experimental.f90"])]
+                      "rpa/rpa_CCD_Corrections_Experimental.f90",
+                      "rpa/rpa_JCTC2024.f90",
+                      "rpa/rpa_CCS_Corrections.f90",
+                      "rpa/rpa_PT_Terms.f90"])]
 FileList += [("DFT", ["rpa/rpa_CCD_Corrections.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC_1RDM.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC.f90"])]

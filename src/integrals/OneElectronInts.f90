@@ -7,6 +7,8 @@ module OneElectronInts
       use basis_sets
       use sys_definitions
       use display
+      use real_linalg
+      use sphergto
 
       implicit none
 
@@ -815,7 +817,7 @@ contains
             integer :: Lb, Nb, b0, b1
             integer :: i, j
             integer :: Lab, Nab
-            real(F64), dimension(3) :: Ra, Rb, Rp, Rc, Rpa, Rpb, Rpc, Rab
+            real(F64), dimension(3) :: Ra, Rb, Rp, Rc, Rpa, Rpb, Rab
             real(F64) :: Prefactor, AlphaA, AlphaB, AlphaAB, Mu
             integer, parameter :: MaxNFunc = ((AUTO2E_MAXL + 1) * (AUTO2E_MAXL + 2)) / 2
             real(F64), dimension(MaxNFunc**2) :: Tab
@@ -852,7 +854,7 @@ contains
                   !$omp private(i, j) &
                   !$omp private(Lab, Nab, AlphaAB) &
                   !$omp private(Tab) &
-                  !$omp private(Rp, Rc, Rpa, Rpb, Rpc, Rab) &
+                  !$omp private(Rp, Rc, Rpa, Rpb, Rab) &
                   !$omp shared(T) &
                   !$omp default(shared)
                   !$omp do schedule(dynamic)
@@ -908,4 +910,49 @@ contains
                   !$omp end parallel
             end associate
       end subroutine ints1e_Kinetic
+
+
+      subroutine ints1e_S(S, AOBasis)
+            !
+            ! Overlap matrix of spherical Gaussian atomic orbitals.
+            ! Both upper and lower triangles of the output matrix
+            ! are filled with data.
+            !
+            real(F64), dimension(:, :), intent(out) :: S
+            type(TAOBasis), intent(in)              :: AOBasis
+
+            real(F64), dimension(:, :), allocatable :: S_cao
+            integer :: NAOCart
+
+            NAOCart = AOBasis%NAOCart
+            allocate(S_cao(NAOCart, NAOCart))
+            call ints1e_OverlapMatrix(S_cao, AOBasis)
+            call real_smfill(S_cao)
+            call ints1e_SpherAOTransf(S, S_cao, AOBasis)
+      end subroutine ints1e_S
+
+      
+      subroutine ints1e_SpherAOTransf(X_sao, X_cao, AOBasis)
+            real(F64), dimension(:, :), intent(out) :: X_sao
+            real(F64), dimension(:, :), intent(in)  :: X_cao
+            type(TAOBasis), intent(in)              :: AOBasis
+
+            integer :: NAOSpher, NAOCart
+            real(F64), dimension(:), allocatable :: TransfWork
+            
+            NAOSpher = AOBasis%NAOSpher
+            NAOCart = AOBasis%NAOCart
+            allocate(TransfWork(NAOSpher*NAOCart))
+            call SpherGTO_TransformMatrix_U(X_sao, X_cao, &
+                  AOBasis%LmaxGTO, &
+                  AOBasis%NormFactorsSpher, &
+                  AOBasis%NormFactorsCart, &
+                  AOBasis%ShellLocSpher, &
+                  AOBasis%ShellLocCart, &
+                  AOBasis%ShellMomentum, &
+                  AOBasis%ShellParamsIdx, &
+                  AOBasis%NAOSpher, &
+                  AOBasis%NAOCart, &
+                  AOBasis%NShells, TransfWork)
+      end subroutine ints1e_SpherAOTransf
 end module OneElectronInts

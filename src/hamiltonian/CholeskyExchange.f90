@@ -2,7 +2,7 @@ module CholeskyExchange
       use arithmetic
       use math_constants
       use real_linalg
-      use ParallelCholesky
+      use TwoStepCholesky_definitions
       use basis_sets
 
       implicit none
@@ -144,7 +144,7 @@ contains
             integer :: i, kappa
 
             do ShAB = SubsetBounds(1), SubsetBounds(2)
-                  LocAB = ShellPairLoc(SUBSET_STORAGE, ShAB)
+                  LocAB = ShellPairLoc(CHOL2_SUBSET_STORAGE, ShAB)
 
                   ShA = ShellPairs(1, ShAB)
                   ShellParamsA = ShellParamsIdx(ShA)
@@ -378,7 +378,7 @@ contains
             integer, dimension(2), intent(in)            :: NOcc
             type(TAOBasis), intent(in)                   :: AOBasis
             real(F64), dimension(:, :, :), intent(in)    :: Rkpq
-            type(TCholeskyBasis), intent(in)             :: CholeskyBasis
+            type(TChol2Vecs), intent(in)                 :: CholeskyBasis
             integer, intent(in)                          :: MaxBufferDimMB
             integer, intent(in)                          :: TargetBlockDim
             real(F64), intent(in)                        :: KScal

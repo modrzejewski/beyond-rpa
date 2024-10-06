@@ -511,6 +511,80 @@ contains
       end subroutine sys_NuclearRepulsion
 
 
+      subroutine sys_NuclearMultipoles(Dx, Dy, Dz, Qyx, Qzx, &
+            Qzy, Qxx, Qyy, Qzz, Rc, System)
+            
+            real(F64), intent(out)    :: Dx, Dy, Dz
+            real(F64), intent(out)    :: Qyx, Qzx, Qzy, Qxx, Qyy, Qzz
+            real(F64), dimension(3)   :: Rc
+            type(TSystem), intent(in) :: System
+
+            integer :: s, p0, p1, p
+            integer :: Z
+            real(F64), dimension(3) :: Rp, Rpc
+
+            Dx = ZERO
+            Dy = ZERO
+            Dz = ZERO
+            Qyx = ZERO
+            Qzx = ZERO
+            Qzy = ZERO
+            Qxx = ZERO
+            Qyy = ZERO
+            Qzz = ZERO
+            do s = 1, 2
+                  if (System%RealAtoms(2, s) >= System%RealAtoms(1, s)) then
+                        p0 = System%RealAtoms(1, s)
+                        p1 = System%RealAtoms(2, s)
+                        do p = p0, p1
+                              if (System%ECPCharges) then
+                                    Z = System%ZNumbersECP(p) 
+                              else
+                                    Z = System%ZNumbers(p)
+                              end if
+                              Rp(:) = System%AtomCoords(:, p)
+                              Rpc(:) = Rp(:) - Rc(:)
+                              Dx = Dx + Rpc(1) * Z
+                              Dy = Dy + Rpc(2) * Z
+                              Dz = Dz + Rpc(3) * Z
+                              Qyx = Qyx + Rpc(1)*Rpc(2) * Z
+                              Qzx = Qzx + Rpc(1)*Rpc(3) * Z
+                              Qzy = Qzy + Rpc(2)*Rpc(3) * Z
+                              Qxx = Qxx + Rpc(1)**2 * Z
+                              Qyy = Qyy + Rpc(2)**2 * Z
+                              Qzz = Qzz + Rpc(3)**2 * Z
+                        end do
+                  end if
+            end do
+      end subroutine sys_NuclearMultipoles
+
+
+      subroutine sys_ChargeCenter(Rc, System)
+            real(F64), dimension(3), intent(out) :: Rc
+            type(TSystem), intent(in)            :: System
+
+            integer :: SumZ, Z
+            integer :: s, p, p0, p1
+
+            Rc = ZERO
+            SumZ = System%NElectrons + System%Charge
+            do s = 1, 2
+                  if (System%RealAtoms(2, s) >= System%RealAtoms(1, s)) then
+                        p0 = System%RealAtoms(1, s)
+                        p1 = System%RealAtoms(2, s)
+                        do p = p0, p1
+                              if (System%ECPCharges) then
+                                    Z = System%ZNumbersECP(p) 
+                              else
+                                    Z = System%ZNumbers(p)
+                              end if
+                              Rc(:) = Rc(:) + real(Z, F64)/SumZ * System%AtomCoords(:, p)
+                        end do
+                  end if
+            end do
+      end subroutine sys_ChargeCenter
+
+      
       subroutine sys_Read_XYZ(System, FilePath, Units)
             type(TSystem), intent(out)    :: System
             character(*), intent(in)      :: FilePath

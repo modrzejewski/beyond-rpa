@@ -6,6 +6,12 @@ module scf_definitions
       
       implicit none
       !
+      ! Algorithm employed for the electron repulsion integrals
+      !
+      integer, parameter :: SCF_ERI_EXACT = 0
+      integer, parameter :: SCF_ERI_CHOLESKY = 1
+      integer, parameter :: SCF_ERI_THC = 2
+      !
       ! Methods of generating zeroth-iteration molecular orbitals
       ! ---
       ! Method 1: Compute eigenvectors of bare-nuclei Hamiltonian, that is,
@@ -121,7 +127,7 @@ module scf_definitions
             ! Transformation matrices for transforming the AO indices from the orthogonal AO basis
             ! (OAO) to the basis of Cartesian atomic orbitals (CAO) and spherical atomic orbitals (SAO):
             ! C_cao <- MOBasisVecsCart*C_oao
-            ! C_sao <- MOBasisVecsSpher*C_sao
+            ! C_sao <- MOBasisVecsSpher*C_oao
             ! MOBasisVecsSpher is defined only if the atomic basis set definition has spherical
             ! harmonics enabled.
             !
@@ -260,7 +266,7 @@ module scf_definitions
             ! ----------------------------------------------------
             ! SCF convergence thresholds
             ! ----------------------------------------------------
-            real(F64) :: ConvThreshRho = 2.0E-5_F64
+            real(F64) :: ConvThreshRho = 1.0E-6_F64
             real(F64) :: ConvThreshGrad = 2.0E-5_F64
             !
             ! Threshold for removing small eigenvalues from
@@ -273,12 +279,30 @@ module scf_definitions
             ! Kohn-Sham Coulomb (J) and (K) matrices.
             ! ----------------------------------------------------
             real(F64) :: ThreshFockJK = 1.0E-11_F64
-            
+            !
+            ! Algorithm for the two-electron integrals
+            !
+            integer :: ERI_Algorithm = SCF_ERI_CHOLESKY
+            !
+            ! Tensor hypercontraction of Coulomb integrals
+            !
+            ! The THC threshold for SCF calculations can differ from
+            ! the threshold for RPA.
+            !
+            ! QRThresh=1.0E-3 gives accurate
+            ! correlation energy components, but frequently results
+            ! in a poorly converging SCF (example: dimers and trimers
+            ! of acetylene in the AVQZ basis). The convergence is
+            ! improved by setting LinDepThresh=1.0E-5.
+            !
+            ! QRThresh=1.0E-4 is reliable for the SCF, but it's
+            ! an overkill for the correlation energy.
+            !
+            real(F64) :: THC_QRThresh = 1.0E-4_F64
             integer :: MaxNIters = 128
             ! ----------------------------------------------------
             ! Cholesky decomposition of the Coulomb matrix
             ! ----------------------------------------------------
-            logical :: UseCholeskyBasis = .false.
             integer :: MaxBufferDimMB = 4000
             integer :: TargetBlockDim = 100
             ! ----------------------------------------------------

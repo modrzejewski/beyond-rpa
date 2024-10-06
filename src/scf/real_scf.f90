@@ -24,8 +24,12 @@ module real_scf
       use CholeskyCoulomb
       use CholeskyExchange
       use CholeskyFock
+      use THCFock
+      use thc_definitions
+      use TwoStepCholesky_definitions
       use OneElectronInts
       use Pseudopotential, only : pp_V
+      use Multipoles
       !$ use omp_lib
       
       implicit none
@@ -360,7 +364,7 @@ contains
             call msg(line)
       end subroutine scf_TableRow
 
-
+      
       subroutine scf_XCInfo(XCModel)
             type(TXCDef), intent(in) :: XCModel
             
@@ -688,7 +692,7 @@ contains
             type(TAOBasis), intent(in)                             :: AOBasis
             type(TSystem), intent(in)                              :: System
             real(F64), dimension(:, :, :), intent(in)              :: Rkpq
-            type(TCholeskyBasis), intent(in)                       :: CholeskyBasis
+            type(TChol2Vecs), intent(in)                           :: CholeskyBasis
             integer, intent(in)                                    :: GridKind
             logical, intent(in)                                    :: GridPruning
             integer, intent(in)                                    :: MaxBufferDimMB
@@ -757,109 +761,92 @@ contains
       end subroutine scf_F_Cholesky
 
 
-      subroutine scf_F_Cholesky_Old(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, &
-            xcmodel, Rho_cao, Rho_sao, Hbare_cao, AUXIn, AOBasis, System, CholeskyVecs, &
-            CholeskyBasis, GridKind, GridPruning, time_F)
+      subroutine scf_F_THC(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, &
+            xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, Hbare_cao, AUXIn, &
+            AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
             
-            real(F64), dimension(:, :, :), intent(out)             :: F_cao[*]
-            real(F64), dimension(:, :, :), intent(out)             :: F_sao[*]
+            real(F64), dimension(:, :, :), intent(out)             :: F_cao
+            real(F64), dimension(:, :, :), intent(out)             :: F_sao
             real(F64), intent(out)                                 :: Eel
             real(F64), intent(out)                                 :: ExcDFT
             type(tgriddiag), intent(out)                           :: diag
             real(F64), dimension(:), intent(out)                   :: AUXOut
             real(F64), dimension(:, :, :), intent(out)             :: Txc
             type(TXCDef), intent(in)                               :: XCModel
+            real(F64), dimension(:, :, :), intent(in)              :: Cocc_cao
+            real(F64), dimension(:, :, :), intent(in)              :: Cocc_sao
+            integer, dimension(:), intent(in)                      :: NOcc
             real(F64), dimension(:, :, :), intent(in)              :: Rho_cao
             real(F64), dimension(:, :, :), intent(in)              :: Rho_sao
             real(F64), dimension(:, :), intent(in)                 :: Hbare_cao
             real(F64), dimension(:, :), intent(in)                 :: AUXIn
             type(TAOBasis), intent(in)                             :: AOBasis
             type(TSystem), intent(in)                              :: System
-            real(F64), dimension(:, :, :), intent(in)              :: CholeskyVecs
-            type(TCholeskyBasis), intent(in)                       :: CholeskyBasis
+            type(TCoulTHCGrid), intent(in)                         :: THCGrid
             integer, intent(in)                                    :: GridKind
             logical, intent(in)                                    :: GridPruning
             real(F64), intent(inout)                               :: time_F
             
             integer :: NSpins, s
             real(F64) :: EHbare, EHFTwoEl
+            real(F64) :: KFrac
             real(F64), dimension(1, 1, 1) :: RhoEff_cao
-            logical :: BareH, SpinUnres, CoulContrib
-            integer :: i
+            logical :: BareHContrib, CoulContrib, ExchContrib, XCContrib
             type(TClock) :: timer_F
-            integer :: ThisImage, NImages
+            integer :: ThisImage
 
             call clock_start(timer_F)
             ThisImage = this_image()
-            NImages = num_images()
             F_cao = ZERO
-            F_sao = ZERO            
-            NSpins = size(Rho_cao, dim=3)
-            SpinUnres = (NSpins > 1)
+            F_sao = ZERO
             CoulContrib = xcf_get_flag(xcmodel, XCF_HARTREE)
-            BareH = xcf_get_flag(xcmodel, XCF_BAREH)
-            ! -----------------------------------------------------------------------------
-            ! Coulomb component of the Kohn-Sham hamiltonian
-            ! -----------------------------------------------------------------------------
-            EHFTwoEl = ZERO
-            if (CoulContrib) then
-                  if (AOBasis%SpherAO) then
-                        call coul_J(F_sao(:, :, 1), Rho_sao, AOBasis, CholeskyVecs, CholeskyBasis)
-                        if (NSpins == 2) then
-                              F_sao(:, :, 2) = F_sao(:, :, 1)
-                        end if
-                        do s = 1, NSpins
-                              EHFTwoEl = EHFTwoEl + (ONE/TWO) * fock_RhoTrace(Rho_sao(:, :, s), F_sao(:, :, s))
-                        end do
-                  else
-                        call coul_J(F_cao(:, :, 1), Rho_cao, AOBasis, CholeskyVecs, CholeskyBasis)
-                        if (NSpins == 2) then
-                              F_cao(:, :, 2) = F_cao(:, :, 1)
-                        end if
-                        do s = 1, NSpins
-                              EHFTwoEl = EHFTwoEl + (ONE/TWO) * fock_RhoTrace(Rho_cao(:, :, s), F_cao(:, :, s))
-                        end do
-                  end if
-            end if                  
-            ! -----------------------------------------------------------------------------
-            ! Semilocal exchnge-correlation potential part of the Kohn-Sham hamiltonian
-            ! -----------------------------------------------------------------------------
-            if (xcf_numint(xcmodel)) then
+            KFrac = xcf_get_exx(xcmodel)
+            ExchContrib = (abs(KFrac) > ZERO)
+            XCContrib = xcf_numint(xcmodel)
+            BareHContrib = xcf_get_flag(xcmodel, XCF_BAREH)
+            NSpins = max(size(F_sao,dim=3),size(F_cao,dim=3))
+            !
+            ! Two-electron part of the Fock operator
+            !
+            if (AOBasis%SpherAO) then
+                  call thc_Fock_JK(F_sao, EHFTwoEl, Cocc_sao, Rho_sao, THCGrid%Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac, .false.)                  
+            else
+                  call thc_Fock_JK(F_cao, EHFTwoEl, Cocc_cao, Rho_cao, THCGrid%Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac, .false.)                  
+            end if
+            !
+            ! Semilocal exchnge-correlation potential
+            !
+            ExcDFT = ZERO
+            if (XCContrib) then
                   call ks_Vxc(F_cao, ExcDFT, diag, AuxOut, Txc, Rho_cao, RhoEff_cao, xcmodel, &
                         AUXIn, AOBasis, System, GridKind, GridPruning)
-            else
-                  ExcDFT = ZERO
-            end if
-            sync all
-            if (NImages > 1) then
-                  if (ThisImage == 1) then
-                        do i = 2, NImages
-                              F_sao(:, :, :) = F_sao(:, :, :) + F_sao(:, :, :)[i]
-                              F_cao(:, :, :) = F_cao(:, :, :) + F_cao(:, :, :)[i]
-                        end do
-                  end if
-                  !                  call co_sum(F_sao, result_image=1)
-                  !                  call co_sum(F_cao, result_image=1)
-                  call co_sum(EHFTwoEl, result_image=1)
                   call co_sum(ExcDFT, result_image=1)
             end if
+            !
+            ! Bare nuclei hamiltonian
+            !
             EHbare = ZERO
-            if (ThisImage==1) then
-                  if (BareH) then
+            if (BareHContrib) then
+                  if (ThisImage==1) then
                         EHbare = ZERO
                         do s = 1, NSpins
                               EHbare = EHbare + fock_RhoTrace(Rho_cao(:, :, s), Hbare_cao)
                               F_cao(:, :, s) = F_cao(:, :, s) + Hbare_cao
                         end do
                   end if
+            end if
+            if (ThisImage==1) then
                   Eel = EHbare + EHFTwoEl + ExcDFT
             else
                   Eel = ZERO
                   ExcDFT = ZERO
             end if
+            if (AOBasis%SpherAO) call co_sum(F_sao, result_image=1)
+            if ((.not. AOBasis%SpherAO) .or. XCContrib) call co_sum(F_cao, result_image=1)
             time_F = time_F + clock_readwall(timer_F)
-            sync all
-      end subroutine scf_F_Cholesky_Old
+      end subroutine scf_F_THC
       
 
       function scf_RhoDiff(RhoK, RhoN)
@@ -957,13 +944,14 @@ contains
             end do
             Rho = OccNumber * Rho
       end subroutine scf_Rho
-      
+
       
       subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
             Noao, Ehomo, Elumo, Hbare_cao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
             XCModel, NonSCF, NOcc, LinDepThresh, Enucl, MaxRhoDiff, MaxOrbGrad, MaxNIters, &
-            ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, UseCholeskyBasis, &
-            MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis)
+            ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, ERI_Algorithm, &
+            MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis, &
+            THCGrid)
             !
             ! Main loop of the spin-unrestricted self-consistent field KS/DFT computations
             !
@@ -997,11 +985,12 @@ contains
             type(TStringList), intent(in)                             :: ECPFile
             integer, intent(in)                                       :: GridKind
             logical, intent(in)                                       :: GridPruning
-            logical, intent(in)                                       :: UseCholeskyBasis
+            integer, intent(in)                                       :: ERI_Algorithm
             integer, optional, intent(in)                             :: MaxBufferDimMB
             integer, optional, intent(in)                             :: TargetBlockDim
             real(F64), dimension(:, :, :), optional, intent(in)       :: CholeskyVecs
-            type(TCholeskyBasis), optional, intent(in)                :: CholeskyBasis
+            type(TChol2Vecs), optional, intent(in)                    :: CholeskyBasis
+            type(TCoulTHCGrid), optional, intent(in)                  :: THCGrid
 
             type(tgriddiag) :: gdiag
             real(F64), dimension(:, :, :), allocatable :: RhoK_cao, Ck_oao
@@ -1037,8 +1026,9 @@ contains
             real(F64), dimension(:), allocatable :: BufferRho1D
             integer :: ThisImage, NImages, NThreads
             logical :: TrustRadiusUpdated
+            real(F64), dimension(3) :: Dipole
+            real(F64), dimension(3, 3) :: Quadrupole, QTraceless
             logical, parameter :: GenerateGuessOrbitals = .true.
-            logical, parameter :: OldCholeskyFock = .false.
 
             ThisImage = this_image()
             NImages = num_images()
@@ -1172,22 +1162,21 @@ contains
             !    from the guess AO density matrix. Diagonalize Fk to get the
             !    initial set of MO vectors in the OAO basis (Cn_oao).
             ! --------------------------------------------------------------------
-            if (UseCholeskyBasis) then
-                  if (OldCholeskyFock) then
-                        call scf_F_Cholesky_Old(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
-                              xcmodel, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, CholeskyVecs, &
-                              CholeskyBasis, GridKind, GridPruning, time_F)
-                  else
-                        call scf_F_Cholesky(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
-                              XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                              AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
-                              MaxBufferDimMB, TargetBlockDim, time_F)
-                  end if
-            else
+            select case (ERI_Algorithm)
+            case (SCF_ERI_CHOLESKY)
+                  call scf_F_Cholesky(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
+                        XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                        AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
+                        MaxBufferDimMB, TargetBlockDim, time_F)
+            case (SCF_ERI_THC)
+                  call scf_F_THC(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
+                        XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                        AOBasis, System, THCGrid, GridKind, GridPruning, time_F)                  
+            case default ! Exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, RhoK_cao, RhoN_sao, &
                         Hbare_cao, AUXIn, AOBasis, System, ThreshFockJK, GridKind, GridPruning, time_F)
-            end if
+            end select
             EtotK = EelK + Enucl
             do s = 1, NSpins
                   if (ThisImage == 1) then
@@ -1221,23 +1210,22 @@ contains
             !     Build Fn := F(RhoN) to start the proper iterative process
             ! --------------------------------------------------------------------
             call clock_start(timer_Iter)
-            if (UseCholeskyBasis) then
-                  if (OldCholeskyFock) then
-                        call scf_F_Cholesky_Old(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                              xcmodel, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, CholeskyVecs, &
-                              CholeskyBasis, GridKind, GridPruning, time_F)
-                  else
-                        call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                              XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                              AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
-                              MaxBufferDimMB, TargetBlockDim, time_F)
-                  end if
-            else
+            select case (ERI_Algorithm)
+            case (SCF_ERI_CHOLESKY)
+                  call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
+                        XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                        AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
+                        MaxBufferDimMB, TargetBlockDim, time_F)
+            case (SCF_ERI_THC)
+                  call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
+                        XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                        AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
+            case default ! exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
                         RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
                         ThreshFockJK, GridKind, GridPruning, time_F)
-            end if
+            end select
             if (ThisImage == 1) then
                   do s = 1, NSpins
                         call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
@@ -1281,23 +1269,22 @@ contains
                         !
                         ! Use the new density matrix to compute the Kohn-Sham/Fock matrix
                         !
-                        if (UseCholeskyBasis) then
-                              if (OldCholeskyFock) then
-                                    call scf_F_Cholesky_Old(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                                          xcmodel, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, CholeskyVecs, &
-                                          CholeskyBasis, GridKind, GridPruning, time_F)
-                              else
-                                    call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                                          XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                                          AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
-                                          MaxBufferDimMB, TargetBlockDim, time_F)
-                              end if
-                        else
+                        select case (ERI_Algorithm)
+                        case (SCF_ERI_CHOLESKY)
+                              call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
+                                    XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                                    AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
+                                    MaxBufferDimMB, TargetBlockDim, time_F)
+                        case (SCF_ERI_THC)
+                              call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
+                                    XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                                    AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
+                        case default ! exact integrals
                               call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                                     BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
                                     RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
                                     ThreshFockJK, GridKind, GridPruning, time_F)
-                        end if
+                        end select
                         EtotN = EelN + Enucl
                         !
                         ! Measures of convergence: max norm of the orbital gradient
@@ -1460,6 +1447,9 @@ contains
                   call dmsg("Ehomo [eV]", toev(Ehomo))
                   call dmsg("Elumo [eV]", toev(Elumo))
             end if
+            call multi_TotalMultipoles(Dipole, Quadrupole, RhoN_sao, System, AOBasis)
+            call multi_TracelessQuadrupole(QTraceless, Quadrupole, MULTI_QUAD_TRACELESS_BUCKINGHAM)
+            call multi_Display(Dipole, QTraceless)
             call midrule()
             call msg("Total time for SCF: " // str(clock_readwall(timer_Total), d=1) // " seconds")
             call msg("Detailed timings in seconds")
@@ -1469,7 +1459,7 @@ contains
       end subroutine scf_ConvergeOrbitals
 
 
-      subroutine scf_driver_SpinUnres(SCFOutput, SCFParams, AOBasis, System, CholeskyVecs, CholeskyBasis)
+      subroutine scf_driver_SpinUnres(SCFOutput, SCFParams, AOBasis, System, CholeskyVecs, CholeskyBasis, THCGrid)
             !
             ! Driver routine for spin-unrestricted SCF
             !
@@ -1478,8 +1468,9 @@ contains
             type(TAOBasis), intent(in)                          :: AOBasis
             type(TSystem), intent(in)                           :: System
             real(F64), dimension(:, :, :), optional, intent(in) :: CholeskyVecs
-            type(TCholeskyBasis), optional, intent(in)          :: CholeskyBasis
-
+            type(TChol2Vecs), optional, intent(in)              :: CholeskyBasis
+            type(TCoulTHCGrid), optional, intent(in)            :: THCGrid
+            
             type(txcdef) :: XCModel, NonSCF
             real(F64) :: MaxRhoDiff, MaxOrbGrad, LinDepThresh
             integer :: MaxNIters, NSpins
@@ -1568,7 +1559,8 @@ contains
                   ! ------------------------------------------------------------------------
                   !                     MAIN SELF-CONSISTENT FIELD LOOP
                   ! ------------------------------------------------------------------------
-                  if (SCFParams%UseCholeskyBasis) then
+                  select case (SCFParams%ERI_Algorithm)
+                  case (SCF_ERI_CHOLESKY)
                         call scf_ConvergeOrbitals( &
                               SCFOutput%Rho_cao, &
                               SCFOutput%OrbEnergies, &
@@ -1595,13 +1587,13 @@ contains
                               SCFParams%ECPFile, &
                               SCFParams%GridKind, &
                               SCFParams%GridPruning, &
-                              .true., &
+                              SCFParams%ERI_Algorithm, &
                               SCFParams%MaxBufferDimMB, &
                               SCFParams%TargetBlockDim, &
                               CholeskyVecs, &
                               CholeskyBasis &
                               )
-                  else
+                  case (SCF_ERI_THC)
                         call scf_ConvergeOrbitals( &
                               SCFOutput%Rho_cao, &
                               SCFOutput%OrbEnergies, &
@@ -1628,9 +1620,39 @@ contains
                               SCFParams%ECPFile, &
                               SCFParams%GridKind, &
                               SCFParams%GridPruning, &
-                              .false. &
+                              SCFParams%ERI_Algorithm, &
+                              THCGrid=THCGrid &
                               )
-                  end if
+                  case default ! exact integrals
+                        call scf_ConvergeOrbitals( &
+                              SCFOutput%Rho_cao, &
+                              SCFOutput%OrbEnergies, &
+                              SCFOutput%Converged, &
+                              SCFOutput%EtotDFT, &
+                              SCFOutput%EelDFT, &
+                              SCFOutput%ExcDFT, &
+                              SCFOutput%Noao, &
+                              SCFOutput%Ehomo, &
+                              SCFOutput%Elumo, &
+                              SCFOutput%Hbare_cao, &
+                              SCFOutput%C_oao, &
+                              SCFOutput%MOBasisVecsCart, &
+                              SCFOutput%MOBasisVecsSpher, &
+                              SCFOutput%NVirt, &
+                              SCFOutput%AUXOut, &
+                              XCModel, NonSCF, &
+                              SCFOutput%NOcc, &
+                              LinDepThresh, &
+                              SCFOutput%Enucl, &
+                              MaxRhoDiff, MaxOrbGrad, MaxNIters, &
+                              SCFParams%ThreshFockJK, &
+                              AUXIn, AOBasis, System, &
+                              SCFParams%ECPFile, &
+                              SCFParams%GridKind, &
+                              SCFParams%GridPruning, &
+                              SCFParams%ERI_Algorithm &
+                              )
+                  end select
                   SCFOutput%Nexcluded = NAOCart - SCFOutput%Noao
                   ! ------------------------------------------------------------------------
                   !                ADDITIONAL NUMERICAL INTEGRALS ON THE GRID

@@ -51,6 +51,7 @@ import os
 import signal
 import sys
 import datetime
+from datetime import timezone
 import subprocess
 from os import environ
 from os import path
@@ -102,7 +103,7 @@ script_dir = path.dirname(path.realpath(__file__))
 root_dir = path.abspath(os.path.join(script_dir, os.pardir))
 exec_path = path.join(script_dir, "a")
 
-datetime_start = datetime.datetime.utcnow()
+datetime_start = datetime.datetime.now(timezone.utc)
 dateformat = "%a %b %d %H:%M:%S UTC %Y"
 datestr = datetime_start.strftime(dateformat)
 
@@ -204,7 +205,7 @@ except KeyboardInterrupt:
 #
 # Compute the duration time in hours
 #
-datetime_finish = datetime.datetime.utcnow()
+datetime_finish = datetime.datetime.now(timezone.utc)
 td = datetime_finish - datetime_start
 wallhours = ((td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6) / 3600.0
 datestr_finish = datetime_finish.strftime(dateformat)

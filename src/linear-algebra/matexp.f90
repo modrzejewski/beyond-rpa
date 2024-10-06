@@ -105,6 +105,7 @@ contains
             
             n = size(a, dim=1)
             max_col = ZERO
+            !$omp parallel do private(k, l, t) reduction(max:max_col)
             do k = 1, n
                   t = ZERO
                   do l = 1, n
@@ -112,6 +113,7 @@ contains
                   end do
                   max_col = max(max_col, t)
             end do
+            !$omp end parallel do
       end subroutine matrix_1_norm_real
 
 
