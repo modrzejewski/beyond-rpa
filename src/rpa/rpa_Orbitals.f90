@@ -34,61 +34,51 @@ contains
 
             real(F64), dimension(:, :, :), allocatable :: RijCC, RijLL
             real(F64), dimension(:, :), allocatable :: R2ijCC
-            real(F64), dimension(:, :), allocatable :: dFdLij, dFdKij
-            real(F64), dimension(:, :), allocatable :: Wij, Kij, ExpKij, Hij
+            real(F64), dimension(:, :), allocatable :: dFdKij
+            real(F64), dimension(:, :), allocatable :: Wij
             real(F64), dimension(:, :), allocatable :: OptLijCL
             real(F64) :: F, OptF, InitF
-            integer :: u
+            integer :: u, NIters
             integer :: NOcc
-            integer, parameter :: MaxNIters = 100
-            integer, parameter :: PolyOrder = 8
-            integer, parameter :: STEEPEST_DESCENT = 0
-            integer, parameter :: CONJUGATE_GRADIENT = 1
-            real(F64), parameter :: Gamma = 0.05_F64
+            logical :: Converged
             
             NOcc = size(LijCL, dim=2)
             allocate(OptLijCL(NOcc, NOcc))
             allocate(RijCC(NOcc, NOcc, 3))
             allocate(RijLL(NOcc, NOcc, 3))
             allocate(R2ijCC(NOcc, NOcc))
-            allocate(dFdLij(NOcc, NOcc))
             allocate(dFdKij(NOcc, NOcc))
             allocate(Wij(NOcc, NOcc))
-            allocate(Kij(NOcc, NOcc))
-            allocate(Hij(NOcc, NOcc))
-            allocate(ExpKij(NOcc, NOcc))
+            call msg("Convergence threshold: Max(ij)|dF/dKij| < " // str(RPAParams%LocBoysConvergenceThresh,d=1))
+            call msg("Max number of iters: " // str(RPAParams%LocBoysMaxNIters))
             call rpa_FosterBoys_Init(LijCL, RijCC, R2ijCC, Cpi, RPAParams, AOBasis)
             call rpa_FosterBoys_Transform(RijLL, Wij, RijCC, LijCL)
             call rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijCC)
             InitF = F
             OptF = F
-            do u = 1, MaxNIters
+            Converged = .false.
+            do u = 1, RPAParams%LocBoysMaxNIters
                   call rpa_FosterBoys_Sweep(LijCL, RijLL)
                   call rpa_FosterBoys_Transform(RijLL, Wij, RijCC, LijCL)
                   call rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijCC)
+                  call rpa_FosterBoys_Grad(dFdKij, Wij, RijLL, NOcc)
                   if (F < OptF) then
                         OptF = F
                         OptLijCL = LijCL
                   end if
-                  ! call msg(lfield(str(u), 10) // lfield(str(F,d=1), 30))
-                  
-                  ! call rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, NOcc)
-
-                  ! Kij = -Gamma * dFdKij
-                  ! call matrix_exponential_real(ExpKij, Kij, Wij)
-                  ! call real_ab(Wij, LijCL, ExpKij)
-                  ! LijCL = Wij
-                  
-                  ! else if (Algorithm == CONJUGATE_GRADIENT) then
-                  !       continue
-                  ! end if
-                  ! Hij = -dFdKij
-                  ! call rpa_FosterBoys_LineSearch(LijCL, ExpKij, Wij, Kij, &
-                  !       RijCL, R2ijCL, RijLL, R2ijLL, RijCC, R2ijCC, &
-                  !       Hij, F, p, PolyOrder)
+                  if (maxval(dFdKij) < RPAParams%LocBoysConvergenceThresh) then
+                        Converged = .true.
+                        NIters = u
+                        exit
+                  end if
             end do
-            call msg("Objective function (initial): " // str(InitF, d=1))
-            call msg("Objective function (minimum): " // str(OptF, d=1))
+            if (Converged) then
+                  call msg("Localization converged in " // str(NIters) // " iterations")
+            else
+                  call msg("Localization not converged")
+            end if
+            call msg("Objective function (initial Cholesky localization): " // str(InitF, d=1))
+            call msg("Objective function (minimum):                       " // str(OptF, d=1))
             LijCL = OptLijCL
       end subroutine rpa_LocalizeOrbitals_FosterBoys
 
@@ -252,31 +242,76 @@ contains
       end subroutine rpa_FosterBoys_ObjectiveFunction
       
 
-      subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, NOcc)
-            real(F64), intent(out)                     :: F
+      subroutine rpa_FosterBoys_Grad(dFdKij, dFdLij, RijLL, NOcc)
+            !
+            ! Compute the gradient matrix of the auxiliary objective function F':
+            !
+            ! F' = Sum(i) Sum(q) <i|Rq|i>**2
+            ! dF'/dKij = Sum(mn) (dF'/dLmn)*(dLmn/dKij) at K = 0
+            !
+            ! where the orthogonal transformation matrix L
+            ! is parametrized by the matrix exponential
+            ! of an antisymmetric matrix K
+            !
+            ! |i> = Sum(j') |j'> Lj'i
+            ! Lj'i = (Exp(K))j'i
+            ! 
+            ! Remarks:
+            ! (1) The gradient is computed at K=0 and j' are
+            ! the localized orbitals in the current iteration.
+            ! (2) This is the gradient of the auxiliary funciton
+            ! F', which is maximized (see the paper of Pipek and Mezey).
+            ! The first term of the objective function
+            ! F = Sum(i) <i|R2|i> - Sum(i) Sum(q) <i|Rq|i>**2
+            ! is a trace and does not depend on the orthogonal transformation
+            ! of orbitals. F is minimized when F' is maximized.
+            !
             real(F64), dimension(:, :), intent(out)    :: dFdKij
             real(F64), dimension(:, :), intent(out)    :: dFdLij
-            real(F64), dimension(:, :), intent(in)     :: LijCL
             real(F64), dimension(:, :, :), intent(in)  :: RijLL
-            real(F64), dimension(:, :), intent(in)     :: R2ijLL
             integer, intent(in)                        :: NOcc
 
             integer :: i, x
 
-            F = ZERO
             dFdLij = ZERO
-            !$omp parallel do private(i, x) reduction(+:F)
+            !$omp parallel do private(i, x)
             do i = 1, NOcc
-                  F = F + R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
-                  dFdLij(:, i) = TWO * R2ijLL(:, i)
+                  dFdLij(:, i) = ZERO
                   do x = 1, 3
-                        dFdLij(:, i) = dFdLij(:, i) - (FOUR*RijLL(i, i, x)) *  RijLL(:, i, x)
+                        dFdLij(:, i) = dFdLij(:, i) +  RijLL(:, i, x) * (FOUR*RijLL(i, i, x))
                   end do
             end do
             !$omp end parallel do
             dFdKij = -transpose(dFdLij)
             dFdKij = dFdKij + dFdLij
       end subroutine rpa_FosterBoys_Grad
+
+
+      ! subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, NOcc)
+      !       real(F64), intent(out)                     :: F
+      !       real(F64), dimension(:, :), intent(out)    :: dFdKij
+      !       real(F64), dimension(:, :), intent(out)    :: dFdLij
+      !       real(F64), dimension(:, :), intent(in)     :: LijCL
+      !       real(F64), dimension(:, :, :), intent(in)  :: RijLL
+      !       real(F64), dimension(:, :), intent(in)     :: R2ijLL
+      !       integer, intent(in)                        :: NOcc
+
+      !       integer :: i, x
+
+      !       F = ZERO
+      !       dFdLij = ZERO
+      !       !$omp parallel do private(i, x) reduction(+:F)
+      !       do i = 1, NOcc
+      !             F = F + R2ijLL(i, i) - RijLL(i, i, 1)**2 - RijLL(i, i, 2)**2 - RijLL(i, i, 3)**2
+      !             dFdLij(:, i) = TWO * R2ijLL(:, i)
+      !             do x = 1, 3
+      !                   dFdLij(:, i) = dFdLij(:, i) - (FOUR*RijLL(i, i, x)) *  RijLL(:, i, x)
+      !             end do
+      !       end do
+      !       !$omp end parallel do
+      !       dFdKij = -transpose(dFdLij)
+      !       dFdKij = dFdKij + dFdLij
+      ! end subroutine rpa_FosterBoys_Grad
 
 
       ! subroutine rpa_FosterBoys_Grad(F, dFdKij, dFdLij, LijCL, RijLL, R2ijLL, RijCL, R2ijCL, NOcc)

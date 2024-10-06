@@ -491,6 +491,9 @@ module rpa_definitions
             !
             integer :: LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
             real(F64) :: LocCholeskyLinDepThresh = 1.0E-6_F64
+            real(F64) :: LocBoysConvergenceThresh = 1.0E-5_F64
+            integer   :: LocBoysMaxNIters = 300
+            real(F64) :: CutoffThreshVabij = 1.0E-6_F64
             real(F64) :: CutoffThreshPNO = 1.0E-5_F64
             !
             ! Refinement of approximate Hartree-Fock orbitals and

@@ -37,6 +37,7 @@ contains
             real(F64), dimension(:, :), allocatable :: Pam, Qam
             real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
+            real(F64), dimension(:, :), allocatable :: Vaiai, Vabab, Vijij
             integer :: i, j, mu, x
             real(F64) :: EcRPA, Ec1b, Ec2bcd, Ec2ghij
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
@@ -51,6 +52,8 @@ contains
             type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO
             real(F64) :: t_Total, t_SVD, t_Energy, t_LO
             real(F64) :: t_SOSEX, t_G, t_TrVGabij, t_TrVGaibj, t_ZYX, t_ZXX
+            real(F64) :: MaxVabab, MaxVaiai, MaxVbjbj, MaxVaibj, MaxVabij
+            integer :: NSmallVaibj, NSmallVabij
 
             call clock_start(timer_Total)
             call blankline()
@@ -98,6 +101,17 @@ contains
             !$omp end parallel do
             t_LO = clock_readwall(timer_LO)
             !
+            ! Diagonal Coulomb matrix elements needed for the Schwarz
+            ! inequality
+            !
+            allocate(Vaiai(NVirt, NOcc))
+            allocate(Vabab(NVirt, NVirt))
+            allocate(Vijij(NOcc, NOcc))
+            call rpa_JCTC2024_Vpqpq(Vaiai, Yga, XgiLoc, Zgk, NVirt, NOcc, NCholesky, NGridTHC)
+            call rpa_JCTC2024_Vpqpq(Vabab, Yga, Yga, Zgk, NVirt, NVirt, NCholesky, NGridTHC)
+            call rpa_JCTC2024_Vpqpq(Vijij, XgiLoc, XgiLoc, Zgk, NOcc, NOcc, NCholesky, NGridTHC)
+            MaxVabab = maxval(Vabab)
+            !
             ! Find the number of pair-natural orbitals corresponding
             ! to CutoffThreshPNO by decomposing diagonal amplitude
             ! matrices T(ai,bi)
@@ -117,8 +131,16 @@ contains
             MaxNVirtPNO = 0
             ZeroNVirtPNO = 0
             SumNVirtPNO = 0
+            NSmallVaibj = 0
+            NSmallVabij = 0
             do j = 1, NOcc
                   do i = j, NOcc
+                        MaxVabij = Sqrt(Abs(Vijij(i, j) * MaxVabab))
+                        MaxVaiai = maxval(Vaiai(:, i))
+                        MaxVbjbj = maxval(Vaiai(:, j))
+                        MaxVaibj = Sqrt(abs(MaxVaiai*MaxVbjbj))
+                        if (MaxVaibj < 1.0E-6_F64) NSmallVaibj = NSmallVaibj + 1
+                        if (MaxVabij < 1.0E-6_F64) NSmallVabij = NSmallVabij + 1
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)                        
                         call real_SVD(U, V, Sigma, Tabij)
@@ -203,6 +225,35 @@ contains
             call blankline()
       end subroutine rpa_JCTC2024_Corrections
 
+
+      subroutine rpa_JCTC2024_Vpqpq(Vpqpq, Xgp, Xgq, Zgk, Np, Nq, NCholesky, NGridTHC)
+            integer, intent(in)                                   :: Np, Nq
+            integer, intent(in)                                   :: NCholesky, NGridTHC
+            real(F64), dimension(Np, Nq), intent(out)             :: Vpqpq
+            real(F64), dimension(NGridTHC, Np), intent(in)        :: Xgp
+            real(F64), dimension(NGridTHC, Nq), intent(in)        :: Xgq
+            real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
+
+            real(F64), dimension(:, :), allocatable :: XXgp, ZXXkp
+            integer :: p, q
+
+            allocate(XXgp(NGridTHC, Np))
+            allocate(ZXXkp(NCholesky, Np))
+            do q = 1, Nq
+                  !$omp parallel do private(p)
+                  do p = 1, Np
+                        XXgp(:, p) = Xgp(:, p) * Xgq(:, q)
+                  end do
+                  !$omp end parallel do
+                  call real_aTb(ZXXkp, Zgk, XXgp)
+                  !$omp parallel do private(p)
+                  do p = 1, Np
+                        call real_vw_x(Vpqpq(p, q), ZXXkp(:, p), ZXXkp(:, p), NCholesky)
+                  end do
+                  !$omp end parallel do
+            end do
+      end subroutine rpa_JCTC2024_Vpqpq
+      
 
       subroutine rpa_JCTC2024_PackTransfMatrices(PQaxki, PQaxkiLoc, PQAxkiNum, i, &
             PNOData, PNOTransform, NOcc, NVirt)
@@ -518,7 +569,8 @@ contains
 
       subroutine rpa_JCTC2024_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
             PNOData, PNOTransform, Xgi, Yga, Zgk, MaxNVirtPNO, NVirt, NOcc, &
-            NGridTHC, NCholesky, t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, t_ZYX, t_ZXX)
+            NGridTHC, NCholesky, t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, t_ZYX, &
+            t_ZXX)
 
             integer, intent(in)                                             :: MaxNVirtPNO, NVirt, NOcc
             integer, intent(in)                                             :: NGridTHC, NCholesky
