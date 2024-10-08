@@ -29,3 +29,14 @@ cd beyond-rpa/src
 where `compiler_flags` stands for a the set of compiler options appropriate for your system and its value
 is one of the subdirectory names in `./src/CompilerFlags`. Some compiler options are available in
 `./src/CompilerFlags`, but your can add your own set and pass it as an argument to `./build.py`.
+
+## Authors
+* Marcin Modrzejewski (main)
+* Dominik Ciśliński (RPA amplitudes)
+* Aleksandra Tucholska (CC 2-RDM)
+* Grzegorz Czekało (higher-order corrections)
+* Krystyna Syty (decomposition of amplitudes)
+* Khanh Ngoc Pham (finding bugs)
+   
+## References
+* 
