@@ -2,20 +2,13 @@
 
 **Beyond-RPA** is a program for performing electronic single-point energy calculations using
 the coupled-cluster formulation of the random-phase approximation (RPA) with a series
-of corrections derived from the expectation value of the Hamiltonian.
-
-Aside from the availability
-of the beyond-RPA level of theory, the program's unique feature is the combination of modern
-computational techniques based on tensor decompositions with near-perfect numerical precision
-of the results. Specifically, the numerical thresholds available in the program
-are designed for a numerically-stable calculation of
+of corrections derived from the expectation value of the Hamiltonian. While this software can
+be applied to any system, the algorithms and numerical thresholds have been adjusted for a
+numerically-stable calculation of 100s or 1000s of small energy terms which contribute to the
+many-body expansion of the crystal lattice energy:
 * two-body noncovalent interaction energies,
 * nonadditive energies of molecular trimers,
-* nonadditive energies of molecular tetramers,
-  
-which contribute to the many-body expansion (MBE) of the lattice energy of a molcular crystal.
-While you can use this software for any finite system in a Gaussian basis set, the conservative
-thresholds adjusted for MBE might be unnecessarily tight for some purposes.
+* nonadditive energies of molecular tetramers.
 
 ## Compilation
 
