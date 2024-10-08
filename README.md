@@ -1,6 +1,4 @@
-## Description
-
-**Beyond-RPA** is a program for performing electronic single-point energy calculations using
+**Beyond-rpa** is a program for performing electronic single-point energy calculations using
 the coupled-cluster formulation of the random-phase approximation (RPA) with a series
 of corrections derived from the expectation value of the Hamiltonian. While this software can
 be applied to any system, the algorithms and numerical thresholds have been adjusted for a
@@ -10,9 +8,9 @@ many-body expansion of the crystal lattice energy:
 * nonadditive energies of molecular trimers,
 * nonadditive energies of molecular tetramers.
 
-## Compilation
+### Compilation
 
-To install **Beyond-RPA**, clone the repository and compile the source code using the Intel Fortran compiler (tested with this compiler):
+Clone the repository and compile the source code using a Fortran compiler (tested mostly on the Intel Fortran compiler):
 
 ```bash
 git clone https://github.com/modrzejewski/beyond-rpa.git
@@ -27,7 +25,7 @@ The chosen value of `compiler_flags` should correspond to one of the subdirector
 Some compiler options are available, but you can create your own subdirectory and add your own commands in the 
 `compiler` and `linker` text files.
 
-## Authors
+### Authors
 * Marcin Modrzejewski (main)
 * Dominik Cieśliński (RPA amplitudes)
 * Aleksandra Tucholska (CC 2-RDM)
@@ -35,11 +33,11 @@ Some compiler options are available, but you can create your own subdirectory an
 * Krystyna Syty (decomposition of amplitudes)
 * Khanh Ngoc Pham (finding bugs)
    
-## Literature references
+### Literature references
 You can use **beyond-rpa** to replicate the numerical results from the following publications.
 * Cieśliński, D., Tucholska, A., Modrzejewski, M., J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
 * Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 160, 224101 (2024); doi: 10.1063/5.0207090
 * Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 158, 144119 (2023); doi: 10.1063/5.0142348
 
-## License
+### License
 You can use and modify this program under the conditions of the MIT license in `LICENSE.txt`.
