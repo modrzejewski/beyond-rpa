@@ -350,7 +350,6 @@ contains
             integer :: NVecsT2, NGridTHC, NOcc, NVirt
             real(F64), dimension(:, :), allocatable :: YUim, XUam
             real(F64), dimension(:, :), allocatable :: Xig, Yag
-            real(F64), dimension(:, :), allocatable :: YUXUai
             real(F64), dimension(:, :, :), allocatable :: YUXUaig
             real(F64), dimension(:, :), allocatable :: YUXUYUXUgh
             real(F64) :: S2d

@@ -68,7 +68,7 @@ contains
             real(F64), dimension(:, :), allocatable :: NOCoeffs_mo
             real(F64), dimension(:, :), allocatable :: NOCoeffs_ao
             real(F64), dimension(:), allocatable :: NOVirtEnergies
-            integer :: s, i
+            integer :: s
             integer :: ThisImage
             integer :: NVecsT2
             real(F64) :: Lambda

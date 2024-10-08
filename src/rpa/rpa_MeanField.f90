@@ -20,12 +20,13 @@ contains
             type(TSCFParams), intent(in) :: SCFParams
             
             call blankline()
-            call msg("Hartree-Fock total energy, orbitals, and orbital energies are recomputed using accurate integrals")
-            call msg("Total corrected mean-field energy components:")
+            call msg("HF energy and orbitals will be recomputed using accurate integrals")
+            call msg("Corrected mean-field energy components:")
             call msg("1. HF energy (EtotHF)")
             call msg("2. linear density correction (1-RDM linear)")
             call msg("3. quadratic density correction (1-RDM quadratic)")
             call msg("Terms (2) and (3) are nonzero when approximate Coulomb integrals are used")
+            call msg("Total mean-field energy: (1) + (2) + (3)")
             call msg("Linear-dependence threshold for the eigenvalues of S:")
             call msg(lfield("SCF", 15) // lfield(str(SCFParams%LinDepThresh,d=1), 15))
             call msg(lfield("refinement", 15) // lfield(str(RPAParams%HFRefineLinDepThresh,d=1), 15))

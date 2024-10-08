@@ -2281,7 +2281,7 @@ contains
             type(TRPAParams), intent(in)                                 :: RPAParams
             type(TAOBasis), intent(in)                                   :: AOBasis
 
-            integer :: NAO, NCholesky, NVecsPiU, s
+            integer :: NAO, NCholesky, NVecsPiU
             integer :: THC_NGrid
             real(F64), dimension(:, :, :), allocatable :: THC_Xga, THC_Xgi
             real(F64), dimension(:, :, :), allocatable :: Rkai, PiU
