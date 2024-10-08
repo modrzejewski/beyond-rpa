@@ -42,4 +42,4 @@ You can use **beyond-rpa** to replicate the numerical results from the following
 * Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 158, 144119 (2023); doi: 10.1063/5.0142348
 
 ## License
-MIT license (see the `LICENSE.txt` file)
+You can use and modify this program under the conditions defined in the MIT license in `LICENSE.txt` file.
