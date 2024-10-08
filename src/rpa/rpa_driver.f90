@@ -223,7 +223,7 @@ contains
                   FinishMacroLoop = .true.
                   if (RPAParams%TensorHypercontraction) then
                         if (RPAParams%TheoryLevel /= RPA_THEORY_DIRECT_RING) then
-                              call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
+                              call rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, &
                                     EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
                               call rpa_EstimateT2EigenvalueError(FinishMacroLoop, RPAOutput, RPAParams, &
                                     System, T2CutoffCommonThresh, NSystems)
@@ -1113,12 +1113,11 @@ contains
       end subroutine rpa_EstimateEcRPAError
 
 
-      subroutine rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, &
+      subroutine rpa_SummaryOfErrors(EcRPA_Chi_MO, EcRPA_Chi_NO, &
             EcRPA_T2_NO, EcRPA_T2_PNO, RPAParams, System)
             
             real(F64), dimension(:), intent(in) :: EcRPA_Chi_MO
             real(F64), dimension(:), intent(in) :: EcRPA_Chi_NO
-            real(F64), dimension(:), intent(in) :: EcRPA_T2_MO
             real(F64), dimension(:), intent(in) :: EcRPA_T2_NO
             real(F64), dimension(:), intent(in) :: EcRPA_T2_PNO
             type(TRPAParams), intent(in)        :: RPAParams
