@@ -597,7 +597,8 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-5_F64
             RPAParams%T2AuxNOCutoffThresh = 1.0E-9_F64
             RPAParams%CutoffThreshPNO = 1.0E-6_F64
-            RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
+            RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
+            RPAParams%CutoffThreshVabij = 1.0E-5_F64
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
             SCFParams%THC_QRThresh = 1.0E-4_F64
