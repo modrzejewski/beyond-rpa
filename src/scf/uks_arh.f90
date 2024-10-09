@@ -860,6 +860,41 @@ module uks_arh
        end subroutine uarh_ovtrans
 
 
+       subroutine uarh_Transform_FD(Fk_ov, Dk_ov, Fk_oao_oao, Ck_oao_occ, IdxMap, Cn_oao_mo, NStored)
+             !
+             ! (1) Use stored occupied orbitals to generate density in the semicanonical basis.
+             ! (2) Transform stored Fock matrices to the semicanonical basis.
+             !
+             real(F64), dimension(:, :, :), intent(out) :: Fk_ov
+             real(F64), dimension(:, :, :), intent(out) :: Dk_ov
+             real(F64), dimension(:, :, :), intent(in)  :: Fk_oao_oao
+             real(F64), dimension(:, :, :), intent(in)  :: Ck_oao_occ
+             integer, dimension(:), intent(in)          :: IdxMap
+             real(F64), dimension(:, :), intent(in)     :: Cn_oao_mo
+             integer, intent(in)                        :: NStored
+
+             integer :: NOAO, NOcc, NVirt
+             integer :: i0, i1, a0, a1
+             integer :: k
+             real(F64), dimension(:, :), allocatable :: W_occ_mo
+             
+             NOAO = size(Ck_oao_occ, dim=1)
+             NOcc = size(Ck_oao_occ, dim=2)
+             NVirt = size(Dk_ov, dim=2)
+             i0 = 1
+             i1 = Nocc
+             a0 = Nocc + 1
+             a1 = Nocc + Nvirt
+             allocate(W_occ_mo(NOcc, NOAO))
+             do k = 1, NStored
+                   call real_aTb(W_occ_mo, Ck_oao_occ(:, :, IdxMap(k)), Cn_oao_mo)
+                   call real_aTb(Dk_ov(:, :, k), W_occ_mo(:, i0:i1), W_occ_mo(:, a0:a1))
+                   call real_aTb(W_occ_mo, Cn_oao_mo(:, i0:i1), Fk_oao_oao(:, :, IdxMap(k)))
+                   call real_ab(Fk_ov(:, :, k), W_Occ_mo, Cn_oao_mo(:, a0:a1))
+             end do
+       end subroutine uarh_Transform_FD
+       
+
        subroutine uarh_stable_invert(Tinv, T)
              !
              ! Invert the matrix T. Use symmetric diagonalization to get good
