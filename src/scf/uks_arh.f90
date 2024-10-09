@@ -995,7 +995,8 @@ module uks_arh
 
 
        subroutine uarh_NextIter(d, C_oao, OrbGradMax, OrbShift, NStored, Fn_oao, &
-             EelK, RetryIter, time_ARH)
+             EelK, RetryIter, time_ARH_Total, time_ARH_X, time_ARH_ExpX, &
+             time_ARH_Equations, time_ARH_EnergyEstimate)
              !
              ! Driver subroutine for the spin-unrestricted SCF solver.
              !
@@ -1017,7 +1018,11 @@ module uks_arh
              real(F64), dimension(:, :, :), contiguous, intent(in)    :: Fn_oao
              real(F64), intent(in)                                    :: EelK
              logical, intent(in)                                      :: RetryIter
-             real(F64), intent(inout)                                 :: time_ARH
+             real(F64), intent(inout)                                 :: time_ARH_Total
+             real(F64), intent(inout)                                 :: time_ARH_X
+             real(F64), intent(inout)                                 :: time_ARH_ExpX
+             real(F64), intent(inout)                                 :: time_ARH_Equations
+             real(F64), intent(inout)                                 :: time_ARH_EnergyEstimate
 
              integer :: k
              logical :: SecondOrder
@@ -1042,9 +1047,10 @@ module uks_arh
              integer :: i0A, i1A, a0A, a1A
              integer :: i0B, i1B, a0B, a1B
              logical :: converged
-             type(TClock) :: timer_ARH
-
-             call clock_start(timer_ARH)
+             type(TClock) :: timer_ARH_Total, timer_ARH_ExpX, timer_ARH_X, timer_ARH_Equations
+             type(TClock) :: timer_ARH_EnergyEstimate
+             
+             call clock_start(timer_ARH_total)
              NStored = d%NStored
              associate (shift => d%shift, norm_type => d%norm_type, Xnorm => d%Xnorm, enable_shift => d%enable_shift, &
                    trust_radius => d%trust_radius, OccRangeA => d%OccRangeA, OccRangeB => d%OccRangeB, &
@@ -1124,6 +1130,7 @@ module uks_arh
                    ! Compute the occupied-virtual block-diagonalizing basis, i.e., the basis
                    ! in which the occupied-occupied and virtual-virtual blocks of F are diagonal.
                    !
+                   call clock_start(timer_ARH_Equations)
                    call uarh_ov_basis(CA_ov, EigA, Fn_oao(:, :, 1), C_oao(:, i0A:i1A, 1), C_oao(:, a0A:a1A, 1))
                    call real_aTbc(FnA_ov, CA_ov(:, 1:NoccA), Fn_oao(:, :, 1), CA_ov(:, NoccA+1:))
                    call real_abT(Dn_oao(:, :, 1), C_oao(:, i0A:i1A, 1), C_oao(:, i0A:i1A, 1))
@@ -1145,7 +1152,7 @@ module uks_arh
                                      call uarh_Overlap(GramMatrix, CkB_oao, Dn_oao(:, :, 2), idx_map, NStored, Wk, Wl)
                                end if
                          end associate
-                   end if
+                   end if                   
                    if (NStored >= UARH_SECOND_ORDER) then
                          SecondOrder = .true.
                          call uarh_T(T, GramMatrix)
@@ -1157,6 +1164,7 @@ module uks_arh
                    else
                          SecondOrder = .false.
                    end if
+                   time_ARH_Equations = time_ARH_Equations + clock_readwall(timer_ARH_Equations)
 100                continue
                    !
                    ! Check if the Hessian is positive definite.
@@ -1175,6 +1183,7 @@ module uks_arh
                          shift_maxnorm = ZERO
                    end if
                    shift = shift_maxnorm
+                   call clock_start(timer_ARH_X)
                    if (SecondOrder) then
                          call uarh_X(XA_ov, XB_ov, sigma_X, FnA_ov, FnB_ov, FkA_ov, FkB_ov, DkA_ov, DkB_ov, &
                                EigA, EigB, Tinv, NStored, shift, SpinUnres)
@@ -1182,6 +1191,7 @@ module uks_arh
                          call uarh_Y(XA_ov, XB_ov, FnA_ov, FnB_ov, EigA, EigB, shift, SpinUnres)
                          sigma_X = ZERO
                    end if
+                   time_ARH_X = time_ARH_X + clock_readwall(timer_ARH_X)
                    shift0 = shift
                    Xnorm0 = uarh_matrixnorm(XA_ov, XB_ov, norm_type, SpinUnres)
                    !
@@ -1194,6 +1204,7 @@ module uks_arh
                    ! so that the norm ||X_ov|| is equal to the trust radius
                    !
                    if (Xnorm0 > trust_radius .and. enable_shift) then
+                         call clock_start(timer_ARH_X)
                          !
                          ! Find X_ov such that ||X_ov|| < trust_radius
                          !
@@ -1225,6 +1236,7 @@ module uks_arh
                                      Xnorm1 = Xnorm
                                end if
                          end do bisection
+                         time_ARH_X = time_ARH_X + clock_readwall(timer_ARH_X)
                          if (.not. converged) then
                                call msg("SCF solver: failed to solve ||X(shift)|| = trust_radius", MSG_WARNING)
                          end if
@@ -1248,6 +1260,7 @@ module uks_arh
                    !    number of matrices. In that case, recompute X_ov using simpler,
                    !    first-order method.
                    !
+                   call clock_start(timer_ARH_EnergyEstimate)
                    call uarh_EnergyModel(EmodelA, XA_ov, sigma_X, FnA_ov, FkA_ov, Tinv, EigA, &
                          NStored, OccNumber, SecondOrder)
                    if (SpinUnres) then
@@ -1258,6 +1271,7 @@ module uks_arh
                    end if
                    Emodel = EmodelA + EmodelB
                    Epred = EelK + Emodel
+                   time_ARH_EnergyEstimate = time_ARH_EnergyEstimate + clock_readwall(timer_ARH_EnergyEstimate)
                    if (((Epred - EelK) > ZERO) .and. SecondOrder .and. enable_shift) then
                          SecondOrder = .false.
                          goto 100
@@ -1293,6 +1307,7 @@ module uks_arh
                    ! atomic orbital basis:
                    ! Xoao = Cocc X Cvirt**H - Cvirt X Xocc**H
                    !
+                   call clock_start(timer_ARH_ExpX)
                    call uarh_ov2oao(X_oao, Wpi(:, 1:NOccA), XA_ov, &
                          CA_ov(:, 1:NoccA), CA_ov(:, NoccA+1:NOccA+NVirtA), &
                          NOccA, NVirtA, NOAO)
@@ -1314,8 +1329,9 @@ module uks_arh
                                C_oao(:, :, 2) = ZERO
                          end if
                    end if
+                   time_ARH_ExpX = time_ARH_ExpX + clock_readwall(timer_ARH_ExpX)
              end associate
              d%NStored = NStored
-             time_ARH = time_ARH + clock_readwall(timer_ARH)
+             time_ARH_Total = time_ARH_Total + clock_readwall(timer_ARH_Total)
        end subroutine uarh_NextIter
  end module uks_arh
