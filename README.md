@@ -1,12 +1,17 @@
-**Beyond-rpa** is a program for performing electronic single-point energy calculations using
-the coupled-cluster formulation of the random-phase approximation (RPA) with a series
-of corrections derived from the expectation value of the Hamiltonian. While this software can
-be applied to any system, the algorithms and numerical thresholds have been adjusted for a
-numerically-stable calculation of 100s or 1000s of small energy terms which appear in the
-many-body expansion of the crystal lattice energy:
+**Beyond-rpa** performs electronic single-point energy calculations using the random-phase
+approximation (RPA) methods with corrections expressed via simplified coupled-cluster
+amplitudes (see ref. 1). While **beyond-rpa** can
+be applied to any system, the algorithms and numerical thresholds have been
+hand-tuned for a numerically-stable calculation of 100s or 1000s of small
+energy terms in the many-body expansion of the crystal lattice energy:
 * two-body noncovalent interaction energies,
 * nonadditive energies of molecular trimers,
 * nonadditive energies of molecular tetramers.
+
+You can use **beyond-rpa** like any other electronic structure software, 
+but the simplest way to carry out automated fragment-based lattice energy
+calculations is to use the **mbe-automation** companion program available
+at `https://github.com/modrzejewski/mbe-automation`.
 
 ### Compilation
 
@@ -14,6 +19,7 @@ many-body expansion of the crystal lattice energy:
 ```
 git clone https://github.com/modrzejewski/beyond-rpa.git
 ```
+
 2. Go to `./beyond-rpa/src` and run the compilation script
 ```
 ./build.py -np 4 ifort-I64
@@ -30,8 +36,9 @@ text files.
 ./bin/run -nt 16 example.inp 
 ```
 where `-nt 16` specifies that there are `16` concurrent threads and `example.inp`
-the input text file.
-2. Example input file: noncovalent interaction energy of water dimer
+is the input text file.
+
+2. Example input file: noncovalent interaction energy of a water dimer
 ```
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -54,6 +61,7 @@ H     -1.789372    -0.742283    -0.371009
 H     -1.777037     0.777638    -0.304264
 end
 ```
+
 3. Example input file: nonadditive 3-body interaction energy of formaldehyde trimer
 ```
 jobtype uks rpa
