@@ -40,7 +40,7 @@ text files.
 where `-nt 16` specifies that there are `16` concurrent threads and `example.inp`
 is the input text file.
 
-2. Example input file: noncovalent interaction energy of a water dimer
+2. Example input: noncovalent interaction energy of a water dimer
 ```
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -64,7 +64,7 @@ H     -1.777037     0.777638    -0.304264
 end
 ```
 
-3. Example input file: nonadditive 3-body interaction energy of formaldehyde trimer
+3. Example input: nonadditive 3-body interaction energy of a formaldehyde trimer
 ```
 jobtype uks rpa
 basis aug-cc-pVDZ
