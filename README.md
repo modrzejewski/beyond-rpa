@@ -1,4 +1,4 @@
-### Overview
+# Overview
 **Beyond-rpa** performs electronic single-point energy calculations using the random-phase
 approximation (RPA) methods with higher-order corrections expressed via simplified
 coupled-cluster amplitudes. While **beyond-rpa** can
@@ -15,7 +15,7 @@ calculations is to use it in combination with the **mbe-automation**
 companion program available
 at [github](https://github.com/modrzejewski/mbe-automation).
 
-### Compilation
+# Compilation
 
 1. Clone the repository
 ```
@@ -32,7 +32,7 @@ system among the available sets of flags or make your own. You simply need to cr
 your own subdirectory and add the command lines in the `compiler` and `linker`
 text files.
 
-### Usage
+# Usage
 1. Run the launcher script in the bin directory,
 ```
 ./bin/run -nt 16 example.inp 
@@ -94,7 +94,7 @@ H   1.470340   0.502963  12.512302
 end
 ```
 
-### Authors
+# Authors
 * Marcin Modrzejewski (main author)
 
 with contributions from:
@@ -104,7 +104,7 @@ with contributions from:
 * Krystyna Syty (decomposition of amplitudes)
 * Khanh Ngoc Pham (finding bugs)
    
-### Literature
+# Literature
 You can use **beyond-rpa** to replicate the numerical results from the following publications:
 * Cieśliński, D., Tucholska, A., Modrzejewski, M., J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
 * Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 160, 224101 (2024); doi: 10.1063/5.0207090
@@ -112,9 +112,9 @@ You can use **beyond-rpa** to replicate the numerical results from the following
 * Modrzejewski, M., Yourdkhani, S., Śmiga, Sz., Klimeš, J., J. Chem. Theory Comput. 17, 804 (2021); doi: 10.1021/acs.jctc.0c00966
 * Modrzejewski, M., Yourdkhani, S., Klimeš, J., J. Chem. Theory Comput. 16, 427 (2020); doi: 10.1021/acs.jctc.9b00979
 
-### License
+# License
 You can freely use this program, modify it, and embed it in your code provided
 that you provide attribution to the original authors and cite the papers
-related to the implementation and derivation of the methods. The license under
-which this code is distributed is available in `LICENSE.txt`.
+related to the implementation and derivation of the methods. The full text
+of the license is available in `LICENSE.txt`.
 
