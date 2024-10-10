@@ -1,6 +1,6 @@
 **Beyond-rpa** performs electronic single-point energy calculations using the random-phase
-approximation (RPA) methods with corrections expressed via simplified coupled-cluster
-amplitudes (see ref. 1). While **beyond-rpa** can
+approximation (RPA) methods with higher-order corrections expressed via simplified
+coupled-cluster amplitudes. While **beyond-rpa** can
 be applied to any system, the algorithms and numerical thresholds have been
 hand-tuned for a numerically-stable calculation of 100s or 1000s of small
 energy terms in the many-body expansion of the crystal lattice energy:
@@ -10,8 +10,9 @@ energy terms in the many-body expansion of the crystal lattice energy:
 
 You can use **beyond-rpa** like any other electronic structure software, 
 but the simplest way to carry out automated fragment-based lattice energy
-calculations is to use the **mbe-automation** companion program available
-at `https://github.com/modrzejewski/mbe-automation`.
+calculations is to use it in combination with the **mbe-automation**
+companion program available
+at [github](`https://github.com/modrzejewski/mbe-automation`).
 
 ### Compilation
 
@@ -24,9 +25,9 @@ git clone https://github.com/modrzejewski/beyond-rpa.git
 ```
 ./build.py -np 4 ifort-I64
 ```
-The set of compiler flags, here it is set to `ifort-I64`, should correspond to one of
+The compiler flags, here it is `ifort-I64`, should correspond to one of
 the subdirectories in `./src/CompilerFlags`. Choose a set appropriate for your
-system among the available sets or make your own. You simply need to create
+system among the available sets of flags or make your own. You simply need to create
 your own subdirectory and add the command lines in the `compiler` and `linker`
 text files.
 
