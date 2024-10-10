@@ -1008,12 +1008,12 @@ contains
             integer :: NAOCart, NAOSpher
             real(F64) :: RhoDiff, EDiff, OrbGrad, OrbShift
             real(F64) :: EtotN, EtotK, EelN, EelK, ExcN, ExcK
-            type(uarhdata) :: arh_data
+            type(TARHData) :: arh_data
             integer :: NIters, NMicroIters, NStored, s
             logical :: AcceptAllCn
             logical, allocatable :: ConvConds[:], DoMicroIters[:], DoMacroIters[:]
             type(tclock) :: timer_Iter, timer_Total
-            real(F64) :: time_F, time_ARH_Total, time_ARH_X, time_ARH_ExpX
+            real(F64) :: time_F, time_ARH_Total, time_ARH_X, time_ARH_ExpX, time_ARH_Ortho            
             real(F64) :: time_ARH_Equations, time_ARH_EnergyEstimate, time_Iter
             integer, parameter :: MaxNMicroIters = 10
             real(F64), parameter :: MinOrbGrad = ZERO
@@ -1065,6 +1065,7 @@ contains
             time_ARH_ExpX = ZERO
             time_ARH_Equations = ZERO
             time_ARH_EnergyEstimate = ZERO
+            time_ARH_Ortho = ZERO
             call scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
             allocate(BufferK(DimJK))
             allocate(BufferJ(DimJK))
@@ -1265,7 +1266,8 @@ contains
                         if (ThisImage == 1) then
                               call uarh_NextIter(arh_data, Cn_oao, OrbGrad, OrbShift, NStored, &
                                     Fn_oao, EelK, (NMicroIters>1), time_ARH_Total, time_ARH_X, &
-                                    time_ARH_ExpX, time_ARH_Equations, time_ARH_EnergyEstimate)
+                                    time_ARH_ExpX, time_ARH_Equations, time_ARH_EnergyEstimate, &
+                                    time_ARH_Ortho)
                         end if
                         call co_broadcast(Cn_oao, source_image=1)
                         call scf_OccCoeffs(Cocc_cao, Cn_oao, BasisVecs_cao, NOcc)
@@ -1459,8 +1461,9 @@ contains
             call midrule()
             call msg("Timings (seconds)")
             call msg("* mean-field hamiltonian     " // str(time_F,d=1))
-            call msg("* solver (search direction)  " // str(time_ARH_Equations,d=1))
+            call msg("* solver (setting up eqns)   " // str(time_ARH_Equations,d=1))
             call msg("* solver (energy estimate)   " // str(time_ARH_EnergyEstimate,d=1))
+            call msg("* solver (orthogonalization) " // str(time_ARH_Ortho,d=1))
             call msg("* solver (rotation matrix X) " // str(time_ARH_X,d=1))
             call msg("* solver (exponential of X)  " // str(time_ARH_ExpX,d=1))
             call msg("* solver (total)             " // str(time_ARH_Total,d=1))            
