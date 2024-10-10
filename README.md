@@ -1,3 +1,4 @@
+### Overview
 **Beyond-rpa** performs electronic single-point energy calculations using the random-phase
 approximation (RPA) methods with higher-order corrections expressed via simplified
 coupled-cluster amplitudes. While **beyond-rpa** can
