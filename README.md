@@ -12,7 +12,7 @@ You can use **beyond-rpa** like any other electronic structure software,
 but the simplest way to carry out automated fragment-based lattice energy
 calculations is to use it in combination with the **mbe-automation**
 companion program available
-at [github](`https://github.com/modrzejewski/mbe-automation`).
+at [github](https://github.com/modrzejewski/mbe-automation).
 
 ### Compilation
 
