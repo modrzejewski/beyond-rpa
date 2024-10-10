@@ -42,7 +42,7 @@ module uks_arh
       integer, parameter            :: UARH_NORMTYP_FROB = 0
       integer, parameter            :: UARH_NORMTYP_MAX  = 1
 
-      type uarhdata
+      type TARHData
             !
             ! Occupation number, scales the energy derivative: dE/dDpq = OccNumber*Fpq
             !
@@ -60,7 +60,9 @@ module uks_arh
             real(F64), dimension(:, :, :, :), allocatable :: Fk_oao
             real(F64), dimension(:, :, :), allocatable :: CkA_oao
             real(F64), dimension(:, :, :), allocatable :: CkB_oao
-            integer, dimension(UARH_MAX_NSTOR) :: idx_map
+            real(F64), dimension(UARH_MAX_NSTOR, UARH_MAX_NSTOR) :: SklA
+            real(F64), dimension(UARH_MAX_NSTOR, UARH_MAX_NSTOR) :: SklB
+            integer, dimension(UARH_MAX_NSTOR) :: IdxMap
             integer :: NStored = 0
             real(F64) :: shift = ZERO
             logical :: enable_shift = .true.
@@ -69,13 +71,13 @@ module uks_arh
             integer :: norm_type = UARH_NORMTYP_MAX
             real(F64) :: XNorm
             logical :: SpinUnres
-      end type uarhdata
+      end type TARHData
 
  contains
 
        subroutine uarh_init(a, OccNumber, OccRangeA, OccRangeB, VirtRangeA, VirtRangeB, &
              Noao, SpinUnres)
-             type(uarhdata), intent(out)       :: a
+             type(TARHData), intent(out)       :: a
              real(F64)                         :: OccNumber
              integer, dimension(2), intent(in) :: OccRangeA
              integer, dimension(2), intent(in) :: OccRangeB
@@ -91,6 +93,8 @@ module uks_arh
              !
              a%OccNumber = OccNumber
              a%SpinUnres = SpinUnres
+             a%SklA = ZERO
+             a%SklB = ZERO
              if (SpinUnres) then
                    a%OccRangeA = OccRangeA
                    a%OccRangeB = OccRangeB
@@ -119,12 +123,12 @@ module uks_arh
 
 
        subroutine uarh_free(a)
-             type(uarhdata), intent(out) :: a
+             type(TARHData), intent(out) :: a
        end subroutine uarh_free
 
 
        subroutine uarh_DisableShift(a)
-             type(uarhdata), intent(inout) :: a
+             type(TARHData), intent(inout) :: a
              a%enable_shift = .false.
        end subroutine uarh_DisableShift
 
@@ -144,7 +148,7 @@ module uks_arh
              !    optimization scheme for the Kohn-Sham energy,
              !    Phys. Chem. Chem. Phys. 10, 5344(2008)
              !
-             type(uarhdata), intent(inout) :: d
+             type(TARHData), intent(inout) :: d
              logical, intent(out)          :: updated
              real(F64), intent(in)         :: EelN
              real(F64), intent(in)         :: EelK
@@ -193,9 +197,9 @@ module uks_arh
        end subroutine uarh_TrustRadius
 
        
-       function uarh_freeidx(idx_map, nstor)
+       function uarh_freeidx(IdxMap, nstor)
              integer                           :: uarh_freeidx
-             integer, dimension(:), intent(in) :: idx_map
+             integer, dimension(:), intent(in) :: IdxMap
              integer, intent(in)               :: nstor
              
              integer :: i, j
@@ -208,7 +212,7 @@ module uks_arh
                    iloop: do i = 1, UARH_MAX_NSTOR
                          occupied = .false.
                          jloop: do j = 1, nstor
-                               if (idx_map(j) == i) then
+                               if (IdxMap(j) == i) then
                                      occupied = .true.
                                      exit jloop
                                end if
@@ -225,38 +229,51 @@ module uks_arh
        end function uarh_freeidx
 
        
-       subroutine uarh_store(Fk_oao, CkA_oao, CkB_oao, idx_map, NStored, &
-             Fn_oao, CnA_oao, CnB_oao, SpinUnres)
+       subroutine uarh_store(Fk_oao, CkA_oao, CkB_oao, SklA, SklB, IdxMap, NStored, &
+             Fn_oao, CnA_oao, CnB_oao, GklA, GklB, SpinUnres)
              
              real(F64), dimension(:, :, :, :), intent(inout) :: Fk_oao
              real(F64), dimension(:, :, :), intent(inout)    :: CkA_oao
              real(F64), dimension(:, :, :), intent(inout)    :: CkB_oao
-             integer, dimension(:), intent(inout)            :: idx_map
+             real(F64), dimension(:, :), intent(out)         :: SklA
+             real(F64), dimension(:, :), intent(out)         :: SklB
+             integer, dimension(:), intent(inout)            :: IdxMap
              integer, intent(inout)                          :: NStored
              real(F64), dimension(:, :, :), intent(in)       :: Fn_oao
              real(F64), dimension(:, :), intent(in)          :: CnA_oao
              real(F64), dimension(:, :), intent(in)          :: CnB_oao
+             real(F64), dimension(:, :), intent(in)          :: GklA
+             real(F64), dimension(:, :), intent(in)          :: GklB
              logical, intent(in)                             :: SpinUnres
 
              integer :: i, idx1
+             integer :: k, l
 
              if (NStored < UARH_MAX_NSTOR) then
-                   i = uarh_freeidx(idx_map, NStored)
+                   i = uarh_freeidx(IdxMap, NStored)
                    Fk_oao(:, :, i, 1) = Fn_oao(:, :, 1)
                    CkA_oao(:, :, i) = CnA_oao
                    if (SpinUnres) then
                          Fk_oao(:, :, i, 2) = Fn_oao(:, :, 2)
                          CkB_oao(:, :, i) = CnB_oao
                    end if
-                   idx_map(NStored+1) = i
+                   IdxMap(NStored+1) = i
                    NStored = NStored + 1
+                   SklA = ZERO
+                   SklB = ZERO
+                   do l = 1, NStored
+                         do k = 1, NStored
+                               SklA(IdxMap(k), IdxMap(l)) = GklA(k, l)
+                               SklB(IdxMap(k), IdxMap(l)) = GklB(k, l)
+                         end do
+                   end do
              else
                    !
-                   ! idx_map(1) is the index of the oldest stored pair (Fk, Dk),
-                   ! idx_map(2) is the second oldest etc.
+                   ! IdxMap(1) is the index of the oldest stored pair (Fk, Dk),
+                   ! IdxMap(2) is the second oldest etc.
                    ! Overwrite the oldest pair with (Fn, Dn).
                    !
-                   idx1 = idx_map(1)
+                   idx1 = IdxMap(1)
                    Fk_oao(:, :, idx1, 1) = Fn_oao(:, :, 1)
                    CkA_oao(:, :, idx1) = CnA_oao
                    if (SpinUnres) then
@@ -264,20 +281,28 @@ module uks_arh
                          CkB_oao(:, :, idx1) = CnB_oao
                    end if
                    do i = 1, UARH_MAX_NSTOR - 1
-                         idx_map(i) = idx_map(i + 1)
+                         IdxMap(i) = IdxMap(i + 1)
                    end do
-                   idx_map(UARH_MAX_NSTOR) = idx1
+                   IdxMap(UARH_MAX_NSTOR) = idx1
+                   SklA = ZERO
+                   SklB = ZERO
+                   do l = 1, NStored
+                         do k = 1, NStored
+                               SklA(IdxMap(k), IdxMap(l)) = GklA(k+1, l+1)
+                               SklB(IdxMap(k), IdxMap(l)) = GklB(k+1, l+1)
+                         end do
+                   end do
              end if
        end subroutine uarh_store
 
 
-       subroutine uarh_del(idx_map, i, nstor)
+       subroutine uarh_del(IdxMap, i, nstor)
              !
              ! Delete the i-th pair of matrices (Dk, Fk)
              ! i=1     Oldest pair
              ! i=nstor Newest pair
              !
-             integer, dimension(:), intent(inout) :: idx_map
+             integer, dimension(:), intent(inout) :: IdxMap
              integer, intent(in)                  :: i
              integer, intent(in)                  :: nstor
 
@@ -300,67 +325,10 @@ module uks_arh
                    
              if (nstor > 0) then
                    do k = i, nstor - 1
-                         idx_map(k) = idx_map(k + 1)
+                         IdxMap(k) = IdxMap(k + 1)
                    end do
              end if
        end subroutine uarh_del
-
-
-       subroutine uarh_islindep(lindep, del_list, GramMatrix)
-             !
-             ! Test if the density matrix from the n-th iteration, Dn,
-             ! is linearly independent Dk's from the previous iterations
-             !
-             logical, intent(out)                            :: lindep
-             integer, dimension(:), allocatable, intent(out) :: del_list
-             real(F64), dimension(:, :), intent(in)          :: GramMatrix
-
-             real(F64) :: mineig, TrD
-             real(F64), dimension(:, :), allocatable :: ts
-             real(F64), dimension(:), allocatable :: w
-             integer :: nremoved
-             integer :: k, m
-             integer :: n
-
-             n = size(GramMatrix, dim=1)
-             allocate(ts(n, n))
-             allocate(w(n))
-             nremoved = 0
-             TrD = GramMatrix(n, n)
-             !
-             ! If addition of RHO(N) causes linear dependence, try to delete
-             ! try to delete, in the following order, RHO(N-1), RHO(N-2), etc.
-             ! It is tested numerically that this algorithm leads to the largest
-             ! number of density matrices at the end of SCF.
-             !
-             delloop: do k = 1, n - 1
-                   !
-                   ! Compute the eigenvalues of the Gram matrix
-                   !
-                   ts = GramMatrix / TrD
-                   call symmetric_eigenproblem(w, ts, n-nremoved, .false.)
-                   !
-                   ! Check if smallest eigenvalue of the overlap
-                   ! matrix is below the linear dependency threshold
-                   !
-                   mineig = minval(w(1:n-nremoved))
-                   if (mineig < UARH_LINDEP_THRESH) then
-                         nremoved = nremoved + 1
-                   else
-                         exit delloop
-                   end if
-             end do delloop
-
-             if (nremoved > 0) then
-                   lindep = .true.
-                   allocate(del_list(nremoved))
-                   do m = 1, nremoved
-                         del_list(m) = n - m
-                   end do
-             else
-                   lindep = .false.
-             end if
-       end subroutine uarh_islindep
 
 
        subroutine uarh_ov2oao(X_oao, Wpi, X_ov, Cocc_ov, Cvirt_ov, NOcc, NVirt, NOAO)
@@ -829,41 +797,16 @@ module uks_arh
        end subroutine uarh_Y
 
 
-       subroutine uarh_ovtrans(Fk_ov, Dk_ov, Fk_oao, Ck_oao, idx_map, C_ov, NStored)
-             !
-             ! Transform the D and F matrices from the previous iterations to the current-iteration
-             ! occupied-virtual block-diagonalizaing basis. The new basis is spanned by the columns of Cov.
-             !
-             real(F64), dimension(:, :, :), intent(out) :: Fk_ov
-             real(F64), dimension(:, :, :), intent(out) :: Dk_ov
-             real(F64), dimension(:, :, :), intent(in)  :: Fk_oao
-             real(F64), dimension(:, :, :), intent(in)  :: Ck_oao
-             integer, dimension(:), intent(in)          :: idx_map
-             real(F64), dimension(:, :), intent(in)     :: C_ov
-             integer, intent(in)                        :: NStored
-
-             integer :: k, kk
-             integer :: i0, i1, a0, a1
-             integer :: Nocc, Nvirt
-
-             Nocc = size(Fk_ov, dim=1)
-             Nvirt = size(Fk_ov, dim=2)
-             i0 = 1
-             i1 = Nocc
-             a0 = Nocc + 1
-             a1 = Nocc + Nvirt
-             do k = 1, NStored
-                   kk = idx_map(k)
-                   call uarh_DensityMatrix(Dk_ov(:, :, k), Ck_oao(:, :, kk), C_ov)
-                   call real_aTbc(Fk_ov(:, :, k), C_ov(:, i0:i1), Fk_oao(:, :, kk), C_ov(:, a0:a1))
-             end do
-       end subroutine uarh_ovtrans
-
-
        subroutine uarh_Transform_FD(Fk_ov, Dk_ov, Fk_oao_oao, Ck_oao_occ, IdxMap, Cn_oao_mo, NStored)
              !
-             ! (1) Use stored occupied orbitals to generate density in the semicanonical basis.
-             ! (2) Transform stored Fock matrices to the semicanonical basis.
+             ! The ARH solver depends on the Fock (F) and density (D) matrices from the previous
+             ! iterations. Here, those matrices are transformed to the semicanonical (occupied
+             ! and virtual) basis computed in the current iteration.
+             !
+             ! (1) Use stored occupied orbitals to generate density
+             ! in the semicanonical basis (Dk_ov).
+             ! (2) Transform stored Fock matrices to the semicanonical
+             ! basis (Fk_ov).
              !
              real(F64), dimension(:, :, :), intent(out) :: Fk_ov
              real(F64), dimension(:, :, :), intent(out) :: Dk_ov
@@ -893,85 +836,103 @@ module uks_arh
                    call real_ab(Fk_ov(:, :, k), W_Occ_mo, Cn_oao_mo(:, a0:a1))
              end do
        end subroutine uarh_Transform_FD
-       
 
-       subroutine uarh_stable_invert(Tinv, T)
-             !
-             ! Invert the matrix T. Use symmetric diagonalization to get good
-             ! numerical stability. (The numerical stability is an issue when
-             ! stored density matrices result from small steps.)
-             !
+       
+       subroutine uarh_Pseudoinverse(Tinv, T)
              real(F64), dimension(:, :), intent(out)   :: Tinv
              real(F64), dimension(:, :), intent(in)    :: T
 
-             integer :: i, j, n
+             integer :: N, Rank, l, l0, l1
+             real(F64) :: AbsThresh
+             real(F64), parameter :: RelThresh = 1.0E-6_F64
+             real(F64), dimension(:, :), allocatable :: Ukl, Qkl, QklT
+             real(F64), dimension(:), allocatable :: Wl
 
-             n = size(Tinv, dim=1)
-             do j = 1, n
-                   do i = j, n
-                         Tinv(i, j) = T(i, j)
-                         Tinv(j, i) = T(i, j)
-                   end do
+             N = size(Tinv, dim=1)
+             allocate(Wl(N))
+             allocate(Ukl(N, N))
+             allocate(Qkl(N, N))
+             Ukl = T
+             call symmetric_eigenproblem(Wl, Ukl, N, .true.)
+             if (Wl(N) <= ZERO) then
+                   call msg("SCF solver encountered invalid overlap matrix", MSG_ERROR)
+                   call msg("Max eigenvalue = " // str(Wl(N), d=1), MSG_ERROR)
+                   error stop
+             end if
+             AbsThresh = Wl(N) * RelThresh
+             Rank = 0
+             do l = N, 1, -1
+                   if (Wl(l) > AbsThresh) then
+                         Qkl(:, l) = Ukl(:, l) / Wl(l)
+                         Rank = Rank + 1
+                   else
+                         exit
+                   end if
              end do
-             call real_invert_robust(Tinv)
-       end subroutine uarh_stable_invert
+             if (Rank == 0) then
+                   call msg("SCF solver encountered invalid overlap matrix", MSG_ERROR)
+                   error stop
+             end if
+             l0 = N - Rank + 1
+             l1 = N
+             allocate(QklT(Rank, N))
+             QklT = transpose(Qkl(:, l0:l1))
+             Tinv = matmul(Ukl(:, l0:l1), QklT)
+       end subroutine uarh_Pseudoinverse
+
        
-
        subroutine uarh_T(T, G)
-             real(F64), dimension(:, :), intent(out) :: T
-             real(F64), dimension(:, :), intent(in)  :: G
-
-             integer :: k, l, NStored
-
-             NStored = size(T, dim=1)
+             !
+             ! Overlap between density matrix differences:
              !
              ! Tkl = Sum(PQ) (DkPQ - DnPQ) * (DlPQ - DnPQ) = Gkl + Gnn - Gnl - Gnk
              ! 
+             real(F64), dimension(:, :), intent(out) :: T
+             real(F64), dimension(:, :), intent(in)  :: G
+
+             integer :: k, l, n, NStored
+
+             NStored = size(T, dim=1)
+             n = NStored + 1
              do l = 1, NStored
                    do k = l, NStored
-                         T(k, l) = G(k, l) + G(NStored+1, NStored+1) - G(NStored+1, l) - G(NStored+1, k)
+                         T(k, l) = G(k, l) + G(n, n) - G(n, l) - G(n, k)
                    end do
              end do
        end subroutine uarh_T
 
-       
-       subroutine uarh_Overlap(G, Ck_oao, Dn_oao, idx_map, NStored, Wk, Wl)
-             real(F64), dimension(:, :), intent(inout) :: G
-             real(F64), dimension(:, :, :), intent(in) :: Ck_oao
-             real(F64), dimension(:, :), intent(in)    :: Dn_oao
-             integer, dimension(:), intent(in)         :: idx_map
-             integer, intent(in)                       :: NStored
-             real(F64), dimension(:, :), intent(out)   :: Wk
-             real(F64), dimension(:, :), intent(out)   :: Wl
 
-             integer :: Noao, p, k, l, kk, ll
-             real(F64) :: TrD
-             real(F64) :: Skl
-             
-             Noao = size(Dn_oao, dim=1)
-             TrD = ZERO
-             do p = 1, Noao
-                   TrD = TrD + Dn_oao(p, p)
-             end do
-             do l = 1, NStored+1
-                   G(l, l) = G(l, l) + TrD
+       subroutine uarh_Gkl(Gkl, Skl, Ck_oao_occ, Cn_oao_occ, IdxMap, NStored)
+             real(F64), dimension(:, :), intent(inout)   :: Gkl
+             real(F64), dimension(:, :), intent(in)      :: Skl
+             real(F64), dimension(:, :, :), intent(in)   :: Ck_oao_occ
+             real(F64), dimension(:, :), intent(in)      :: Cn_oao_occ
+             integer, dimension(:), intent(in)           :: IdxMap
+             integer, intent(in)                         :: NStored
+
+             real(F64), dimension(:, :), allocatable :: Wij
+             real(F64) :: Gkn
+             integer :: NOcc, k, l, n
+
+             NOcc = size(Cn_oao_occ, dim=2)
+             allocate(Wij(NOcc, NOcc))
+             n = NStored + 1
+             do k = 1, NStored
+                   call real_aTb(Wij, Ck_oao_occ(:, :, IdxMap(k)), Cn_oao_occ)
+                   call real_vw_x(Gkn, Wij, Wij, NOcc**2)
+                   Gkl(k, n) = Gkn
+                   Gkl(n, k) = Gkn
              end do
              do l = 1, NStored
-                   ll = idx_map(l)
-                   call real_abT(Wl, Ck_oao(:, :, ll), Ck_oao(:, :, ll))
-                   do k = l+1, NStored
-                         kk = idx_map(k)
-                         call real_abT(Wk, Ck_oao(:, :, kk), Ck_oao(:, :, kk))
-                         call real_vw_x(Skl, Wk, Wl, NOAO**2)
-                         G(k, l) = G(k, l) + Skl
+                   do k = 1, NStored
+                         Gkl(k, l) = Skl(IdxMap(k), IdxMap(l))
                    end do
-                   call real_vw_x(Skl, Dn_oao, Wl, NOAO**2)
-                   G(NStored+1, l) = G(NStored+1, l) + Skl
              end do
-       end subroutine uarh_Overlap
-       
-       
-       subroutine uarh_ov_basis(C, evals, Foao, Cocc, Cvirt)
+             Gkl(n, n) = NOcc
+       end subroutine uarh_Gkl
+
+
+       subroutine uarh_Semicanonical(C, evals, Foao, Cocc, Cvirt)
              !
              ! Compute the basis in which the virtual-virtual and occupied-occupied blocks
              ! of the Hamiltonian are diagonal. Note that the occupied-virtual (virtual-occupied)
@@ -1000,38 +961,34 @@ module uks_arh
              call symmetric_eigenproblem(evals(Nocc+1:Nocc+Nvirt), Fvirt, Nvirt, .true.)
              call real_ab(C(:, Nocc+1:Nocc+Nvirt), Cvirt, Fvirt)
              deallocate(Fvirt)
-       end subroutine uarh_ov_basis
+       end subroutine uarh_Semicanonical
 
 
-       subroutine uarh_DensityMatrix(D_ov, Cocc_oao, C_ov)
-             !
-             ! Dov <- Cocc(OV)**T (Cocc(OAO) Cocc(OAO)**T) Cvirt(OV)
-             !
-             real(F64), dimension(:, :), intent(out) :: D_ov
-             real(F64), dimension(:, :), intent(in)  :: Cocc_oao
-             real(F64), dimension(:, :), intent(in)  :: C_ov
+       subroutine uarh_CheckOrtho(MaxSpq, Spq, C_oao_mo)
+             real(F64), intent(out)                  :: MaxSpq
+             real(F64), dimension(:, :), intent(out) :: Spq
+             real(F64), dimension(:, :), intent(in)  :: C_oao_mo
+             
+             integer :: NOAO
+             integer :: p
+             real(F64) :: MaxSpq1, MaxSpq2
 
-             real(F64), dimension(:, :), allocatable :: W1, W2
-             integer :: Nocc, Nvirt, Noao, i0, i1, a0, a1
+             NOAO = size(C_oao_mo, dim=1)
+             call real_aTb(Spq, C_oao_mo, C_oao_mo)
+             !$omp parallel do private(p)
+             do p = 1, NOAO
+                   Spq(p, p) = Spq(p, p) - ONE
+             end do
+             !$omp end parallel do
+             MaxSpq1 = maxval(Spq)
+             MaxSpq2 = minval(Spq)
+             MaxSpq = max(abs(MaxSpq1), abs(MaxSpq2))
+       end subroutine uarh_CheckOrtho
 
-             Noao = size(Cocc_oao, dim=1)
-             Nocc = size(D_ov, dim=1)
-             Nvirt = size(D_ov, dim=2)
-             i0 = 1
-             i1 = Nocc
-             a0 = Nocc + 1
-             a1 = Nocc + Nvirt
-             allocate(W1(Nocc, Nocc))
-             allocate(W2(Nocc, Nvirt))
-             call real_aTb(W1, C_ov(:, i0:i1), Cocc_oao)
-             call real_aTb(W2, Cocc_oao, C_ov(:, a0:a1))
-             call real_ab(D_ov, W1, W2)
-       end subroutine uarh_DensityMatrix
-
-
+       
        subroutine uarh_NextIter(d, C_oao, OrbGradMax, OrbShift, NStored, Fn_oao, &
              EelK, RetryIter, time_ARH_Total, time_ARH_X, time_ARH_ExpX, &
-             time_ARH_Equations, time_ARH_EnergyEstimate)
+             time_ARH_Equations, time_ARH_EnergyEstimate, time_ARH_Ortho)
              !
              ! Driver subroutine for the spin-unrestricted SCF solver.
              !
@@ -1045,7 +1002,7 @@ module uks_arh
              !    functional theory,
              !    J. Chem. Phys. 123, 074103(2005)
              !
-             type(uarhdata)                                           :: d
+             type(TARHData)                                           :: d
              real(F64), dimension(:, :, :), contiguous, intent(inout) :: C_oao
              real(F64), intent(out)                                   :: OrbGradMax
              real(F64), intent(out)                                   :: OrbShift
@@ -1058,10 +1015,10 @@ module uks_arh
              real(F64), intent(inout)                                 :: time_ARH_ExpX
              real(F64), intent(inout)                                 :: time_ARH_Equations
              real(F64), intent(inout)                                 :: time_ARH_EnergyEstimate
+             real(F64), intent(inout)                                 :: time_ARH_Ortho
 
              integer :: k
              logical :: SecondOrder
-             logical :: lindep
              integer :: Noao, NoccA, NoccB, NvirtA, NvirtB
              real(F64) :: TargetNorm
              real(F64) :: shift_maxnorm
@@ -1069,29 +1026,28 @@ module uks_arh
              real(F64), parameter :: eps = 1.0E-3_F64
              real(F64) :: GapA, GapB, gap
              real(F64) :: Xnorm0, Xnorm1, Xnorm_mid
-             real(F64) :: MaxOverlapA, MaxOverlapB
+             real(F64) :: MaxSpq
              real(F64), dimension(:, :), allocatable :: X_oao, expX_oao
              real(F64), dimension(:, :), allocatable :: Wpq, Wpi
              real(F64), dimension(:, :), allocatable :: CA_ov, CB_ov, XA_ov, XB_ov, FnA_ov, FnB_ov
-             real(F64), dimension(:, :), allocatable :: Tinv, T, GramMatrix
+             real(F64), dimension(:, :), allocatable :: Tinv, T, GramMatrix, GklA, GklB
              real(F64), dimension(:), allocatable :: sigma_X
              real(F64), dimension(:, :, :), allocatable :: FkA_ov, FkB_ov, DkA_ov, DkB_ov, Dn_oao
              real(F64), dimension(:), allocatable :: EigA, EigB
              real(F64) :: Emodel, EmodelA, EmodelB
-             integer, dimension(:), allocatable :: del_list
              integer :: i0A, i1A, a0A, a1A
              integer :: i0B, i1B, a0B, a1B
              logical :: converged
              type(TClock) :: timer_ARH_Total, timer_ARH_ExpX, timer_ARH_X, timer_ARH_Equations
-             type(TClock) :: timer_ARH_EnergyEstimate
+             type(TClock) :: timer_ARH_EnergyEstimate, timer_ARH_Ortho
              
              call clock_start(timer_ARH_total)
              NStored = d%NStored
              associate (shift => d%shift, norm_type => d%norm_type, Xnorm => d%Xnorm, enable_shift => d%enable_shift, &
                    trust_radius => d%trust_radius, OccRangeA => d%OccRangeA, OccRangeB => d%OccRangeB, &
                    VirtRangeA => d%VirtRangeA, VirtRangeB => d%VirtRangeB, Fk_oao => d%Fk_oao, &
-                   CkA_oao => d%CkA_oao, CkB_oao => d%CkB_oao, idx_map => d%idx_map, Epred => d%Epred, &
-                   OccNumber => d%OccNumber, SpinUnres => d%SpinUnres)
+                   CkA_oao => d%CkA_oao, CkB_oao => d%CkB_oao, IdxMap => d%IdxMap, Epred => d%Epred, &
+                   OccNumber => d%OccNumber, SpinUnres => d%SpinUnres, SklA => d%SklA, SklB => d%SklB)
 
                    if (RetryIter) then
                          !
@@ -1099,7 +1055,7 @@ module uks_arh
                          ! Otherwise, Dn_oao would be exactly equal to Dk_oao(NStored),
                          ! which would hamper the inversion of the T matrix.
                          !
-                         call uarh_del(idx_map, NStored, NStored)
+                         call uarh_del(IdxMap, NStored, NStored)
                          if (NStored > 0) NStored = NStored - 1
                    end if
                    Noao = size(Fn_oao, dim=1)
@@ -1145,28 +1101,36 @@ module uks_arh
                    allocate(Tinv(NStored, NStored))
                    allocate(T(NStored, NStored))
                    allocate(GramMatrix(NStored+1, NStored+1))
+                   allocate(GklA(NStored+1, NStored+1))
+                   allocate(GklB(NStored+1, NStored+1))
                    allocate(sigma_X(NStored))
                    !
                    ! Check if MO vectors are orthogonal. Perform
                    ! orthogonalization if orthogonality check 
                    ! fails
                    !
-                   call real_conditional_gramschmidt(.true., C_oao(:, :, 1), UARH_ORTH_THRESH, MaxOverlapA)
+                   call clock_start(timer_ARH_Ortho)
+                   call uarh_CheckOrtho(MaxSpq, Wpq, C_oao(:, :, 1))
+                   if (MaxSpq > UARH_ORTH_THRESH) then
+                         call real_QR(C_oao(:, :, 1))
+                         call msg("Max error in S = C**T C = " // str(MaxSpq, 1))
+                         call msg("MOs were orthonormalized")
+                   end if
                    if (SpinUnres) then
-                         call real_conditional_gramschmidt(.true., C_oao(:, :, 2), UARH_ORTH_THRESH, MaxOverlapB)
-                   else
-                         MaxOverlapB = ZERO
+                         call uarh_CheckOrtho(MaxSpq, Wpq, C_oao(:, :, 2))
+                         if (MaxSpq > UARH_ORTH_THRESH) then
+                               call real_QR(C_oao(:, :, 2))
+                               call msg("Max error in S = C**T C = " // str(MaxSpq, 1))
+                               call msg("MOs were orthonormalized")
+                         end if
                    end if
-                   if (max(MaxOverlapA, MaxOverlapB) > UARH_ORTH_THRESH) then
-                         call msg("MOs were orthonormalized by the ARH subroutine")
-                         call msg("Max off-diagonal overlap |Sij| = " // str(max(MaxOverlapA, MaxOverlapB), 1))
-                   end if
+                   time_ARH_Ortho = time_ARH_Ortho + clock_readwall(timer_ARH_Ortho)
                    !
                    ! Compute the occupied-virtual block-diagonalizing basis, i.e., the basis
                    ! in which the occupied-occupied and virtual-virtual blocks of F are diagonal.
                    !
                    call clock_start(timer_ARH_Equations)
-                   call uarh_ov_basis(CA_ov, EigA, Fn_oao(:, :, 1), C_oao(:, i0A:i1A, 1), C_oao(:, a0A:a1A, 1))
+                   call uarh_Semicanonical(CA_ov, EigA, Fn_oao(:, :, 1), C_oao(:, i0A:i1A, 1), C_oao(:, a0A:a1A, 1))
                    call real_aTbc(FnA_ov, CA_ov(:, 1:NoccA), Fn_oao(:, :, 1), CA_ov(:, NoccA+1:))
                    call real_abT(Dn_oao(:, :, 1), C_oao(:, i0A:i1A, 1), C_oao(:, i0A:i1A, 1))
                    !
@@ -1174,27 +1138,25 @@ module uks_arh
                    !
                    OrbGradMax = uarh_maxnorm(FnA_ov)
                    if (SpinUnres) then
-                         call uarh_ov_basis(CB_ov, EigB, Fn_oao(:, :, 2), C_oao(:, i0B:i1B, 2), C_oao(:, a0B:a1B, 2))
+                         call uarh_Semicanonical(CB_ov, EigB, Fn_oao(:, :, 2), C_oao(:, i0B:i1B, 2), C_oao(:, a0B:a1B, 2))
                          call real_aTbc(FnB_ov, CB_ov(:, 1:NoccB), Fn_oao(:, :, 2), CB_ov(:, NoccB+1:))
                          call real_abT(Dn_oao(:, :, 2), C_oao(:, i0B:i1B, 2), C_oao(:, i0B:i1B, 2))
                          OrbGradMax = max(OrbGradMax, uarh_maxnorm(FnB_ov))
                    end if
-                   if (NStored > 0) then
-                         associate (Wk => expX_oao, Wl => Wpq)
-                               GramMatrix = ZERO
-                               call uarh_Overlap(GramMatrix, CkA_oao, Dn_oao(:, :, 1), idx_map, NStored, Wk, Wl)
-                               if (SpinUnres) then
-                                     call uarh_Overlap(GramMatrix, CkB_oao, Dn_oao(:, :, 2), idx_map, NStored, Wk, Wl)
-                               end if
-                         end associate
-                   end if                   
+                   call uarh_Gkl(GklA, SklA, CkA_oao, C_oao(:, i0A:i1A, 1), IdxMap, NStored)
+                   if (SpinUnres) then
+                         call uarh_Gkl(GklB, SklB, CkB_oao, C_oao(:, i0B:i1B, 2), IdxMap, NStored)
+                         GramMatrix = GklA + GklB
+                   else
+                         GramMatrix = GklA
+                   end if
                    if (NStored >= UARH_SECOND_ORDER) then
                          SecondOrder = .true.
                          call uarh_T(T, GramMatrix)
-                         call uarh_stable_invert(Tinv, T)
-                         call uarh_ovtrans(FkA_ov, DkA_ov, Fk_oao(:, :, :, 1), CkA_oao, idx_map, CA_ov, NStored)
+                         call uarh_Pseudoinverse(Tinv, T)
+                         call uarh_Transform_FD(FkA_ov, DkA_ov, Fk_oao(:, :, :, 1), CkA_oao, IdxMap, CA_ov, NStored)
                          if (SpinUnres) then
-                               call uarh_ovtrans(FkB_ov, DkB_ov, Fk_oao(:, :, :, 2), CkB_oao, idx_map, CB_ov, NStored)
+                               call uarh_Transform_FD(FkB_ov, DkB_ov, Fk_oao(:, :, :, 2), CkB_oao, IdxMap, CB_ov, NStored)
                          end if
                    else
                          SecondOrder = .false.
@@ -1313,29 +1275,16 @@ module uks_arh
                    end if
                    OrbShift = shift
                    !
-                   ! Check if linear dependencies arise when adding Dn to the set of density matrices
-                   !
-                   if (NStored > 0) then
-                         call uarh_islindep(lindep, del_list, GramMatrix)
-                         if (lindep) then
-                               do k = 1, size(del_list)
-                                     !
-                                     ! DEL_LIST is a list of indices sorted in decreasing order
-                                     !
-                                     call uarh_del(idx_map, del_list(k), NStored)
-                                     if (NStored > 0) NStored = NStored - 1
-                               end do
-                         end if
-                   end if
-                   !
                    ! Store new pair of density and KS matrices
                    !
                    if (SpinUnres) then
-                         call uarh_store(Fk_oao, CkA_oao, CkB_oao, idx_map, NStored, &
-                               Fn_oao, C_oao(:, i0A:i1A, 1), C_oao(:, i0B:i1B, 2), SpinUnres)
+                         call uarh_store(Fk_oao, CkA_oao, CkB_oao, SklA, SklB, IdxMap, NStored, &
+                               Fn_oao, C_oao(:, i0A:i1A, 1), C_oao(:, i0B:i1B, 2), GklA, GklB, &
+                               SpinUnres)
                    else
-                         call uarh_store(Fk_oao, CkA_oao, CkB_oao, idx_map, NStored, &
-                               Fn_oao, C_oao(:, i0A:i1A, 1), C_oao(:, i0A:i1A, 1), SpinUnres)
+                         call uarh_store(Fk_oao, CkA_oao, CkB_oao, SklA, SklB, IdxMap, NStored, &
+                               Fn_oao, C_oao(:, i0A:i1A, 1), C_oao(:, i0A:i1A, 1), GklA, GklB, &
+                               SpinUnres)
                    end if
                    !
                    ! Compute the orbital rotation matrix X in the orthogonalized
