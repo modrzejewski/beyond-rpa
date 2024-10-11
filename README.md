@@ -28,19 +28,26 @@ git clone https://github.com/modrzejewski/beyond-rpa.git
 ```
 The compiler flags, here it is `ifort-I64`, should correspond to one of
 the subdirectories in `./src/CompilerFlags`. Choose a set appropriate for your
-system among the available sets of flags or make your own. You simply need to create
+system among the available sets or make your own. You can create
 your own subdirectory and add the command lines in the `compiler` and `linker`
 text files.
 
 # Usage
-1. Run the launcher script in the bin directory,
+## Running beyond-rpa
+Execute the launcher script
 ```
-./bin/run -nt 16 example.inp 
+./beyond-rpa/bin/run -nt 16 example.inp 
 ```
-where `-nt 16` specifies that there are `16` concurrent threads and `example.inp`
-is the input text file.
+where
+* `-nt 16` specifies the number of concurrent threads used by the program. To get the best
+efficiency, the number of threads should be equal to the number of physical cores available
+for your calculations. For example, if you reserved a single node with shared memory and
+2 CPUs, each having 18 physical cores, then the optimal setting is `-nt 36`.
+* `example.inp` is the input text file which contains the definition of the physical system
+and the requested level of theory. Example inputs are given below.
 
-2. Example input: noncovalent interaction energy of a water dimer
+## Examples
+### 1. Noncovalent interaction energy of a water dimer
 ```
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -64,7 +71,7 @@ H     -1.777037     0.777638    -0.304264
 end
 ```
 
-3. Example input: nonadditive 3-body interaction energy of a formaldehyde trimer
+### 2. Nonadditive 3-body interaction energy of a formaldehyde trimer
 ```
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -106,15 +113,15 @@ with contributions from:
    
 # Literature
 You can use **beyond-rpa** to replicate the numerical results from the following publications:
-* Cieśliński, D., Tucholska, A., Modrzejewski, M., J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
-* Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 160, 224101 (2024); doi: 10.1063/5.0207090
-* Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 158, 144119 (2023); doi: 10.1063/5.0142348
-* Modrzejewski, M., Yourdkhani, S., Śmiga, Sz., Klimeš, J., J. Chem. Theory Comput. 17, 804 (2021); doi: 10.1021/acs.jctc.0c00966
-* Modrzejewski, M., Yourdkhani, S., Klimeš, J., J. Chem. Theory Comput. 16, 427 (2020); doi: 10.1021/acs.jctc.9b00979
+1. Cieśliński, D., Tucholska, A., Modrzejewski, M., J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+2. Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 160, 224101 (2024); doi: 10.1063/5.0207090
+3. Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 158, 144119 (2023); doi: 10.1063/5.0142348
+4. Modrzejewski, M., Yourdkhani, S., Śmiga, Sz., Klimeš, J., J. Chem. Theory Comput. 17, 804 (2021); doi: 10.1021/acs.jctc.0c00966
+5. Modrzejewski, M., Yourdkhani, S., Klimeš, J., J. Chem. Theory Comput. 16, 427 (2020); doi: 10.1021/acs.jctc.9b00979
 
 # License
-You can freely use this program, modify it, and embed it in your code provided
-that you provide attribution to the original authors and cite the papers
-related to the implementation and derivation of the methods. The full text
-of the license is available in `LICENSE.txt`.
+This program is freely available for use, modification, and integration into other software,
+provided that proper attribution is given to the original authors. Additionally, users are
+requested to cite the relevant publications that describe the methods implemented
+in this program. For full licensing details, please refer to `LICENSE.txt`.
 
