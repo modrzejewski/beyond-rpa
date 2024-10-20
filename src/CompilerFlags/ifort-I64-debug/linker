@@ -1,1 +1,1 @@
-ifx -qopenmp -O0 -i8 -qmkl -coarray -g -traceback -check all -o
+ifort -qopenmp -O0 -i8 -qmkl -coarray -g -traceback -check all -o
