@@ -28,9 +28,9 @@ contains
             
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
-            type(TChol2Vecs) :: CholeskyBasis
+            type(TChol2Vecs) :: Chol2Vecs
             type(TCoulTHCGrid) :: THCGrid
-            real(F64), dimension(:, :, :), allocatable :: CholeskyVecs[:]
+            real(F64), dimension(:, :, :), allocatable :: Rkpq[:]
             integer :: NSystems
             integer :: k
             real(F64) :: time_Fock
@@ -78,12 +78,12 @@ contains
                   SCFParams%ERI_Algorithm == SCF_ERI_THC) &
                   .and. RPAParams%TensorHypercontraction) then
                   THCParams%THC_QuadraticMemory = .true.
-                  call thc_CoulombMatrix_QuadraticMemory(THCGrid, AOBasis, &
+                  call thc_CoulombMatrix_QuadraticMemory(THCGrid, Chol2Vecs, AOBasis, &
                         System, THCParams, Chol2Params)
-                  allocate(CholeskyVecs(0, 0, 0)[*])
+                  allocate(Rkpq(0, 0, 0)[*])
             else
-                  call chol2_Algo_Koch_JCP2019(CholeskyBasis, AOBasis, Chol2Params)
-                  call chol2_FullDimVectors(CholeskyVecs, CholeskyBasis, AOBasis, Chol2Params)
+                  call chol2_Algo_Koch_JCP2019(Chol2Vecs, AOBasis, Chol2Params)
+                  call chol2_FullDimVectors(Rkpq, Chol2Vecs, AOBasis, Chol2Params)
                   if (RPAParams%TensorHypercontraction) then
                         THCParams%THC_QuadraticMemory = .false.
                         call thc_Grid( &
@@ -102,7 +102,7 @@ contains
                               THCGrid%NGrid, &
                               THCGrid%NGridReduced, &
                               THCGrid%Xgp, &
-                              CholeskyVecs, CholeskyBasis, Chol2Params, &
+                              Rkpq, Chol2Vecs, Chol2Params, &
                               AOBasis, THCParams)
                         allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
                         call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
@@ -115,7 +115,7 @@ contains
                         call init_modules()
                   end if                  
                   call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, &
-                        CholeskyVecs, CholeskyBasis, THCGrid)
+                        Rkpq, Chol2Vecs, THCGrid)
                   if (.not. SCFOutput(k)%Converged) then
                         call msg("SCF not converged. Cannot continue with a post-SCF calculation", MSG_ERROR)
                         error stop
@@ -125,12 +125,12 @@ contains
                         call data_free()
                   end if
             end do
-            if (RPAParams%TensorHypercontraction) deallocate(CholeskyVecs)
+            if (RPAParams%TensorHypercontraction) deallocate(Rkpq)
             if (SCFParams%ERI_Algorithm==SCF_ERI_THC .and. RPAParams%TensorHypercontraction) then
                   call thc_ReduceGrid(THCGrid)
             end if
             call rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, &
-                  System, CholeskyVecs, CholeskyBasis, THCGrid)            
+                  System, Rkpq, Chol2Vecs, Chol2Params, THCGrid)            
             call free_modules()
             call data_free()
       end subroutine task_uks_rpa

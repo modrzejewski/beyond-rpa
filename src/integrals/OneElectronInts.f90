@@ -931,6 +931,49 @@ contains
             call ints1e_SpherAOTransf(S, S_cao, AOBasis)
       end subroutine ints1e_S
 
+
+      subroutine ints1e_T(T, AOBasis)
+            !
+            ! Kinetic energy operator matrix in the basis of spherical
+            ! Gaussian atomic orbitals.
+            ! Both upper and lower triangles of the output matrix
+            ! are filled with data.
+            !
+            real(F64), dimension(:, :), intent(out) :: T
+            type(TAOBasis), intent(in)              :: AOBasis
+
+            real(F64), dimension(:, :), allocatable :: T_cao
+            integer :: NAOCart
+
+            NAOCart = AOBasis%NAOCart
+            allocate(T_cao(NAOCart, NAOCart))
+            call ints1e_Kinetic(T_cao, AOBasis)
+            call real_smfill(T_cao)
+            call ints1e_SpherAOTransf(T, T_cao, AOBasis)
+      end subroutine ints1e_T
+
+
+      subroutine ints1e_Vne(Vne, AOBasis, System)
+            !
+            ! One-electron Coulomb matrix in the spherical Gaussian
+            ! in the basis of spherical Gaussian atomic orbitals.
+            ! Both upper and lower triangles of the output matrix
+            ! are filled with data.
+            !
+            real(F64), dimension(:, :), intent(out) :: Vne
+            type(TAOBasis), intent(in)              :: AOBasis
+            type(TSystem), intent(in)               :: System
+
+            real(F64), dimension(:, :), allocatable :: Vne_cao
+            integer :: NAOCart
+
+            NAOCart = AOBasis%NAOCart
+            allocate(Vne_cao(NAOCart, NAOCart))
+            call ints1e_Coulomb(Vne_cao, AOBasis, System)
+            call real_smfill(Vne_cao)
+            call ints1e_SpherAOTransf(Vne, Vne_cao, AOBasis)
+      end subroutine ints1e_Vne
+      
       
       subroutine ints1e_SpherAOTransf(X_sao, X_cao, AOBasis)
             real(F64), dimension(:, :), intent(out) :: X_sao

@@ -3839,6 +3839,17 @@ contains
                         call msg("Invalid label of the T1 approximation", MSG_ERROR)
                         error stop
                   end select
+            case ("HFREFINE", "HFREFINEMENT", "HF-REFINE", "HF-REFINEMENT", "HFREFINEALGORITHM", &
+                  "HF-REFINEMENT-ALGORITHM")
+                  select case (uppercase(val))
+                  case ("CHOLESKY")
+                        RPAParams%HFRefineAlgorithm = RPA_HF_REFINE_CHOLESKY
+                  case ("EXACT")
+                        RPAParams%HFRefineAlgorithm = RPA_HF_REFINE_EXACT
+                  case default
+                        call msg("Invalid value of HFRefineAlgorithm", MSG_ERROR)
+                        error stop
+                  end select
             case ("CCD-CORRECTIONS", "CCDCORRECTIONS", "THEORY-LEVEL", "THEORYLEVEL")
                   RPAParams%TensorHypercontraction = .true.
                   RPAParams%CoupledClusters = .true.

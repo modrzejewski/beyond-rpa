@@ -10,6 +10,8 @@ module rpa_MeanField
       use sys_definitions
       use rpa_definitions
       use thc_definitions
+      use rpa_Cholesky
+      use rpa_HF
 
       implicit none
 
@@ -25,8 +27,16 @@ contains
             call msg("1. HF energy (EtotHF)")
             call msg("2. linear density correction (1-RDM linear)")
             call msg("3. quadratic density correction (1-RDM quadratic)")
-            call msg("Terms (2) and (3) are nonzero when approximate Coulomb integrals are used")
+            call msg("Terms (2) and (3) will be nonzero due to approximate Coulomb integrals")
             call msg("Total mean-field energy: (1) + (2) + (3)")
+            if (RPAParams%HFRefineAlgorithm == RPA_HF_REFINE_CHOLESKY) then
+                  call msg("Refined Coulomb integrals will be generated with Cholesky vectors")
+            else if (RPAParams%HFRefineAlgorithm == RPA_HF_REFINE_EXACT) then
+                  call msg("Refined Coulomb integrals will be generated with exact Auto2e code")
+            else
+                  call msg("Invalid value of HFRefineAlgorithm", MSG_ERROR)
+                  error stop
+            end if
             call msg("Linear-dependence threshold for the eigenvalues of S:")
             call msg(lfield("SCF", 15) // lfield(str(SCFParams%LinDepThresh,d=1), 15))
             call msg(lfield("refinement", 15) // lfield(str(RPAParams%HFRefineLinDepThresh,d=1), 15))
@@ -140,7 +150,7 @@ contains
       
 
       subroutine rpa_MeanField_RefineHF(MeanField, SCFOutput, SCFParams, &
-            RPAParams, AOBasis, System, THCGrid)
+            RPAParams, AOBasis, System, THCGrid, Chol2Vecs, Chol2Params)
 
             type(TMeanField), intent(out)  :: MeanField
             type(TSCFOutput), intent(in)   :: SCFOutput
@@ -149,6 +159,8 @@ contains
             type(TAOBasis), intent(in)     :: AOBasis
             type(TSystem), intent(in)      :: System
             type(TCoulTHCGrid), intent(in) :: THCGrid
+            type(TChol2Vecs), intent(in)   :: Chol2Vecs
+            type(TChol2Params), intent(in) :: Chol2Params
 
             integer :: NAO, NSpins, NMO, NGridTHC
             integer :: i0, i1, a0, a1, s
@@ -156,13 +168,15 @@ contains
             real(F64), dimension(:, :), allocatable :: Qpk
             real(F64), dimension(:, :, :), allocatable :: RhoRefined_ao
             real(F64), dimension(:, :), allocatable :: Fpl, Fkl
-            real(F64), dimension(:, :), allocatable :: Cpi
+            real(F64), dimension(:, :, :), allocatable :: Cpi
             real(F64), dimension(:, :), allocatable :: Spq
             integer, dimension(2) :: NOcc, NVirt
             real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
             real(F64) :: time_F
+            type(TClock) :: timer_F
             real(F64), dimension(3) :: Dipole
             real(F64), dimension(3, 3) :: Quadrupole, QTraceless
+            logical, parameter :: CholeskyFock = .true.
 
             call msg(cfield("HF refinement for " // sys_ChemicalFormula(System), 76))
             NAO = AOBasis%NAOSpher
@@ -184,26 +198,52 @@ contains
             NSpins = size(SCFOutput%C_oao, dim=3)
             MeanField%NSpins = NSpins
             allocate(Rho_ao(NAO, NAO, NSpins))
+            allocate(Cpi(NAO, max(NOcc(1), NOcc(2)), NSpins))
             do s = 1, NSpins
                   if (NOcc(s) > 0) then
                         i0 = 1
                         i1 = SCFOutput%NOcc(s)
-                        allocate(Cpi(NAO, NOcc(s)))
-                        call real_ab(Cpi, SCFOutput%MOBasisVecsSpher, &
-                              SCFOutput%C_oao(:, i0:i1, s))
-                        call real_abT(Rho_ao(:, :, s), Cpi, Cpi)
-                        if (NSpins==1) then
-                              Rho_ao(:, :, s) = TWO * Rho_ao(:, :, s)
-                        end if
-                        deallocate(Cpi)
+                        associate (Cpj => Cpi(:, 1:NOcc(s), s))
+                              call real_ab(Cpj, SCFOutput%MOBasisVecsSpher, &
+                                    SCFOutput%C_oao(:, i0:i1, s))
+                              call real_abT(Rho_ao(:, :, s), Cpj, Cpj)
+                              if (NSpins==1) then
+                                    Rho_ao(:, :, s) = TWO * Rho_ao(:, :, s)
+                              end if
+                        end associate
                   else
                         Rho_ao(:, :, s) = ZERO
                   end if
             end do
+            !
+            ! Compute the Hartree-Fock Hamiltonian and the corresponding
+            ! expectation value (EtotHF) using either exact or Cholesky
+            ! Coulomb integrals. Thos approaches are slower than THC,
+            ! but reduce the errors by orders of magnitude even when
+            ! the Fock matrix is evaluated on a THC HF self-consistent
+            ! set of orbitals. After the addition of the linear and
+            ! quadratic density correction to EtotHF, the total
+            ! mean-field energy should be practically exact.
+            !
             allocate(MeanField%F_ao(NAO, NAO, NSpins))
-            call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
-                  SCFParams, System, AOBasis, time_F)
+            select case (RPAParams%HFRefineAlgorithm)
+            case (RPA_HF_REFINE_CHOLESKY)
+                  call clock_start(timer_F)
+                  call rpa_HF_F(MeanField%F_ao, EtotHF, Cpi, NOcc, &
+                        Chol2Vecs, Chol2Params, AOBasis, System, RPAParams)
+!                  call rpa_Cholesky_F(MeanField%F_ao, EtotHF, Cpi, NOcc, &
+!                        Chol2Vecs, Chol2Params, AOBasis, System, RPAParams)
+                  time_F = clock_readwall(timer_F)
+            case (RPA_HF_REFINE_EXACT)
+                  call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, &
+                        EHbare, Enucl, Rho_ao, SCFParams, System, AOBasis, time_F)
+            end select
             MeanField%EtotHF = EtotHF
+            !
+            ! Diagonalize the refined Hartree-Fock hamiltonian to get a corrected
+            ! set of orbitals and orbital energies for the correlation energy
+            ! calculations
+            !
             allocate(Fpl(NAO, NMO))
             allocate(Fkl(NMO, NMO))
             allocate(MeanField%OrbEnergies(NMO, NSpins))
@@ -226,6 +266,15 @@ contains
                         MeanField%OrbEnergies(:, s) = ZERO
                   end if
             end do
+            !
+            ! Finally, compute the mean-field energy corrections which are
+            ! linear and quadratic in DeltaRho, where DeltaRho is the difference
+            ! between the refined density matrix from the accurate Fock matrix
+            ! and the self-consistent density matrix from the THC SCF. This contribution
+            ! is analogous to the singles energy correction of Klimes et al., but
+            ! now the perturbation is the difference between the accurate Hartree-Fock
+            ! hamiltonian and the hamiltonian evaluated with THC Coulomb integrals.
+            !
             allocate(RhoRefined_ao(NAO, NAO, NSpins))
             allocate(DeltaRho_ao(NAO, NAO, NSpins))
             do s = 1, NSpins
@@ -249,6 +298,13 @@ contains
             call multi_TotalMultipoles(Dipole, Quadrupole, RhoRefined_ao, System, AOBasis)
             call multi_TracelessQuadrupole(QTraceless, Quadrupole, MULTI_QUAD_TRACELESS_BUCKINGHAM)
             call multi_Display(Dipole, QTraceless)
+            call msg("Fock matrix build completed in " // str(time_F,d=1) // " seconds")
+            call msg("Single-point energies (a.u.)")
+            call msg(lfield("Hartree-Fock", 50) // lfield(str(MeanField%EtotHF, d=9), 20))
+            call msg(lfield("linear correction", 50) // lfield(str(MeanField%Ec1RDM_Linear, d=9), 20))
+            call msg(lfield("quadratic correction", 50) // lfield(str(MeanField%Ec1RDM_Quadratic, d=9), 20))
+            call msg(lfield("total mean field", 50) // lfield(str( &
+                  MeanField%EtotHF + MeanField%Ec1RDM_Linear + MeanField%Ec1RDM_Quadratic, d=9), 20))
       end subroutine rpa_MeanField_RefineHF
 
       

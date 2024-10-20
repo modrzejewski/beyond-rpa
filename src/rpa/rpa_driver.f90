@@ -22,7 +22,8 @@ module rpa_driver
 
 contains
 
-      subroutine rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, System, CholeskyVecs, CholeskyBasis, THCGrid)
+      subroutine rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, System, &
+            CholeskyVecs, Chol2Vecs, Chol2Params, THCGrid)
             !
             ! Driver subroutine for the post-SCF part of the RPA energy calculation. Includes
             ! the singles correction of Klimes et al. Works for the single-point energies of molecules
@@ -37,7 +38,8 @@ contains
             type(TRPAParams), intent(inout)                           :: RPAParams
             type(TSystem), intent(inout)                              :: System
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: Chol2Vecs
+            type(TChol2Params), intent(in)                            :: Chol2Params
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
 
             real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB
@@ -106,7 +108,7 @@ contains
                         call sys_Init(System, k)
                         if (SCFParams%XCFunc == XCF_HF) then
                               call rpa_MeanField_RefineHF(MeanFieldStates(k), SCFOutput(k), &
-                                    SCFParams, RPAParams, AOBasis, System, THCGrid)
+                                    SCFParams, RPAParams, AOBasis, System, THCGrid, Chol2Vecs, Chol2Params)
                         else                        
                               call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
                                     RPAParams, AOBasis, System, THCGrid)
@@ -211,12 +213,12 @@ contains
                         else
                               if (RPAParams%CoupledClusters) then
                                     call rpa_CC_Etot(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
-                                          RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, &
+                                          RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, Chol2Vecs, &
                                           SCFParams, System)
                               else
                                     call rpa_Etot(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, &
                                           System, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
-                                          CholeskyVecs, CholeskyBasis)
+                                          CholeskyVecs, Chol2Vecs)
                               end if
                         end if
                   end do
@@ -433,7 +435,7 @@ contains
 
 
       subroutine rpa_Etot(Energy, SCFOutput, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
-            RPABasis, CholeskyVecs, CholeskyBasis)
+            RPABasis, CholeskyVecs, Chol2Vecs)
             !
             ! Compute total random-phase approximation energy (EtotRPA) including the HF-like contribution
             ! (EtotHF=Enucl+Ekin+Ene+Ecoul+Eexch), the correction for singles (EcSingles, Eq. 33 in Ref. 1),
@@ -460,7 +462,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: Chol2Vecs
 
             integer :: NMO, NSpins, MaxNOcc, MaxNVirt
             type(txcdef) :: HFonDFT
@@ -660,7 +662,7 @@ contains
                         allocate(F_ao(0, 0, 0))
                         call rpa_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
                               NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
-                              CholeskyVecs, CholeskyBasis, F_ao)
+                              CholeskyVecs, Chol2Vecs, F_ao)
                   end if
                   EcRPA = Energy(RPA_ENERGY_CORR)
                   EtotRPA = EtotHF + EcSingles + EcRPA
@@ -730,7 +732,7 @@ contains
 
 
       subroutine rpa_CC_Etot(Energy, SCFOutput, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
-            RPABasis, CholeskyVecs, CholeskyBasis, SCFParams, System)
+            RPABasis, CholeskyVecs, Chol2Vecs, SCFParams, System)
 
             real(F64), dimension(:), intent(out)                      :: Energy
             type(TSCFOutput), intent(in)                              :: SCFOutput
@@ -740,7 +742,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: RPABasisVecs[:]
             type(TRPABasis), intent(inout)                            :: RPABasis
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
-            type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
+            type(TChol2Vecs), intent(inout)                           :: Chol2Vecs
             type(TSCFParams), intent(in)                              :: SCFParams
             type(TSystem), intent(in)                                 :: System
 
@@ -790,7 +792,7 @@ contains
                         end do
                         call rpa_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
                               NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
-                              CholeskyVecs, CholeskyBasis, F_ao)
+                              CholeskyVecs, Chol2Vecs, F_ao)
                   end if
             end associate
             Etot = Energy(RPA_ENERGY_HF) + &
