@@ -229,14 +229,14 @@ contains
       end subroutine thc_Test_Vapprox
 
 
-      subroutine thc_CoulombMatrix_QuadraticMemory(THCGrid, AOBasis, System, THCParams, Chol2Params)
+      subroutine thc_CoulombMatrix_QuadraticMemory(THCGrid, Chol2Vecs, AOBasis, System, THCParams, Chol2Params)
             type(TCoulTHCGrid), intent(out) :: THCGrid
+            type(TChol2Vecs), intent(out)   :: Chol2Vecs
             type(TAOBasis), intent(in)      :: AOBasis
             type(TSystem), intent(in)       :: System
             type(TTHCParams), intent(in)    :: THCParams
             type(TChol2Params), intent(in)  :: Chol2Params
 
-            type(TChol2Vecs) :: Chol2Vecs
             real(F64), dimension(1, 1, 1) :: Rkpq
 
             if (.not. THCParams%THC_QuadraticMemory) then
@@ -562,7 +562,7 @@ contains
                         ! The diagonal terms of X(g,pq) are scaled by 1/2.
                         !
                         if (QuadraticMemory) then
-                              call chol2_FullDimVectors_Batch(RkpqBatch, Wabrs, L, &
+                              call chol2_FullDimVectors_Batch(RkpqBatch, Wabrs, Chol2Vecs%Inv_L, L, &
                                     Chol2Vecs, AOBasis, Chol2Params)
                               call real_abT_x(XRgk, NGrid, Xgpq, NGrid, RkpqBatch, NCholesky, &
                                     NGrid, NCholesky, Npq, TWO, ONE)      

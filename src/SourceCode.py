@@ -539,10 +539,13 @@ FileList += [("DFT", ["tddft/rttddft.f90"])]
 FileList += [("DFT", ["tddft/xckernel.f90"])]
 FileList += [("DFT", ["tddft/lresp.f90"])]
 
+FileList += [("DFT", ["rpa/rpa_Cholesky.f90"])]
+
 FileList += [("DFT", ["rpa/GaussPRNG.f90",
                       "rpa/OptFreqQuad.f90",
                       "rpa/OptLaplaceQuad.f90",
-                      "rpa/OrbDiffHist.f90"])]
+                      "rpa/OrbDiffHist.f90",
+                      "rpa/rpa_HF.f90"])]
 FileList += [("DFT", ["rpa/rpa_core.f90",
                       "rpa/rpa_core_SpinUnres.f90",
                       "rpa/rpa_core_MO.f90",

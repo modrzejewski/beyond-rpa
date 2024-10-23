@@ -334,11 +334,6 @@ module rpa_definitions
             ! 
             integer :: MaxBlockDim = 4000
             !
-            ! Block size of Cholesky vectors used during the two-step Cholesky
-            ! factorization
-            !
-            integer :: CholVecsBlock = 500
-            !
             ! Maximum size of a single batch of T2 eigenvectors processed at the same time.
             ! See the algorithm used for the diagonalization of the T2 amplitude matrix.
             !
@@ -502,6 +497,11 @@ module rpa_definitions
             ! was computed with the tensor-hypercontraction algorithm.
             !
             real(F64) :: HFRefineLinDepThresh = 1.0E-6_F64
+            !
+            ! Block size of Cholesky vectors used during the two-step Cholesky
+            ! factorization
+            !
+            integer :: CholVecsBlock = 500
       end type TRPAParams
 
       type TRPAGrids

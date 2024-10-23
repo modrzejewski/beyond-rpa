@@ -375,7 +375,7 @@ contains
       end subroutine chol2_AllocWorkspace
       
 
-      subroutine chol2_FullDimVectors_Batch(Rkpq, Wabrs, SubsetIdx, Chol2Vecs, AOBasis, Chol2Params)
+      subroutine chol2_FullDimVectors_Batch(Rkpq, Wabrs, InvL, SubsetIdx, Chol2Vecs, AOBasis, Chol2Params)
             !
             ! Compute the full dimension Cholesky vectors for a given subset of AO indices pq
             ! according to Eq. 3 in Ref. 1.
@@ -386,6 +386,7 @@ contains
             !
             real(F64), dimension(:, :), intent(out) :: Rkpq
             real(F64), dimension(:, :), intent(out) :: Wabrs
+            real(F64), dimension(:, :), intent(in)  :: InvL
             integer, intent(in)                     :: SubsetIdx
             type(TChol2Vecs), intent(in)            :: Chol2Vecs
             type(TAOBasis), intent(in)              :: AOBasis
@@ -407,12 +408,7 @@ contains
             ! Eq. 3 in Ref. 1
             ! R(k,pq) <- InvL(k,rs)*V(pq,rs)
             !
-            associate ( &
-                  InvL => Chol2Vecs%Inv_L, &
-                  Vabrs => Wabrs &
-                  )
-                  call real_abT(Rkpq, InvL, Wabrs)
-            end associate
+            call real_abT(Rkpq, InvL, Wabrs)
       end subroutine chol2_FullDimVectors_Batch
 
 
@@ -437,10 +433,33 @@ contains
             Y = this_image()
             do X = 1, Chol2Vecs%NSubsets(1)
                   SubsetIdx = X + (Y - 1) * Chol2Vecs%NSubsets(1)
-                  call chol2_FullDimVectors_Batch(Rkpq(:, :, X), Wabrs, SubsetIdx, &
+                  call chol2_FullDimVectors_Batch(Rkpq(:, :, X), Wabrs, Chol2Vecs%Inv_L, SubsetIdx, &
                         Chol2Vecs, AOBasis, Chol2Params)
             end do
             call msg("Cholesky vectors computed in " // str(clock_readwall(timer),d=1) // " seconds")
             sync all
       end subroutine chol2_FullDimVectors
+
+
+      subroutine chol2_SelectedFullDimVectors(Rkpq, Inv_L, Wabrs, k0, k1, Chol2Vecs, AOBasis, Chol2Params)
+
+            real(F64), dimension(:, :, :, :), intent(out) :: Rkpq
+            real(F64), dimension(:, :), intent(out)       :: Inv_L
+            real(F64), dimension(:, :), intent(out)       :: Wabrs
+            integer, intent(in)                           :: k0, k1
+            type(TChol2Vecs), intent(in)                  :: Chol2Vecs
+            type(TAOBasis), intent(in)                    :: AOBasis
+            type(TChol2Params), intent(in)                :: Chol2Params
+
+            integer :: SubsetIdx, X, Y
+
+            Inv_L(:, :) = Chol2Vecs%Inv_L(k0:k1, :)
+            do Y = 1, Chol2Vecs%NSubsets(2)
+                  do X = 1, Chol2Vecs%NSubsets(1)
+                        SubsetIdx = X + (Y - 1) * Chol2Vecs%NSubsets(1)
+                        call chol2_FullDimVectors_Batch(Rkpq(:, :, X, Y), Wabrs, Inv_L, SubsetIdx, &
+                              Chol2Vecs, AOBasis, Chol2Params)
+                  end do
+            end do
+      end subroutine chol2_SelectedFullDimVectors
 end module TwoStepCholesky
