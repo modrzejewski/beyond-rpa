@@ -439,19 +439,16 @@ contains
             end associate
       end subroutine rpa_HF_FillUpperTriangle
       
-      
-      subroutine rpa_HF_F(Fpq, EtotHF, Cpi, NOcc, Chol2Vecs, &
-            Chol2Params, AOBasis, System, RPAParams)
+
+      subroutine rpa_HF_F(Fpq, EtotHF, Cpi, NOcc, Chol2Vecs, AOBasis, System)
             
             real(F64), dimension(:, :, :), intent(out) :: Fpq
             real(F64), intent(out)                     :: EtotHF
             real(F64), dimension(:, :, :), intent(in)  :: Cpi
             integer, dimension(:), intent(in)          :: NOcc
             type(TChol2Vecs), intent(in)               :: Chol2Vecs
-            type(TChol2Params), intent(in)             :: Chol2Params
             type(TAOBasis), intent(in)                 :: AOBasis
             type(TSystem), intent(in)                  :: System
-            type(TRPAParams), intent(in)               :: RPAParams
 
             integer :: NAO, NSpins
             integer :: s
@@ -521,4 +518,92 @@ contains
             end associate
             EtotHF = Enucl + EHbare + EHFTwoEl
       end subroutine rpa_HF_F
+
+
+      subroutine rpa_HF_F_AllSubsystemsAtOnce(MeanFieldStates, System, Dpq, NOcc, NSpins, Chol2Vecs, AOBasis)
+            type(TMeanField), dimension(:), intent(out)   :: MeanFieldStates
+            type(TSystem), intent(inout)                  :: System
+            real(F64), dimension(:, :, :), intent(in)     :: Dpq
+            integer, dimension(:, :), intent(in)          :: NOcc
+            integer, dimension(:), intent(in)             :: NSpins
+            type(TChol2Vecs), intent(in)                  :: Chol2Vecs
+            type(TAOBasis), intent(in)                    :: AOBasis
+
+            integer :: NAO
+            integer :: s, k, l
+            real(F64), dimension(:, :), allocatable :: Tpq, Vpq
+            real(F64), dimension(:, :, :), allocatable :: Jpq, Kpq
+            real(F64) :: EHFTwoEl, Enucl, EHbare
+            real(F64) :: TrDJK, TrDT, TrDV
+            integer :: NDensities, NSystems
+            integer, dimension(2) :: t
+
+            NAO = AOBasis%NAOSpher
+            NSystems = size(MeanFieldStates)
+            NDensities = sum(NSpins)
+            allocate(Jpq(NAO, NAO, NDensities))
+            allocate(Kpq(NAO, NAO, NDensities))
+            !
+            ! Exchange and Coulomb matrices for the supersystem
+            ! and all subsystems
+            !
+            call rpa_HF_IntegralsLoop(Jpq, Kpq, Dpq, NDensities, AOBasis, Chol2Vecs)
+            allocate(Vpq(NAO, NAO))
+            allocate(Tpq(NAO, NAO))
+            call ints1e_T(Tpq, AOBasis)
+            do k = 1, NSystems
+                  call sys_Init(System, k)
+                  allocate(MeanFieldStates(k)%F_ao(NAO, NAO, NSpins(k)))
+                  associate (Fpq => MeanFieldStates(k)%F_ao(:, :, :))
+                        call sys_NuclearRepulsion(Enucl, System)
+                        l = 0
+                        if (k > 1) l = sum(NSpins(1:k-1))
+                        t(1) = l + 1
+                        t(2) = l + 2
+                        do s = 1, NSpins(k)
+                              Fpq(:, :, s) = ZERO
+                        end do
+                        do s = 1, NSpins(k)
+                              if (NOcc(s, k) > 0) then
+                                    if (NSpins(k) == 1) then
+                                          !
+                                          ! Closed shells
+                                          !
+                                          Fpq(:, :, s) = Fpq(:, :, s) + TWO * Jpq(:, :, t(s))
+                                          Fpq(:, :, s) = Fpq(:, :, s) - Kpq(:, :, t(s))
+                                    else
+                                          !
+                                          ! Open shells
+                                          !
+                                          if (NOcc(1, k) > 0) Fpq(:, :, 1) = Fpq(:, :, 1) + Jpq(:, :, s)
+                                          if (NOcc(2, k) > 0) Fpq(:, :, 2) = Fpq(:, :, 2) + Jpq(:, :, s)
+                                          Fpq(:, :, s) = Fpq(:, :, s) - Kpq(:, :, t(s))
+                                    end if
+                              end if
+                        end do
+                        EHFTwoEl = ZERO
+                        EHbare = ZERO
+                        call ints1e_Vne(Vpq, AOBasis, System)                  
+                        do s = 1, NSpins(k)
+                              if (NOcc(s, k) > 0) then
+                                    call real_vw_x(TrDJK, Dpq(:, :, t(s)), Fpq(:, :, s), NAO**2)
+                                    call real_vw_x(TrDV, Dpq(:, :, t(s)), Vpq, NAO**2)
+                                    call real_vw_x(TrDT, Dpq(:, :, t(s)), Tpq, NAO**2)
+                                    if (NSpins(k) == 1) then
+                                          EHFTwoEl = EHFTwoEl + TWO * (ONE/TWO) * TrDJK
+                                          EHbare = EHbare + TWO * (TrDV + TrDT)
+                                    else
+                                          EHFTwoEl = EHFTwoEl + (ONE/TWO) * TrDJK
+                                          EHbare = EHbare + TrDV + TrDT
+                                    end if
+                                    Fpq(:, :, s) = Fpq(:, :, s) + Tpq(:, :)
+                                    Fpq(:, :, s) = Fpq(:, :, s) + Vpq(:, :)
+                              end if
+                        end do
+                        MeanFieldStates(k)%EtotHF = Enucl + EHbare + EHFTwoEl
+                        MeanFieldStates(k)%NOcc(:) = NOcc(:, k)
+                        MeanFieldStates(k)%NSpins = NSpins(k)
+                  end associate
+            end do
+      end subroutine rpa_HF_F_AllSubsystemsAtOnce
 end module rpa_HF

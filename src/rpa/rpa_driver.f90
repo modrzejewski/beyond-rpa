@@ -104,16 +104,16 @@ contains
                         call rpa_MeanField_RefineHF_Preamble(RPAParams, SCFParams)
                   end if
                   call clock_start(timer)
-                  do k = 1, NSystems
-                        call sys_Init(System, k)
-                        if (SCFParams%XCFunc == XCF_HF) then
-                              call rpa_MeanField_RefineHF(MeanFieldStates(k), SCFOutput(k), &
-                                    SCFParams, RPAParams, AOBasis, System, THCGrid, Chol2Vecs, Chol2Params)
-                        else                        
+                  if (SCFParams%XCFunc == XCF_HF) then
+                        call rpa_MeanField_RefineHF(MeanFieldStates, System, SCFOutput, &
+                              Chol2Vecs, THCGrid, RPAParams, AOBasis)
+                  else
+                        do k = 1, NSystems
+                              call sys_Init(System, k)
                               call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
                                     RPAParams, AOBasis, System, THCGrid)
-                        end if
-                  end do
+                        end do
+                  end if
                   call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
             end if
             allocate(RPAGrids%daiValues(RPA_HISTOGRAM_NBINS, n))
