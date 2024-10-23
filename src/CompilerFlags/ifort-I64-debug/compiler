@@ -1,1 +1,1 @@
-ifx -qopenmp -O0 -check all -g -traceback -i8 -qmkl -coarray -warn all -I./obj/ -c
+ifort -qopenmp -O0 -check all -g -traceback -i8 -qmkl -coarray -warn all -I./obj/ -c

@@ -495,7 +495,7 @@ contains
                               end if
                               call smfill(F_ao(:, :, s))
                         end do
-                        call sys_NuclearRepulsion(Enucl, System)                              
+                        call sys_NuclearRepulsion(Enucl, System)
                   end if
                   call co_broadcast(EHFTwoEl, source_image=1)
                   call co_broadcast(EHbare, source_image=1)

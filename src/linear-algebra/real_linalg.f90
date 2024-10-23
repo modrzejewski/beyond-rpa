@@ -964,7 +964,7 @@ contains
       end subroutine real_ATv
       
       
-      subroutine real_av_x(w, a, lda, v, m, n, alpha, beta)
+      subroutine real_Av_x(w, a, lda, v, m, n, alpha, beta)
             !
             ! Perform matrix-vector multiplication w = alpha * Av + beta * w
             !
@@ -980,7 +980,7 @@ contains
             external :: dgemv
             
             call dgemv("N", m, n, alpha, a, lda, v, 1, beta, w, 1)
-      end subroutine real_av_x
+      end subroutine real_Av_x
 
       
       subroutine real_aTv_x(w, a, lda, v, m, n, alpha, beta)

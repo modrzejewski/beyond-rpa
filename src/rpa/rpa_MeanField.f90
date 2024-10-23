@@ -10,6 +10,8 @@ module rpa_MeanField
       use sys_definitions
       use rpa_definitions
       use thc_definitions
+      use rpa_Cholesky
+      use rpa_HF
 
       implicit none
 
@@ -25,8 +27,9 @@ contains
             call msg("1. HF energy (EtotHF)")
             call msg("2. linear density correction (1-RDM linear)")
             call msg("3. quadratic density correction (1-RDM quadratic)")
-            call msg("Terms (2) and (3) are nonzero when approximate Coulomb integrals are used")
+            call msg("Terms (2) and (3) will be nonzero due to approximate Coulomb integrals")
             call msg("Total mean-field energy: (1) + (2) + (3)")
+            call msg("Refined Coulomb integrals will be generated with exact Auto2e code")
             call msg("Linear-dependence threshold for the eigenvalues of S:")
             call msg(lfield("SCF", 15) // lfield(str(SCFParams%LinDepThresh,d=1), 15))
             call msg(lfield("refinement", 15) // lfield(str(RPAParams%HFRefineLinDepThresh,d=1), 15))
@@ -139,71 +142,186 @@ contains
       end subroutine rpa_MeanField_Semi
       
 
-      subroutine rpa_MeanField_RefineHF(MeanField, SCFOutput, SCFParams, &
-            RPAParams, AOBasis, System, THCGrid)
+      subroutine rpa_MeanField_RefineHF(MeanFieldStates, System, SCFOutput, &
+            Chol2Vecs, THCGrid, RPAParams, AOBasis)
+            !
+            ! Refine the mean-field reference state obtained from SCF with
+            ! THC 
+            !
+            ! (1) recompute the Hartree-Fock Hamiltonian and the corresponding
+            ! expectation value (EtotHF) using exact Coulomb integrals.
+            ! (2) compute the linear and quadratic mean-field energy
+            ! corrections (also referred to as the singles corrections)
+            ! (3) allow more near-linearly depenent basis vectors if the SCF
+            ! has been carried out with conservative redundancy thresholds.
+            !
+            ! The above steps reduces the errors related to THC SCF
+            ! by orders of magnitude and make the mean-field energies
+            ! accurate enough for many-body expansion calculations.
+            !
+            type(TMeanField), dimension(:), intent(out)   :: MeanFieldStates
+            type(TSystem), intent(inout)                  :: System
+            type(TSCFOutput), dimension(:), intent(in)    :: SCFOutput
+            type(TChol2Vecs), intent(in)                  :: Chol2Vecs
+            type(TCoulTHCGrid), intent(in)                :: THCGrid
+            type(TRPAParams), intent(in)                  :: RPAParams
+            type(TAOBasis), intent(in)                    :: AOBasis
 
-            type(TMeanField), intent(out)  :: MeanField
-            type(TSCFOutput), intent(in)   :: SCFOutput
-            type(TSCFParams), intent(in)   :: SCFParams
-            type(TRPAParams), intent(in)   :: RPAParams
-            type(TAOBasis), intent(in)     :: AOBasis
-            type(TSystem), intent(in)      :: System
-            type(TCoulTHCGrid), intent(in) :: THCGrid
+            real(F64), dimension(:, :, :), allocatable :: Dpq
+            integer, dimension(:, :), allocatable :: NOcc
+            integer, dimension(:), allocatable :: NSpins
+            integer :: NSystems, NDensities
+            integer :: k, t0, t1
+            
+            NSystems = size(MeanFieldStates)
+            if (NSystems > 1) then
+                  call msg("Fock matrices will be built for " // str(NSystems) // " systems in a single integral pass")
+            end if
+            allocate(NOcc(2, NSystems))
+            allocate(NSpins(NSystems))
+            call rpa_MeanField_GatherDensities(Dpq, NOcc, NSpins, NSystems, SCFOutput, AOBasis)
+            NDensities = size(Dpq, dim=3)
+            if (NSystems > 1) then
+                  call msg("Gathered " // str(NDensities) // " 1-RDMs in a single array")
+            end if
+            call msg("Starting Fock matrix calculation")
+            call rpa_HF_F_AllSubsystemsAtOnce(MeanFieldStates, System, Dpq, NOcc, NSpins, &
+                  Chol2Vecs, AOBasis)
+            call msg("Fock matrices completed for all systems")
+            t0 = 1
+            t1 = NSpins(1)
+            do k = 1, NSystems
+                  call sys_init(System, k)
+                  call rpa_MeanField_Corrections(MeanFieldStates(k), Dpq(:, :, t0:t1), &
+                        RPAParams, AOBasis, System, THCGrid)
+                  t0 = t0 + NSpins(k)
+                  t1 = t1 + NSpins(k)
+            end do
+      end subroutine rpa_MeanField_RefineHF
+
+      
+      subroutine rpa_MeanField_GatherDensities(Dpq, NOcc, NSpins, NSystems, SCFOutput, AOBasis)
+            !
+            ! Gather 1-electron reduced density matrices of the total system and
+            ! its subsystems into a one large array Dpq. For example, for a molecular
+            ! trimer ABC, the Dpq matrix contains 1-RDMs for ABC, AB, BC, AC, A, B,
+            ! and C. The Dpq array is required for a batch computation of the Fock matrix
+            ! for all systems at once.
+            !
+            real(F64), dimension(:, :, :), allocatable, intent(out) :: Dpq
+            integer, dimension(:, :), intent(out)                   :: NOcc
+            integer, dimension(:), intent(out)                      :: NSpins
+            integer, intent(in)                                     :: NSystems
+            type(TSCFOutput), dimension(:), intent(in)              :: SCFOutput
+            type(TAOBasis), intent(in)                              :: AOBasis
+
+            integer :: NAO, NDensities
+            integer :: k, s, l
+            integer :: i0, i1
+            integer :: MaxNOcc
+            real(F64), dimension(:, :), allocatable :: Cpi
+
+            NAO = AOBasis%NAOSpher
+            do k = 1, NSystems                  
+                  NSpins(k) = size(SCFOutput(k)%C_oao, dim=3)
+                  NOcc(:, k) = SCFOutput(k)%NOcc(:)
+            end do
+            MaxNOcc = maxval(NOcc)            
+            NDensities = sum(NSpins)
+            allocate(Cpi(NAO, MaxNOcc))
+            allocate(Dpq(NAO, NAO, NDensities))
+            l = 0
+            do k = 1, NSystems
+                  do s = 1, NSpins(k)
+                        l = l + 1
+                        if (NSpins(k) > 0) then
+                              i0 = 1
+                              i1 = NOcc(s, k)
+                              associate (Cpj => Cpi(:, i0:i1))
+                                    call real_ab(Cpj, SCFOutput(k)%MOBasisVecsSpher, &
+                                          SCFOutput(k)%C_oao(:, i0:i1, s))
+                                    call real_abT(Dpq(:, :, l), Cpj, Cpj)
+                              end associate
+                        else
+                              Dpq(:, :, l) = ZERO
+                        end if
+                  end do
+            end do
+      end subroutine rpa_MeanField_GatherDensities
+
+
+      subroutine rpa_MeanField_Corrections(MeanField, Dpq, RPAParams, AOBasis, System, THCGrid)
+            !
+            ! Compute the mean-field energy corrections
+            !
+            ! (1) Ec1RDM(linear), correction linear in DeltaDpq,
+            ! (2) Ec1RDM(quadratic), correction quadratic in DeltaDpq.
+            ! 
+            ! where DeltaRho is the difference between the refined 1-RDM
+            ! from the diagonalization of accurate Fock matrix and reference 1-RDM
+            ! from the SCF Hartree-Fock calculations with cheap THC integrals.
+            !
+            ! The Ec1RDM(linear) contribution is analogous to the singles energy
+            ! correction of Klimes et al., here the perturbation is defined as
+            ! the difference Fpq(accurate) - Fpq(THC).
+            !
+            ! Ec1RDM(quadratic) is a higher order correction to Ec1RDM(linear)
+            ! derived in the supplementary info of Ref. 1.
+            !
+            ! 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
+            ! Post-Kohn-Sham Random-Phase Approximation and Correction Terms
+            ! in the Expectation-Value Coupled-Cluster Formulation
+            ! J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+            !
+            type(TMeanField), intent(inout)           :: MeanField
+            real(F64), dimension(:, :, :), intent(in) :: Dpq
+            type(TRPAParams), intent(in)              :: RPAParams
+            type(TAOBasis), intent(in)                :: AOBasis
+            type(TSystem), intent(in)                 :: System
+            type(TCoulTHCGrid), intent(in)            :: THCGrid
 
             integer :: NAO, NSpins, NMO, NGridTHC
             integer :: i0, i1, a0, a1, s
-            real(F64), dimension(:, :, :), allocatable :: Rho_ao, DeltaRho_ao
+            real(F64), dimension(:, :, :), allocatable :: DeltaDpq, DpqRefined
             real(F64), dimension(:, :), allocatable :: Qpk
-            real(F64), dimension(:, :, :), allocatable :: RhoRefined_ao
             real(F64), dimension(:, :), allocatable :: Fpl, Fkl
-            real(F64), dimension(:, :), allocatable :: Cpi
             real(F64), dimension(:, :), allocatable :: Spq
             integer, dimension(2) :: NOcc, NVirt
-            real(F64) :: EtotHF, EHFTwoEl, EHbare, Enucl
-            real(F64) :: time_F
             real(F64), dimension(3) :: Dipole
             real(F64), dimension(3, 3) :: Quadrupole, QTraceless
+            logical, parameter :: CholeskyFock = .true.
 
             call msg(cfield("HF refinement for " // sys_ChemicalFormula(System), 76))
             NAO = AOBasis%NAOSpher
+            !
+            ! Allow more near linearly-dependent vectors into the orbital space.
+            ! In THC SCF, linear dependent vectors need to be discarded
+            ! to guarantee good convergence.
+            !
             allocate(Spq(NAO, NAO))
             call ints1e_S(Spq, AOBasis)
             call basis_NonredundantOrthogonal(Qpk, NMO, Spq, &
                   RPAParams%HFRefineLinDepThresh)
             NGridTHC = THCGrid%NGrid
-            NOcc = SCFOutput%NOcc
+            NOcc(:) = MeanField%NOcc(:)
+            NSpins = MeanField%NSpins
+            !
+            ! Recalculate the number of virtual orbitals. NVirt can possibly increase
+            ! because we've changed the total number of linearly independent basis vectors.
+            !
             do s = 1, 2
                   if (NOcc(s) > 0) then
                         NVirt(s) = NMO - NOcc(s)
                   else
                         NVirt(s) = 0
                   end if
-            end  do
-            MeanField%NOcc = NOcc
-            MeanField%NVirt = NVirt
-            NSpins = size(SCFOutput%C_oao, dim=3)
-            MeanField%NSpins = NSpins
-            allocate(Rho_ao(NAO, NAO, NSpins))
-            do s = 1, NSpins
-                  if (NOcc(s) > 0) then
-                        i0 = 1
-                        i1 = SCFOutput%NOcc(s)
-                        allocate(Cpi(NAO, NOcc(s)))
-                        call real_ab(Cpi, SCFOutput%MOBasisVecsSpher, &
-                              SCFOutput%C_oao(:, i0:i1, s))
-                        call real_abT(Rho_ao(:, :, s), Cpi, Cpi)
-                        if (NSpins==1) then
-                              Rho_ao(:, :, s) = TWO * Rho_ao(:, :, s)
-                        end if
-                        deallocate(Cpi)
-                  else
-                        Rho_ao(:, :, s) = ZERO
-                  end if
             end do
-            allocate(MeanField%F_ao(NAO, NAO, NSpins))
-            call postscf_FullFockMatrix(MeanField%F_ao, EtotHF, EHFTwoEl, EHbare, Enucl, Rho_ao, &
-                  SCFParams, System, AOBasis, time_F)
-            MeanField%EtotHF = EtotHF
+            MeanField%NVirt(:) = NVirt(:)
+            !
+            ! Diagonalize the refined Hartree-Fock hamiltonian to get a corrected
+            ! set of orbitals and orbital energies for the correlation energy
+            ! calculations
+            !
             allocate(Fpl(NAO, NMO))
             allocate(Fkl(NMO, NMO))
             allocate(MeanField%OrbEnergies(NMO, NSpins))
@@ -226,30 +344,38 @@ contains
                         MeanField%OrbEnergies(:, s) = ZERO
                   end if
             end do
-            allocate(RhoRefined_ao(NAO, NAO, NSpins))
-            allocate(DeltaRho_ao(NAO, NAO, NSpins))
+            allocate(DpqRefined(NAO, NAO, NSpins))
+            allocate(DeltaDpq(NAO, NAO, NSpins))
             do s = 1, NSpins
                   if (NOcc(s) > 0) then
-                        call real_abT(RhoRefined_ao(:, :, s), MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), &
+                        call real_abT(DpqRefined(:, :, s), MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), &
                               MeanField%OccCoeffs_ao(:, 1:NOcc(s), s))
-                        if (NSpins == 1) then
-                              DeltaRho_ao(:, :, s) = RhoRefined_ao(:, :, s) - (ONE/TWO) * Rho_ao(:, :, s)
-                              RhoRefined_ao(:, :, s) = TWO * RhoRefined_ao(:, :, s)
-                        else
-                              DeltaRho_ao(:, :, s) = RhoRefined_ao(:, :, s) - Rho_ao(:, :, s)
-                        end if
+                        DeltaDpq(:, :, s) = DpqRefined(:, :, s) - Dpq(:, :, s)
                   else
-                        DeltaRho_ao(:, :, s) = ZERO
+                        DeltaDpq(:, :, s) = ZERO
                   end if
             end do
             call rpa_MeanField_DeltaEtotHF_THC( &
                   MeanField%Ec1RDM_Linear, &
                   MeanField%Ec1RDM_Quadratic, &
-                  DeltaRho_ao, MeanField%F_ao, NOcc, THCGrid)
-            call multi_TotalMultipoles(Dipole, Quadrupole, RhoRefined_ao, System, AOBasis)
+                  DeltaDpq, MeanField%F_ao, NOcc, THCGrid)
+            if (NSpins == 1) then
+                  !
+                  ! Multiply 1-RDM by the occupation number if
+                  ! this is a closed-shell case
+                  !
+                  DpqRefined(:, :, :) = TWO * DpqRefined(:, :, :)
+            end if
+            call multi_TotalMultipoles(Dipole, Quadrupole, DpqRefined, System, AOBasis)
             call multi_TracelessQuadrupole(QTraceless, Quadrupole, MULTI_QUAD_TRACELESS_BUCKINGHAM)
             call multi_Display(Dipole, QTraceless)
-      end subroutine rpa_MeanField_RefineHF
+            call msg("Single-point energies (a.u.)")
+            call msg(lfield("Hartree-Fock", 50) // lfield(str(MeanField%EtotHF, d=9), 20))
+            call msg(lfield("linear correction", 50) // lfield(str(MeanField%Ec1RDM_Linear, d=9), 20))
+            call msg(lfield("quadratic correction", 50) // lfield(str(MeanField%Ec1RDM_Quadratic, d=9), 20))
+            call msg(lfield("total mean field", 50) // lfield(str( &
+                  MeanField%EtotHF + MeanField%Ec1RDM_Linear + MeanField%Ec1RDM_Quadratic, d=9), 20))
+      end subroutine rpa_MeanField_Corrections
 
       
       subroutine rpa_MeanField_DeltaEtotHF_THC(Ec1RDM_Linear, Ec1RDM_Quadratic, &
