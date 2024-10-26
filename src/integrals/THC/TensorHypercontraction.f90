@@ -265,8 +265,6 @@ contains
                   THCGrid%NGridReduced, &
                   THCGrid%Xgp, &
                   Rkpq, Chol2Vecs, Chol2Params, AOBasis, THCParams)
-            allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
-            call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
       end subroutine thc_CoulombMatrix_QuadraticMemory
 
 
@@ -285,14 +283,11 @@ contains
                   !
                   ! Remove the points outside of the reduced-size grid
                   !
-                  deallocate(THCGrid%Zgh)
                   call move_alloc(From=THCGrid%ZgkReduced, to=THCGrid%Zgk)
                   call move_alloc(From=THCGrid%Xgp, to=XgpFull)
                   allocate(THCGrid%Xgp(NGridReduced, NAO))
                   THCGrid%Xgp(:, :) = XgpFull(1:NGridReduced, :)
                   deallocate(XgpFull)
-                  allocate(THCGrid%Zgh(NGridReduced, NGridReduced))
-                  call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
             end if
       end subroutine thc_ReduceGrid
       

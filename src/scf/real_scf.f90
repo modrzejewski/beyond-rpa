@@ -763,7 +763,7 @@ contains
 
       subroutine scf_F_THC(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, &
             xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, Hbare_cao, AUXIn, &
-            AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
+            AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
             
             real(F64), dimension(:, :, :), intent(out)             :: F_cao
             real(F64), dimension(:, :, :), intent(out)             :: F_sao
@@ -783,6 +783,7 @@ contains
             type(TAOBasis), intent(in)                             :: AOBasis
             type(TSystem), intent(in)                              :: System
             type(TCoulTHCGrid), intent(in)                         :: THCGrid
+            real(F64), dimension(:, :), intent(in)                 :: Zgh
             integer, intent(in)                                    :: GridKind
             logical, intent(in)                                    :: GridPruning
             real(F64), intent(inout)                               :: time_F
@@ -809,11 +810,11 @@ contains
             ! Two-electron part of the Fock operator
             !
             if (AOBasis%SpherAO) then
-                  call thc_Fock_JK(F_sao, EHFTwoEl, Cocc_sao, Rho_sao, THCGrid%Zgh, THCGrid%Xgp, &
-                        NOcc, CoulContrib, ExchContrib, KFrac, .false.)                  
+                  call thc_Fock_JK(F_sao, EHFTwoEl, Cocc_sao, Rho_sao, Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac)
             else
-                  call thc_Fock_JK(F_cao, EHFTwoEl, Cocc_cao, Rho_cao, THCGrid%Zgh, THCGrid%Xgp, &
-                        NOcc, CoulContrib, ExchContrib, KFrac, .false.)                  
+                  call thc_Fock_JK(F_cao, EHFTwoEl, Cocc_cao, Rho_cao, Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac)                  
             end if
             !
             ! Semilocal exchnge-correlation potential
@@ -1025,6 +1026,7 @@ contains
             real(F64) :: memoryTxc, memoryJK, memoryRho1D
             real(F64), dimension(:), allocatable :: BufferK, BufferJ
             real(F64), dimension(:), allocatable :: BufferRho1D
+            real(F64), dimension(:, :), allocatable :: Zgh
             integer :: ThisImage, NImages, NThreads
             logical :: TrustRadiusUpdated
             real(F64), dimension(3) :: Dipole
@@ -1079,6 +1081,13 @@ contains
             allocate(Ts_cao(NAOCart, NAOCart))
             allocate(Vne_cao(NAOCart, NAOCart))
             allocate(Hbare_cao(NAOCart, NAOCart))
+            !
+            ! Intermediates matrix for THC integrals evaluation
+            !
+            if (ERI_Algorithm == SCF_ERI_THC) then
+                  allocate(Zgh(THCGrid%NGrid, THCGrid%NGrid))
+                  call real_abT(Zgh, THCGrid%Zgk, THCGrid%Zgk)
+            end if
             !
             ! One-electron integrals: overlap, kinetic,
             ! and nuclei-electron attraction
@@ -1177,7 +1186,7 @@ contains
             case (SCF_ERI_THC)
                   call scf_F_THC(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                        AOBasis, System, THCGrid, GridKind, GridPruning, time_F)                  
+                        AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)                  
             case default ! Exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, RhoK_cao, RhoN_sao, &
@@ -1225,7 +1234,7 @@ contains
             case (SCF_ERI_THC)
                   call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                         XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                        AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
+                        AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
             case default ! exact integrals
                   call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                         BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
@@ -1286,7 +1295,7 @@ contains
                         case (SCF_ERI_THC)
                               call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
                                     XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
-                                    AOBasis, System, THCGrid, GridKind, GridPruning, time_F)
+                                    AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
                         case default ! exact integrals
                               call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                                     BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &

@@ -104,8 +104,6 @@ contains
                               THCGrid%Xgp, &
                               Rkpq, Chol2Vecs, Chol2Params, &
                               AOBasis, THCParams)
-                        allocate(THCGrid%Zgh(THCGrid%NGrid, THCGrid%NGrid))
-                        call real_abT(THCGrid%Zgh, THCGrid%Zgk, THCGrid%Zgk)
                   end if
             end if
             do k = 1, NSystems
