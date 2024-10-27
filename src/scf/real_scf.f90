@@ -810,11 +810,13 @@ contains
             ! Two-electron part of the Fock operator
             !
             if (AOBasis%SpherAO) then
-                  call thc_Fock_JK(F_sao, EHFTwoEl, Cocc_sao, Rho_sao, Zgh, THCGrid%Xgp, &
-                        NOcc, CoulContrib, ExchContrib, KFrac)
+                  call thc_Fock_JK(F_sao, Cocc_sao, Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac, &
+                        Rho_sao, EHFTwoEl)
             else
-                  call thc_Fock_JK(F_cao, EHFTwoEl, Cocc_cao, Rho_cao, Zgh, THCGrid%Xgp, &
-                        NOcc, CoulContrib, ExchContrib, KFrac)                  
+                  call thc_Fock_JK(F_cao, Cocc_cao, Zgh, THCGrid%Xgp, &
+                        NOcc, CoulContrib, ExchContrib, KFrac, &
+                        Rho_cao, EHFTwoEl)                  
             end if
             !
             ! Semilocal exchnge-correlation potential
