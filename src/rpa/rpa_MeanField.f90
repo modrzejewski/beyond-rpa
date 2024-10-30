@@ -167,87 +167,48 @@ contains
             type(TRPAParams), intent(in)                  :: RPAParams
             type(TAOBasis), intent(in)                    :: AOBasis
 
+            real(F64), dimension(:), allocatable :: Dpqk
             real(F64), dimension(:, :, :), allocatable :: Dpq
+            integer, dimension(:, :), allocatable :: DpqkLoc
             integer, dimension(:, :), allocatable :: NOcc
             integer, dimension(:), allocatable :: NSpins
-            integer :: NSystems, NDensities
-            integer :: k, t0, t1
-            
+            integer :: NSystems, NDensities, NAO
+            integer :: s, k
+            integer, dimension(2) :: t
+
+            NAO = AOBasis%NAOSpher
             NSystems = size(MeanFieldStates)
             if (NSystems > 1) then
                   call msg("Fock matrices will be built for " // str(NSystems) // " systems in a single integral pass")
             end if
             allocate(NOcc(2, NSystems))
             allocate(NSpins(NSystems))
-            call rpa_MeanField_GatherDensities(Dpq, NOcc, NSpins, NSystems, SCFOutput, AOBasis)
-            NDensities = size(Dpq, dim=3)
+            call rpa_HF_Dpqk(Dpqk, DpqkLoc, NOcc, NSpins, NSystems, SCFOutput, AOBasis)
+            NDensities = sum(NSpins)
             if (NSystems > 1) then
                   call msg("Gathered " // str(NDensities) // " 1-RDMs in a single array")
             end if
             call msg("Starting Fock matrix calculation")
-            call rpa_HF_F_AllSubsystemsAtOnce(MeanFieldStates, System, Dpq, NOcc, NSpins, &
-                  Chol2Vecs, AOBasis)
+            call rpa_HF_Fpq(MeanFieldStates, System, Dpqk, DpqkLoc, &
+                  NOcc, NSpins, Chol2Vecs, AOBasis)
             call msg("Fock matrices completed for all systems")
-            t0 = 1
-            t1 = NSpins(1)
+            allocate(Dpq(NAO, NAO, maxval(NSpins)))
             do k = 1, NSystems
                   call sys_init(System, k)
-                  call rpa_MeanField_Corrections(MeanFieldStates(k), Dpq(:, :, t0:t1), &
+                  if (k > 1) then
+                        t(1) = sum(NSpins(1:k-1)) + 1
+                        t(2) = sum(NSpins(1:k-1)) + 2
+                  else
+                        t(1) = 1
+                        t(2) = 2
+                  end if
+                  do s = 1, NSpins(k)
+                        call rpa_HF_UnpackDpqk(Dpq(:, :, s), t(s), Dpqk, DpqkLoc, AOBasis)
+                  end do
+                  call rpa_MeanField_Corrections(MeanFieldStates(k), Dpq(:, :, 1:NSpins(k)), &
                         RPAParams, AOBasis, System, THCGrid)
-                  t0 = t0 + NSpins(k)
-                  t1 = t1 + NSpins(k)
             end do
       end subroutine rpa_MeanField_RefineHF
-
-      
-      subroutine rpa_MeanField_GatherDensities(Dpq, NOcc, NSpins, NSystems, SCFOutput, AOBasis)
-            !
-            ! Gather 1-electron reduced density matrices of the total system and
-            ! its subsystems into a one large array Dpq. For example, for a molecular
-            ! trimer ABC, the Dpq matrix contains 1-RDMs for ABC, AB, BC, AC, A, B,
-            ! and C. The Dpq array is required for a batch computation of the Fock matrix
-            ! for all systems at once.
-            !
-            real(F64), dimension(:, :, :), allocatable, intent(out) :: Dpq
-            integer, dimension(:, :), intent(out)                   :: NOcc
-            integer, dimension(:), intent(out)                      :: NSpins
-            integer, intent(in)                                     :: NSystems
-            type(TSCFOutput), dimension(:), intent(in)              :: SCFOutput
-            type(TAOBasis), intent(in)                              :: AOBasis
-
-            integer :: NAO, NDensities
-            integer :: k, s, l
-            integer :: i0, i1
-            integer :: MaxNOcc
-            real(F64), dimension(:, :), allocatable :: Cpi
-
-            NAO = AOBasis%NAOSpher
-            do k = 1, NSystems                  
-                  NSpins(k) = size(SCFOutput(k)%C_oao, dim=3)
-                  NOcc(:, k) = SCFOutput(k)%NOcc(:)
-            end do
-            MaxNOcc = maxval(NOcc)            
-            NDensities = sum(NSpins)
-            allocate(Cpi(NAO, MaxNOcc))
-            allocate(Dpq(NAO, NAO, NDensities))
-            l = 0
-            do k = 1, NSystems
-                  do s = 1, NSpins(k)
-                        l = l + 1
-                        if (NSpins(k) > 0) then
-                              i0 = 1
-                              i1 = NOcc(s, k)
-                              associate (Cpj => Cpi(:, i0:i1))
-                                    call real_ab(Cpj, SCFOutput(k)%MOBasisVecsSpher, &
-                                          SCFOutput(k)%C_oao(:, i0:i1, s))
-                                    call real_abT(Dpq(:, :, l), Cpj, Cpj)
-                              end associate
-                        else
-                              Dpq(:, :, l) = ZERO
-                        end if
-                  end do
-            end do
-      end subroutine rpa_MeanField_GatherDensities
 
 
       subroutine rpa_MeanField_Corrections(MeanField, Dpq, RPAParams, AOBasis, System, THCGrid)
