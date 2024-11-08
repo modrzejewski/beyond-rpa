@@ -631,6 +631,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
             RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
+            RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
             RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
@@ -651,6 +652,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
             RPAParams%CutoffThreshPNO = 1.0E-7_F64
+            RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
             RPAParams%CutoffThreshVabij = ZERO
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
             !
