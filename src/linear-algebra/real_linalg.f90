@@ -31,6 +31,9 @@ module real_linalg
             module procedure :: real_vta_rect_noscal
       end interface real_vta_rect
 
+      integer, parameter :: LINALG_EVD_DIVIDE_AND_CONQUER = 0
+      integer, parameter :: LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS = 1
+
 contains
 
       subroutine real_Cholesky(A)
@@ -1268,24 +1271,119 @@ contains
       end subroutine nonsymmetric_eigenproblem
 
       
-      subroutine symmetric_eigenproblem(w, a, n, compute_eigenvecs)
-            real(F64), dimension(:), contiguous, intent(out)      :: w
-            real(F64), dimension(:, :), contiguous, intent(inout) :: a
-            integer, intent(in)                                   :: n
-            logical, intent(in)                                   :: compute_eigenvecs
+      ! subroutine symmetric_eigenproblem(w, a, n, compute_eigenvecs)
+      !       real(F64), dimension(:), contiguous, intent(out)      :: w
+      !       real(F64), dimension(:, :), contiguous, intent(inout) :: a
+      !       integer, intent(in)                                   :: n
+      !       logical, intent(in)                                   :: compute_eigenvecs
             
-            integer :: lwork, liwork, info, lda
+      !       integer :: lwork, liwork, info, lda
+      !       real(F64), dimension(:), allocatable :: work
+      !       integer, dimension(:), allocatable :: iwork
+      !       real(F64), dimension(1) :: work0
+      !       integer, dimension(1) :: iwork0
+      !       character(1) :: jobz
+      !       type(tclock) :: t_eigen
+      !       external :: dsyevd
+
+      !       call clock_start(t_eigen)
+      !       lda = size(a, dim=1)
+      !       if (compute_eigenvecs) then
+      !             jobz = "V"
+      !       else
+      !             jobz = "N"
+      !       end if
+      !       !
+      !       ! Compute the optimal size of temporary storage
+      !       !
+      !       call dsyevd(jobz, "L", n, a, lda, w, work0, -1, iwork0, -1, info)
+      !       lwork = ceiling(work0(1))
+      !       liwork = iwork0(1)
+      !       allocate(work(lwork))
+      !       allocate(iwork(liwork))
+      !       call dsyevd(jobz, "L", n, a, lda, w, work, lwork, iwork, liwork, info)
+      !       if (info .ne. 0) then
+      !             call msg("Eigensolver for symmetric matrices returned error code (" // str(info) // ")", MSG_ERROR)
+      !             stop
+      !       end if
+      !       deallocate(work)
+      !       deallocate(iwork)
+      ! end subroutine symmetric_eigenproblem
+
+      
+      subroutine symmetric_eigenproblem(Eigenvals, A, N, ComputeEigenvecs)
+            real(F64), dimension(:), contiguous, intent(out)      :: Eigenvals
+            real(F64), dimension(:, :), contiguous, intent(inout) :: A
+            integer, intent(in)                                   :: N
+            logical, intent(in)                                   :: ComputeEigenvecs
+            
+            call real_evd(Eigenvals, A, N, ComputeEigenvecs)
+      end subroutine symmetric_eigenproblem
+
+      
+      subroutine real_evd(Eigenvals, A, N, ComputeEigenvecs, Algorithm, Info)
+            real(F64), dimension(:), contiguous, intent(out)      :: Eigenvals
+            real(F64), dimension(:, :), contiguous, intent(inout) :: A
+            integer, intent(in)                                   :: N
+            logical, intent(in)                                   :: ComputeEigenvecs
+            integer, optional, intent(in)                         :: Algorithm
+            integer, optional, intent(out)                        :: Info
+
+            integer :: ErrorCode
+            integer :: Algo
+
+            if (present(Algorithm)) then
+                  Algo = Algorithm
+            else
+                  Algo = LINALG_EVD_DIVIDE_AND_CONQUER
+            end if
+            if (present(Info)) Info = 0
+            if (Algo == LINALG_EVD_DIVIDE_AND_CONQUER) then
+                  call real_evd_DivideAndConquer(Eigenvals, A, N, ComputeEigenvecs, ErrorCode)
+                  if (ErrorCode < 0) then
+                        call msg("I-th argument to dsyevd had an invalid value: Info = " // str(ErrorCode), MSG_ERROR)
+                        error stop
+                  end if
+                  if (present(Info)) then
+                        Info = ErrorCode
+                  else
+                        if (ErrorCode > 0) then
+                              call msg("Divide and conquer eigensolver failed to compute an eigenvalue", MSG_ERROR)
+                              error stop
+                        end if
+                  end if
+            end if
+            if (Algo == LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS) then
+                  call real_evd_RelativelyRobustRep(Eigenvals, A, N, ComputeEigenvecs, ErrorCode)
+                  if (ErrorCode < 0) then
+                        call msg("I-th argument to dsyevr had an invalid value: Info = " // str(ErrorCode), MSG_ERROR)
+                        error stop
+                  end if
+                  if (ErrorCode > 0) then
+                        call msg("Internal error in dsyevr: Info = " // str(ErrorCode), MSG_ERROR)
+                        error stop
+                  end if
+            end if
+      end subroutine real_evd
+      
+
+      subroutine real_evd_DivideAndConquer(Eigenvals, A, N, ComputeEigenvecs, Info)
+            real(F64), dimension(:), contiguous, intent(out)      :: Eigenvals
+            real(F64), dimension(:, :), contiguous, intent(inout) :: A
+            integer, intent(in)                                   :: N
+            logical, intent(in)                                   :: ComputeEigenvecs
+            integer, intent(out)                                  :: Info
+            
+            integer :: lwork, liwork, lda
             real(F64), dimension(:), allocatable :: work
             integer, dimension(:), allocatable :: iwork
             real(F64), dimension(1) :: work0
             integer, dimension(1) :: iwork0
             character(1) :: jobz
-            type(tclock) :: t_eigen
             external :: dsyevd
 
-            call clock_start(t_eigen)
             lda = size(a, dim=1)
-            if (compute_eigenvecs) then
+            if (ComputeEigenvecs) then
                   jobz = "V"
             else
                   jobz = "N"
@@ -1293,19 +1391,96 @@ contains
             !
             ! Compute the optimal size of temporary storage
             !
-            call dsyevd(jobz, "L", n, a, lda, w, work0, -1, iwork0, -1, info)
+            call dsyevd(jobz, "L", n, a, lda, Eigenvals, work0, -1, iwork0, -1, info)
             lwork = ceiling(work0(1))
             liwork = iwork0(1)
             allocate(work(lwork))
             allocate(iwork(liwork))
-            call dsyevd(jobz, "L", n, a, lda, w, work, lwork, iwork, liwork, info)
-            if (info .ne. 0) then
-                  call msg("Eigensolver for symmetric matrices returned error code (" // str(info) // ")", MSG_ERROR)
-                  stop
+            call dsyevd(jobz, "L", n, a, lda, Eigenvals, work, lwork, iwork, liwork, info)
+      end subroutine real_evd_DivideAndConquer
+
+
+      subroutine real_evd_RelativelyRobustRep(Eigenvals, A, N, ComputeEigenvecs, Info)
+            real(F64), dimension(:), contiguous, intent(out)      :: Eigenvals
+            real(F64), dimension(:, :), contiguous, intent(inout) :: A
+            integer, intent(in)                                   :: N
+            logical, intent(in)                                   :: ComputeEigenvecs
+            integer, intent(out)                                  :: Info
+
+            integer :: lwork, liwork, ldA
+            real(F64), dimension(:), allocatable :: work
+            integer, dimension(:), allocatable :: iwork
+            real(F64), dimension(:, :), allocatable :: Eigenvecs
+            integer, dimension(:), allocatable :: isuppz
+            real(F64), dimension(1) :: work0
+            integer, dimension(1) :: iwork0
+            character(1) :: jobz
+            integer :: M
+            real(F64), parameter :: AbsTol = -ONE ! use default error tolerance
+            external :: dsyevr
+
+            ldA = size(A, dim=1)
+            if (ComputeEigenvecs) then
+                  jobz = "V"
+            else
+                  jobz = "N"
             end if
-            deallocate(work)
-            deallocate(iwork)
-      end subroutine symmetric_eigenproblem
+            allocate(Eigenvecs(N, N))
+            allocate(isuppz(2*N))
+            !
+            ! Workspace query
+            !
+            lwork = -1
+            liwork = -1
+            call dsyevr( &
+                  jobz, &
+                  "A", & ! compute all eigenvalues
+                  "L", & ! lower triangle
+                  N, &
+                  A, &
+                  ldA, &
+                  ZERO, ZERO, 0, 0, &
+                  AbsTol, &
+                  M, &
+                  Eigenvals, &
+                  Eigenvecs, &
+                  N, &
+                  isuppz, &
+                  work0, &
+                  lwork, &
+                  iwork0, &
+                  liwork, &
+                  info)
+            lwork = ceiling(work0(1))
+            liwork = iwork0(1)
+            allocate(work(lwork))
+            allocate(iwork(liwork))
+            !
+            ! Actual computation of eigenvalues and eigenvectors
+            !
+            call dsyevr( &
+                  jobz, &
+                  "A", & ! compute all eigenvalues
+                  "L", & ! lower triangle
+                  N, &
+                  A, &
+                  ldA, &
+                  ZERO, ZERO, 0, 0, &
+                  AbsTol, &
+                  M, &
+                  Eigenvals, &
+                  Eigenvecs, &
+                  N, &
+                  isuppz, &
+                  work, &
+                  lwork, &
+                  iwork, &
+                  liwork, &
+                  info)
+            if (ComputeEigenvecs) then
+                  A(1:N, 1:N) = Eigenvecs
+            end if
+      end subroutine real_evd_RelativelyRobustRep
 
 
       subroutine real_GershgorinCircle(LambdaMin, LambdaMax, A)
