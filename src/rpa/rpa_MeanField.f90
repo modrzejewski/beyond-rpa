@@ -297,15 +297,7 @@ contains
                         a1 = NOcc(s) + NVirt(s)
                         call real_ab(Fpl, MeanField%F_ao(:, :, s), Qpk)
                         call real_aTb(Fkl, Qpk, Fpl)
-                        call real_evd(MeanField%OrbEnergies(:, s), Fkl, NMO, .true., &
-                              Algorithm=LINALG_EVD_DIVIDE_AND_CONQUER, Info=ErrorCode)
-                        if (ErrorCode > 0) then
-                              call msg("Divide and conquer eigensolver did not converge")
-                              call msg("Switching to another algorithm")
-                              call real_aTb(Fkl, Qpk, Fpl)
-                              call real_evd(MeanField%OrbEnergies(:, s), Fkl, NMO, .true., &
-                                    Algorithm=LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS)
-                        end  if
+                        call real_EVD(MeanField%OrbEnergies(:, s), Fkl, NMO, .true.)
                         call real_ab(MeanField%OccCoeffs_ao(:, 1:NOcc(s), s), Qpk, Fkl(:, i0:i1))
                         call real_ab(MeanField%VirtCoeffs_ao(:, 1:NVirt(s), s), Qpk, Fkl(:, a0:a1))
                   else

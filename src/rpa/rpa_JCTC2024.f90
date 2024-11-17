@@ -134,16 +134,21 @@ contains
             do j = 1, NOcc
                   do i = j, NOcc
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
-                              NOcc, NVirt, NVecsT2)                        
-                        call real_SVD(U, V, Sigma, Tabij)
-                        NVirtPNO = 0
-                        do x = 1, NVirt
-                              if (Sigma(x) >= RPAParams%CutoffThreshPNO) then
-                                    NVirtPNO = x
-                              else
-                                    exit
-                              end if
-                        end do
+                              NOcc, NVirt, NVecsT2)
+                        if (RPAParams%SVDAlgorithm == RPA_SVD_FULL) then
+                              call real_SVD(U, V, Sigma, Tabij)
+                              NVirtPNO = 0
+                              do x = 1, NVirt
+                                    if (Sigma(x) > RPAParams%CutoffThreshPNO) then
+                                          NVirtPNO = x
+                                    else
+                                          exit
+                                    end if
+                              end do
+                        else if (RPAParams%SVDAlgorithm == RPA_SVD_SIGNIFICANT) then
+                              call real_SVD_SignificantSubset(U, V, Sigma, NVirtPNO, &
+                                    Tabij, RPAParams%CutoffThreshPNO)
+                        end if
                         if (NVirtPNO > 0) then
                               IJ = IJ + 1
                               allocate(PNOTransform(IJ)%TaxPNO(NVirt, NVirtPNO, 2))

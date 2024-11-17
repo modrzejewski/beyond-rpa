@@ -1178,6 +1178,7 @@ contains
             real(F64), intent(in)                                :: LinDepThresh
 
             integer :: NAO, k
+            integer :: ErrorCode
             real(F64), dimension(:, :), allocatable :: Wpq
             real(F64), dimension(:), allocatable :: Lambda
 
@@ -1185,7 +1186,18 @@ contains
             allocate(Wpq(NAO, NAO))
             Wpq(:, :) = Spq(:, :)
             allocate(Lambda(NAO))
-            call symmetric_eigenproblem(Lambda, Wpq, NAO, .true.)
+            call real_EVD(Lambda, Wpq, NAO, .true., &
+                  Algorithm=LINALG_EVD_DIVIDE_AND_CONQUER, &
+                  Info=ErrorCode)
+            if (ErrorCode > 0) then
+                  call real_EVD(Lambda, Wpq, NAO, .true., &
+                        Algorithm=LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS, &
+                        Info=ErrorCode)
+                  if (ErrorCode > 0) then
+                        call msg("Eigensolver did not converge during diagonalization of the AO overlap matrix", MSG_ERROR)
+                        error stop
+                  end if
+            end if
             NOAO = 0
             do k = NAO, 1, -1
                   if (Lambda(k) > LinDepThresh) then
