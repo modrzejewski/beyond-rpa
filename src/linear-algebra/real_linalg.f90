@@ -31,8 +31,8 @@ module real_linalg
             module procedure :: real_vta_rect_noscal
       end interface real_vta_rect
 
-      integer, parameter :: LINALG_EVD_DIVIDE_AND_CONQUER = 0
-      integer, parameter :: LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS = 1
+      integer, parameter :: LINALG_EVD_ALGORITHM_1 = 0
+      integer, parameter :: LINALG_EVD_ALGORITHM_2 = 1
 
 contains
 
@@ -224,7 +224,7 @@ contains
       end subroutine real_Schur
       
 
-      subroutine real_SVD(U, V, Sigma, A)
+      subroutine real_SVD(U, V, Sigma, A, Info)
             !
             ! Singular value decomposition of a real matrix A
             !
@@ -243,9 +243,10 @@ contains
             real(F64), dimension(:, :), intent(out) :: V
             real(F64), dimension(:), intent(out)    :: Sigma
             real(F64), dimension(:, :), intent(in)  :: A
+            integer, optional, intent(out)          :: Info
 
             integer :: m, n
-            integer :: ldA, ldVT, ldU, Info
+            integer :: ldA, ldVT, ldU, ErrorCode
             real(F64), dimension(:, :), allocatable :: VT
             integer, dimension(:), allocatable :: iwork
             real(F64), dimension(:), allocatable :: work
@@ -276,23 +277,34 @@ contains
             !
             allocate(iwork(8*min(m, n)))
             allocate(work(1))
-            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, -1, iwork, Info)            
+            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, -1, iwork, ErrorCode)     
             !
             ! Proper SVD call
             !
             lwork = ceiling(work(1))
             deallocate(work)
             allocate(work(lwork))
-            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, lwork, iwork, Info)
-            if (Info /= 0) then
-                  call msg("Singular value decomposition failed with error code Info = " // str(Info), MSG_ERROR)
+            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, lwork, iwork, ErrorCode)
+            if (ErrorCode < 0) then
+                  call msg("Singular value decomposition failed with error code Info = " &
+                        // str(ErrorCode), MSG_ERROR)
                   error stop
             end if
-            V = transpose(VT)            
+            if (ErrorCode > 0) then
+                  if (.not. present(Info)) then
+                        call msg("Singular value decomposition did not converge. Info = " &
+                              // str(ErrorCode), MSG_ERROR)
+                        error stop
+                  end if
+            end if
+            V = transpose(VT)
+            if (present(Info)) then
+                  Info = ErrorCode
+            end if
       end subroutine real_SVD
 
 
-      subroutine real_SVD_SignificantSubset(U, V, Sigma, NSignificant, A, Thresh)
+      subroutine real_SVD_SignificantSubset(U, V, Sigma, NSignificant, A, Thresh, Info)
             !
             ! Compute a partial singular value decomposition
             ! of a real matrix A
@@ -301,7 +313,7 @@ contains
             !
             ! Only the singular values and singular vectors which satisfy
             !
-            ! sigma(i) > Thresh
+            ! Sigma(i) > Thresh
             !
             ! are computed. Use this subroutine if the numerical rank of A
             ! is small relative to the full dimension.
@@ -321,10 +333,11 @@ contains
             integer, intent(out)                    :: NSignificant
             real(F64), dimension(:, :), intent(in)  :: A
             real(F64), intent(in)                   :: Thresh
+            integer, optional, intent(out)          :: Info
 
             real(F64) :: FrobNorm
             real(F64) :: vl, vu
-            integer :: Info
+            integer :: ErrorCode
             integer :: M, N, ldA, ldU, ldVT
             real(F64), dimension(:, :), allocatable :: VT
             real(F64), dimension(:), allocatable :: work
@@ -364,7 +377,7 @@ contains
                   VT, ldVT, &
                   work0, -1, &
                   iwork, &
-                  Info)
+                  ErrorCode)
             lwork = ceiling(work0(1))
             allocate(work(lwork))
             call dgesvdx( &
@@ -380,12 +393,21 @@ contains
                   VT, ldVT, &
                   work, lwork, &
                   iwork, &
-                  Info)
-            if (Info /= 0) then
-                  call msg("Singular value decomposition failed with error code Info = " // str(Info), MSG_ERROR)
+                  ErrorCode)
+            if (ErrorCode < 0) then
+                  call msg("Dgesvdx failed with error code. Info = " // str(ErrorCode), MSG_ERROR)
                   error stop
             end if
+            if (ErrorCode > 0) then
+                  if (.not. present(Info)) then
+                        call msg("Dgesvdx failed to converge. Info = " // str(ErrorCode), MSG_ERROR)
+                        error stop
+                  end if
+            end if
             V = transpose(VT)
+            if (present(Info)) then
+                  Info = ErrorCode
+            end if
       end subroutine real_SVD_SignificantSubset
       
 
@@ -1440,24 +1462,22 @@ contains
             if (present(Algorithm)) then
                   Algo = Algorithm
             else
-                  Algo = LINALG_EVD_DIVIDE_AND_CONQUER
+                  Algo = LINALG_EVD_ALGORITHM_1
             end if
-            if (Algo == LINALG_EVD_DIVIDE_AND_CONQUER) then
+            if (Algo == LINALG_EVD_ALGORITHM_1) then
                   call real_evd_DivideAndConquer(Eigenvals, A, N, ComputeEigenvecs, ErrorCode)
                   if (ErrorCode < 0) then
                         call msg("I-th argument to dsyevd had an invalid value: Info = " // str(ErrorCode), MSG_ERROR)
                         error stop
                   end if
                   if (ErrorCode > 0) then
-                        if (present(Info)) then
-                              call msg("Dsyevd eigensolver failed to converge. Info = " // str(ErrorCode), MSG_WARNING)
-                        else
+                        if (.not. present(Info)) then
                               call msg("Dsyevd eigensolver failed to converge. Info = " // str(ErrorCode), MSG_ERROR)
                               error stop
                         end if
                   end if
             end if
-            if (Algo == LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS) then
+            if (Algo == LINALG_EVD_ALGORITHM_2) then
                   if (present(AbsoluteTolerance)) then
                         AbsTol = AbsoluteTolerance
                   else
@@ -1473,9 +1493,7 @@ contains
                         error stop
                   end if
                   if (ErrorCode > 0) then
-                        if (present(Info)) then
-                              call msg("Dsyevr eigensolver did not converge. Info = " // str(ErrorCode), MSG_WARNING)
-                        else
+                        if (.not. present(Info)) then
                               call msg("Dsyevr eigensolver did not converge. Info = " // str(ErrorCode), MSG_ERROR)
                               error stop
                         end if

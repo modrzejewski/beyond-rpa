@@ -1187,19 +1187,22 @@ contains
             Wpq(:, :) = Spq(:, :)
             allocate(Lambda(NAO))
             call real_EVD(Lambda, Wpq, NAO, .true., &
-                  Algorithm=LINALG_EVD_DIVIDE_AND_CONQUER, &
+                  Algorithm=LINALG_EVD_ALGORITHM_1, &
                   Info=ErrorCode)
             if (ErrorCode > 0) then
+                  call msg("Eigensolver 1 did not converge in basis_NonredundantOrthogonal", &
+                        MSG_WARNING)
+                  call msg("Attempting diagonalization with eigensolver 2", MSG_WARNING)
                   !
                   ! Overlap matrix has been overwritten by the previous eigensolver
                   ! and needs to be recreated before another attempt
                   !
                   Wpq(:, :) = Spq(:, :)
                   call real_EVD(Lambda, Wpq, NAO, .true., &
-                        Algorithm=LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS, &
+                        Algorithm=LINALG_EVD_ALGORITHM_2, &
                         Info=ErrorCode)
                   if (ErrorCode > 0) then
-                        call msg("Eigensolver did not converge during diagonalization of the AO overlap matrix", &
+                        call msg("Eigensolver 2 did not converge in basis_NonredundantOrthogonal", &
                               MSG_ERROR)
                         error stop
                   end if

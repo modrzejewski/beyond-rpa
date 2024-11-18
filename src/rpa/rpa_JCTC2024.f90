@@ -38,6 +38,7 @@ contains
             real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
             integer :: i, j, mu, x
+            integer :: ErrorCode
             real(F64) :: EcRPA, Ec1b, Ec2bcd, Ec2ghij
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
             integer :: MaxNVirtPNO, NVirtPNO
@@ -135,8 +136,8 @@ contains
                   do i = j, NOcc
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)
-                        if (RPAParams%SVDAlgorithm == RPA_SVD_FULL) then
-                              call real_SVD(U, V, Sigma, Tabij)
+                        call real_SVD(U, V, Sigma, Tabij, Info=ErrorCode)
+                        if (ErrorCode == 0) then
                               NVirtPNO = 0
                               do x = 1, NVirt
                                     if (Sigma(x) > RPAParams%CutoffThreshPNO) then
@@ -145,9 +146,17 @@ contains
                                           exit
                                     end if
                               end do
-                        else if (RPAParams%SVDAlgorithm == RPA_SVD_SIGNIFICANT) then
+                        else
+                              call msg("Algorithm 1 for singular value decoposition failed to converge", &
+                                    MSG_WARNING)
+                              call msg("Switching to algorithm 2", MSG_WARNING)
                               call real_SVD_SignificantSubset(U, V, Sigma, NVirtPNO, &
-                                    Tabij, RPAParams%CutoffThreshPNO)
+                                    Tabij, RPAParams%CutoffThreshPNO, Info=ErrorCode)
+                              if (ErrorCode /= 0) then
+                                    call msg("Algorithm 2 for singular value decomposition failed", &
+                                          MSG_ERROR)
+                                    error stop
+                              end if
                         end if
                         if (NVirtPNO > 0) then
                               IJ = IJ + 1
