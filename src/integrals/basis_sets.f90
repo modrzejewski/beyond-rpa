@@ -1190,11 +1190,17 @@ contains
                   Algorithm=LINALG_EVD_DIVIDE_AND_CONQUER, &
                   Info=ErrorCode)
             if (ErrorCode > 0) then
+                  !
+                  ! Overlap matrix has been overwritten by the previous eigensolver
+                  ! and needs to be recreated before another attempt
+                  !
+                  Wpq(:, :) = Spq(:, :)
                   call real_EVD(Lambda, Wpq, NAO, .true., &
                         Algorithm=LINALG_EVD_MULTIPLE_RELATIVELY_ROBUST_REPS, &
                         Info=ErrorCode)
                   if (ErrorCode > 0) then
-                        call msg("Eigensolver did not converge during diagonalization of the AO overlap matrix", MSG_ERROR)
+                        call msg("Eigensolver did not converge during diagonalization of the AO overlap matrix", &
+                              MSG_ERROR)
                         error stop
                   end if
             end if
