@@ -140,6 +140,21 @@ module rpa_definitions
       integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_MAXEIG = 1
       integer, parameter :: RPA_T2_CUTOFF_EIG_DIV_NELECTRON = 2
       integer, parameter :: RPA_T2_CUTOFF_SUM_REJECTED = 3
+      !
+      ! Algorithms used for the singular value decomposition which
+      ! precedes the computation of 2-RDMs:
+      !
+      ! T(ai,bj) = Sum(mu) U(a,xi; ij) sigma(xi; ij) V(b,xi; ij)
+      !
+      ! (1) Compute all singular eigenvalues and then select
+      !     the significant subset
+      !
+      integer, parameter :: RPA_SVD_FULL = 1
+      !
+      ! (2) Compute only the significant subset of singular
+      ! values above the threshold
+      !
+      integer, parameter :: RPA_SVD_SIGNIFICANT = 2
       ! ---------------------------------------------------------
       !         RPA and beyond-RPA energy components
       !----------------------------------------------------------      
@@ -502,6 +517,11 @@ module rpa_definitions
             ! factorization
             !
             integer :: CholVecsBlock = 500
+            !
+            ! Algorithm for the SVD of the RPA amplitudes
+            ! which presedes the computation of 2-RDM contributions
+            !
+            integer :: SVDAlgorithm = RPA_SVD_FULL
       end type TRPAParams
 
       type TRPAGrids
@@ -631,6 +651,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxNOCutoffThresh = 1.0E-10_F64
             RPAParams%CutoffThreshPNO = sqrt(1.0E-13)
+            RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
             RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
             SCFParams%ERI_Algorithm = SCF_ERI_THC
@@ -651,6 +672,7 @@ contains
             RPAParams%T2CutoffThresh = 1.0E-6_F64
             RPAParams%T2AuxNOCutoffThresh = 1.0E-11_F64
             RPAParams%CutoffThreshPNO = 1.0E-7_F64
+            RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
             RPAParams%CutoffThreshVabij = ZERO
             RPAParams%T2AdaptiveCutoffTargetKcal = 0.0005_F64
             !

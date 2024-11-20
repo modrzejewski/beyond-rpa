@@ -44,7 +44,6 @@ module thc_definitions
             !
             real(F64), dimension(:, :), allocatable :: Zgk
             real(F64), dimension(:, :), allocatable :: ZgkReduced
-            real(F64), dimension(:, :), allocatable :: Zgh
             !
             ! Transformed version of Z'(g,k) where the k index
             ! corresponds to the basis of Pi(u)

@@ -3768,6 +3768,16 @@ contains
                         call msg("Invalid value of T2AuxOrbitals", MSG_ERROR)
                         error stop
                   end select
+            case ("SVDALGO", "SVDALGORITHM")
+                  select case (uppercase(val))
+                  case ("FULL")
+                        RPAParams%SVDAlgorithm = RPA_SVD_FULL
+                  case ("SIGNIFICANT")
+                        RPAParams%SVDAlgorithm = RPA_SVD_SIGNIFICANT
+                  case default
+                        call msg("Invalid value of SVDAlgorithm", MSG_ERROR)
+                        error stop
+                  end select
             case ("T2AUXNOCUTOFFTHRESH")
                   read(val, *) m
                   if (m >= ZERO) then

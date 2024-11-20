@@ -38,6 +38,7 @@ contains
             real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
             integer :: i, j, mu, x
+            integer :: ErrorCode
             real(F64) :: EcRPA, Ec1b, Ec2bcd, Ec2ghij
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
             integer :: MaxNVirtPNO, NVirtPNO
@@ -134,16 +135,29 @@ contains
             do j = 1, NOcc
                   do i = j, NOcc
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
-                              NOcc, NVirt, NVecsT2)                        
-                        call real_SVD(U, V, Sigma, Tabij)
-                        NVirtPNO = 0
-                        do x = 1, NVirt
-                              if (Sigma(x) >= RPAParams%CutoffThreshPNO) then
-                                    NVirtPNO = x
-                              else
-                                    exit
+                              NOcc, NVirt, NVecsT2)
+                        call real_SVD(U, V, Sigma, Tabij, Info=ErrorCode)
+                        if (ErrorCode == 0) then
+                              NVirtPNO = 0
+                              do x = 1, NVirt
+                                    if (Sigma(x) > RPAParams%CutoffThreshPNO) then
+                                          NVirtPNO = x
+                                    else
+                                          exit
+                                    end if
+                              end do
+                        else
+                              call msg("Algorithm 1 for singular value decoposition failed to converge", &
+                                    MSG_WARNING)
+                              call msg("Switching to algorithm 2", MSG_WARNING)
+                              call real_SVD_SignificantSubset(U, V, Sigma, NVirtPNO, &
+                                    Tabij, RPAParams%CutoffThreshPNO, Info=ErrorCode)
+                              if (ErrorCode /= 0) then
+                                    call msg("Algorithm 2 for singular value decomposition failed", &
+                                          MSG_ERROR)
+                                    error stop
                               end if
-                        end do
+                        end if
                         if (NVirtPNO > 0) then
                               IJ = IJ + 1
                               allocate(PNOTransform(IJ)%TaxPNO(NVirt, NVirtPNO, 2))
@@ -229,82 +243,6 @@ contains
             call msg("Energy terms         " // str(t_Energy,d=1))
             call blankline()
       end subroutine rpa_JCTC2024_Corrections
-
-
-      ! pure subroutine rpa_JCTC2024_pq2p_ge_q(p, q, pq, n)
-      !       !
-      !       ! Decode a lower-triangle compound index into individual
-      !       ! indices:
-      !       ! PQ -> (P, Q)
-      !       ! Assumptions:
-      !       ! 0) P = 1, 2, ..., N,
-      !       !    Q = 1, 2, ..., N,
-      !       ! 1) P >= Q (diagonal indices admissible)
-      !       !
-      !       ! An example of how this algorithm traverses an N=3 triangle:
-      !       !
-      !       ! 1
-      !       ! 2 5
-      !       ! 3 6 4
-      !       !
-      !       integer, intent(out) :: p
-      !       integer, intent(out) :: q
-      !       integer, intent(in)  :: pq
-      !       integer, intent(in)  :: n
-
-      !       integer :: q_base
-      !       integer :: v
-      !       integer :: interval1
-      !       integer :: in1, in2
-      !       !
-      !       ! pq = (q_base - 1) * (n + 1) + v
-      !       !
-      !       q_base = (pq - 1) / (n + 1) + 1
-      !       v = pq - (n + 1) * (q_base - 1)
-      !       !
-      !       ! Decide if v is in interval_1 or interval_2:
-      !       ! in1 == 1 and in2 == 0 if v <= INTERVAL1
-      !       ! in1 == 0 and in2 == 1 if v > INTERVAL1
-      !       !
-      !       interval1 = n - q_base + 1
-      !       in2 = v / (interval1 + 1)
-      !       !
-      !       ! 1 -> 0, 0 -> 1
-      !       !
-      !       in1 = ieor((in2), 1)
-
-      !       p = in1 * (q_base + v - 1) + in2 * (v - interval1 + n - q_base)          
-      !       q = in1 * q_base + in2 * interval1
-      ! end subroutine rpa_JCTC2024_pq2p_ge_q
-      
-
-      ! subroutine rpa_JCTC2024_MaxVabab(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
-      !       integer, intent(in)                                   :: NVirt
-      !       integer, intent(in)                                   :: NCholesky, NGridTHC
-      !       real(F64), intent(out)                                :: MaxVabab
-      !       real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Xga
-      !       real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
-
-      !       real(F64), dimension(:), allocatable :: XXg, ZXXk
-      !       integer :: a, b, ab
-      !       real(F64) :: Vabab
-
-      !       MaxVabab = ZERO
-      !       !$omp parallel private(XXg, ZXXk, ab, a, b, Vabab) reduction(max:MaxVabab)
-      !       allocate(XXg(NGridTHC))
-      !       allocate(ZXXk(NCholesky))
-      !       !$omp do
-      !       do ab = 1, (NVirt*(NVirt+1))/2
-      !             call rpa_JCTC2024_pq2p_ge_q(a, b, ab, NVirt)
-      !             XXg(:) = Xga(:, a) * Xga(:, b)
-      !             call real_ATv(ZXXk, Zgk, XXg)
-      !             call real_vw_x(Vabab, ZXXk, ZXXk, NCholesky)
-      !             MaxVabab = max(MaxVabab, Vabab)
-      !       end do
-      !       !$omp end do
-      !       deallocate(XXg, ZXXk)
-      !       !$omp end parallel
-      ! end subroutine rpa_JCTC2024_MaxVabab
 
 
       subroutine rpa_JCTC2024_MaxVabab_test(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)

@@ -2,6 +2,7 @@ module THCFock
       use arithmetic
       use real_linalg
       use thc_definitions
+      use OneElectronInts
 
       implicit none
 
@@ -64,18 +65,19 @@ contains
             real(F64), dimension(:, :), intent(in)    :: Zgh
             real(F64), intent(in)                     :: JScal
 
-            integer :: NGridTHC, NAO
+            integer :: NGridTHC, NAO, NOcc
             integer :: g, p
             real(F64) :: t
 
             NGridTHC = size(Xgp, dim=1)
             NAO = size(Xgp, dim=2)
+            NOcc = size(Xig, dim=1)
             !
             ! [XX](g) = Sum(i) X(i,g)*X(i,g)
             !
             !$omp parallel do private(g, t)
             do g = 1, NGridTHC
-                  call real_dot(t, Xig(:, g), Xig(:, g))
+                  call real_vw_x(t, Xig(:, g), Xig(:, g), NOcc)
                   XXg(g) = t
             end do
             !$omp end parallel do
@@ -99,44 +101,24 @@ contains
       end subroutine thc_Fock_Coulomb
 
 
-      function thc_Fock_Trace(JKpq, Dpq)
-            real(F64) :: thc_Fock_Trace
-            real(F64), dimension(:, :), intent(in) :: JKpq
-            real(F64), dimension(:, :), intent(in) :: Dpq
+      subroutine thc_Fock_JK(JKpq, Cpi, Zgh, Xgp, NOcc, CoulContrib, &
+            ExchContrib, KScal, Rho_ao, EHFTwoEl)
 
-            integer :: q, NAO
-            real(F64) :: t, Trace
-
-            NAO = size(JKpq, dim=1)
-            Trace = ZERO
-            !$omp parallel do private(q, t) reduction(+:Trace)
-            do q = 1, NAO
-                  call real_dot(t, JKpq(:, q), Dpq(:, q))
-                  Trace = Trace + t
-            end do
-            !$omp end parallel do
-            thc_Fock_Trace = Trace
-      end function thc_Fock_Trace
-      
-
-      subroutine thc_Fock_JK(JKpq, EHFTwoEl, Cpi, Rho_ao, Zgh, Xgp, NOcc, CoulContrib, &
-            ExchContrib, KScal, ParallelSum)
-
-            real(F64), dimension(:, :, :), intent(out) :: JKpq
-            real(F64), intent(out)                     :: EHFTwoEl
-            real(F64), dimension(:, :, :), intent(in)  :: Cpi
-            real(F64), dimension(:, :, :), intent(in)  :: Rho_ao
-            real(F64), dimension(:, :), intent(in)     :: Zgh
-            real(F64), dimension(:, :), intent(in)     :: Xgp
-            integer, dimension(:), intent(in)          :: NOcc
-            logical, intent(in)                        :: CoulContrib
-            logical, intent(in)                        :: ExchContrib
-            real(F64), intent(in)                      :: KScal
-            logical, intent(in)                        :: ParallelSum
+            real(F64), dimension(:, :, :), intent(out)           :: JKpq
+            real(F64), dimension(:, :, :), intent(in)            :: Cpi
+            real(F64), dimension(:, :), intent(in)               :: Zgh
+            real(F64), dimension(:, :), intent(in)               :: Xgp
+            integer, dimension(:), intent(in)                    :: NOcc
+            logical, intent(in)                                  :: CoulContrib
+            logical, intent(in)                                  :: ExchContrib
+            real(F64), intent(in)                                :: KScal
+            real(F64), optional, dimension(:, :, :), intent(in)  :: Rho_ao
+            real(F64), optional, intent(out)                     :: EHFTwoEl
 
             integer :: NSpins, NGridTHC, NAO
             real(F64), dimension(:), allocatable :: XXg, ZXXg
             real(F64), dimension(:, :), allocatable :: XXgh, XZXXgp, Xig, Jpq
+            real(F64) :: TrRhoJK
             integer :: s
             
             NSpins = size(Cpi, dim=3)
@@ -153,34 +135,71 @@ contains
             end if
             JKpq = ZERO
             do s = 1, NSpins
-                  allocate(Xig(NOcc(s), NGridTHC))
-                  !
-                  ! Xig(i,g) = Sum(p) Cpi(p,i)*Xgp(g,p)
-                  !
-                  call real_aTbT(Xig, Cpi(:, 1:NOcc(s), s), Xgp)
-                  if (CoulContrib) then
-                        if (NSpins == 2) then
-                              Jpq = ZERO
-                              call thc_Fock_Coulomb(Jpq, XXg, ZXXg, XZXXgp, Xig, Xgp, Zgh, ONE)
-                              JKpq(:, :, 1) = JKpq(:, :, 1) + Jpq
-                              JKpq(:, :, 2) = JKpq(:, :, 2) + Jpq
-                        else
-                              call thc_Fock_Coulomb(JKpq(:, :, 1), XXg, ZXXg, XZXXgp, Xig, Xgp, Zgh, TWO)
+                  if (NOcc(s) > 0) then
+                        allocate(Xig(NOcc(s), NGridTHC))
+                        !
+                        ! Xig(i,g) = Sum(p) Cpi(p,i)*Xgp(g,p)
+                        !
+                        call real_aTbT(Xig, Cpi(:, 1:NOcc(s), s), Xgp)
+                        if (CoulContrib) then
+                              if (NSpins == 2) then
+                                    Jpq = ZERO
+                                    call thc_Fock_Coulomb(Jpq, XXg, ZXXg, XZXXgp, Xig, Xgp, Zgh, ONE)
+                                    if (NOcc(1) > 0) JKpq(:, :, 1) = JKpq(:, :, 1) + Jpq
+                                    if (NOcc(2) > 0) JKpq(:, :, 2) = JKpq(:, :, 2) + Jpq
+                              else
+                                    call thc_Fock_Coulomb(JKpq(:, :, 1), XXg, ZXXg, XZXXgp, Xig, Xgp, Zgh, TWO)
+                              end if
                         end if
+                        if (ExchContrib) then
+                              call thc_Fock_Exchange(JKpq(:, :, s), XXgh, XZXXgp, Xig, Xgp, Zgh, KScal)
+                        end if
+                        deallocate(Xig)
                   end if
-                  if (ExchContrib) then
-                        call thc_Fock_Exchange(JKpq(:, :, s), XXgh, XZXXgp, Xig, Xgp, Zgh, KScal)
-                  end if
-                  deallocate(Xig)
             end do
             !
             ! Coulomb+exchange part of the total energy
             !
-            EHFTwoEl = ZERO
-            do s = 1, NSpins
-                  EHFTwoEl = EHFTwoEl + (ONE/TWO) * thc_Fock_Trace(Rho_ao(:, :, s), JKpq(:, :, s))
-            end do
-            call co_sum(EHFTwoEl)
-            if (ParallelSum) call co_sum(JKpq, result_image=1)
+            if (present(EHFTwoEl)) then
+                  EHFTwoEl = ZERO
+                  do s = 1, NSpins
+                        if (NOcc(s) > 0) then
+                              call real_vw_x(TrRhoJK, Rho_ao(:, :, s), JKpq(:, :, s), NAO**2)
+                              EHFTwoEl = EHFTwoEl + (ONE/TWO) * TrRhoJK
+                        end if
+                  end do
+                  call co_sum(EHFTwoEl)
+            end if
       end subroutine thc_Fock_JK
+
+
+      subroutine thc_Fock_F(Fpq, Cpi, NOcc, Zgh, Xgp, AOBasis, System)
+            real(F64), dimension(:, :, :), intent(out) :: Fpq
+            real(F64), dimension(:, :, :), intent(in)  :: Cpi
+            integer, dimension(2), intent(in)          :: NOcc
+            real(F64), dimension(:, :), intent(in)     :: Zgh
+            real(F64), dimension(:, :), intent(in)     :: Xgp
+            type(TAOBasis), intent(in)                 :: AOBasis
+            type(TSystem), intent(in)                  :: System
+
+            real(F64), dimension(:, :), allocatable :: Tpq, Vpq
+            integer :: NAO, s, NSpins
+            logical, parameter :: CoulContrib = .true.
+            logical, parameter :: ExchContrib = .true.
+            real(F64), parameter :: KScal = ONE
+
+            call thc_Fock_JK(Fpq, Cpi, Zgh, Xgp, NOcc, CoulContrib, ExchContrib, KScal)
+            NAO = AOBasis%NAOSpher
+            allocate(Tpq(NAO, NAO))
+            allocate(Vpq(NAO, NAO))
+            call ints1e_T(Tpq, AOBasis)
+            call ints1e_Vne(Vpq, AOBasis, System)
+            NSpins = size(Cpi, dim=3)
+            do s = 1, NSpins
+                  if (NOcc(s) > 0) then
+                        Fpq(:, :, s) = Fpq(:, :, s) + Tpq(:, :)
+                        Fpq(:, :, s) = Fpq(:, :, s) + Vpq(:, :)
+                  end if
+            end do
+      end subroutine thc_Fock_F
 end module THCFock

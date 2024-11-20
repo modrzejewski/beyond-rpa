@@ -1178,6 +1178,7 @@ contains
             real(F64), intent(in)                                :: LinDepThresh
 
             integer :: NAO, k
+            integer :: ErrorCode
             real(F64), dimension(:, :), allocatable :: Wpq
             real(F64), dimension(:), allocatable :: Lambda
 
@@ -1185,7 +1186,27 @@ contains
             allocate(Wpq(NAO, NAO))
             Wpq(:, :) = Spq(:, :)
             allocate(Lambda(NAO))
-            call symmetric_eigenproblem(Lambda, Wpq, NAO, .true.)
+            call real_EVD(Lambda, Wpq, NAO, .true., &
+                  Algorithm=LINALG_EVD_ALGORITHM_1, &
+                  Info=ErrorCode)
+            if (ErrorCode > 0) then
+                  call msg("Eigensolver 1 did not converge in basis_NonredundantOrthogonal", &
+                        MSG_WARNING)
+                  call msg("Attempting diagonalization with eigensolver 2", MSG_WARNING)
+                  !
+                  ! Overlap matrix has been overwritten by the previous eigensolver
+                  ! and needs to be recreated before another attempt
+                  !
+                  Wpq(:, :) = Spq(:, :)
+                  call real_EVD(Lambda, Wpq, NAO, .true., &
+                        Algorithm=LINALG_EVD_ALGORITHM_2, &
+                        Info=ErrorCode)
+                  if (ErrorCode > 0) then
+                        call msg("Eigensolver 2 did not converge in basis_NonredundantOrthogonal", &
+                              MSG_ERROR)
+                        error stop
+                  end if
+            end if
             NOAO = 0
             do k = NAO, 1, -1
                   if (Lambda(k) > LinDepThresh) then
