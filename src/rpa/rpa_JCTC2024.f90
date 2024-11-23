@@ -150,6 +150,8 @@ contains
                               call msg("Algorithm 1 for singular value decoposition failed to converge", &
                                     MSG_WARNING)
                               call msg("Switching to algorithm 2", MSG_WARNING)
+                              call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
+                                    NOcc, NVirt, NVecsT2)
                               call real_SVD_SignificantSubset(U, V, Sigma, NVirtPNO, &
                                     Tabij, RPAParams%CutoffThreshPNO, Info=ErrorCode)
                               if (ErrorCode /= 0) then

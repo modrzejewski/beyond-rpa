@@ -239,11 +239,11 @@ contains
             ! V          (n, n)
             ! Sigma      array of size >= min(m, n)
             !
-            real(F64), dimension(:, :), intent(out) :: U
-            real(F64), dimension(:, :), intent(out) :: V
-            real(F64), dimension(:), intent(out)    :: Sigma
-            real(F64), dimension(:, :), intent(in)  :: A
-            integer, optional, intent(out)          :: Info
+            real(F64), dimension(:, :), intent(out)   :: U
+            real(F64), dimension(:, :), intent(out)   :: V
+            real(F64), dimension(:), intent(out)      :: Sigma
+            real(F64), dimension(:, :), intent(inout) :: A
+            integer, optional, intent(out)            :: Info
 
             integer :: m, n
             integer :: ldA, ldVT, ldU, ErrorCode
