@@ -188,7 +188,7 @@ contains
             if (NSystems > 1) then
                   call msg("Gathered " // str(NDensities) // " 1-RDMs in a single array")
             end if
-            call msg("Starting Fock matrix calculation")
+            call msg("Fock matrix calculation")
             call rpa_HF_Fpq(MeanFieldStates, System, Dpqk, DpqkLoc, &
                   NOcc, NSpins, Chol2Vecs, AOBasis)
             call msg("Fock matrices completed for all systems")

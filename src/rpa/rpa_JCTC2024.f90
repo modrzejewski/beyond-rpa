@@ -48,6 +48,9 @@ contains
             real(F64), dimension(:), allocatable :: Sigma
             real(F64), dimension(:, :), allocatable :: U, V
             integer, dimension(:, :, :), allocatable :: PNOData
+            real(F64), dimension(:, :), allocatable :: SVD_VT
+            real(F64), dimension(:), allocatable :: SVD_Work
+            integer, dimension(:), allocatable :: SVD_IWork
             integer :: IJ
             type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO, timer_Schwarz
             real(F64) :: t_Total, t_SVD, t_Energy, t_LO
@@ -121,6 +124,7 @@ contains
             allocate(Sigma(NVirt))
             allocate(U(NVirt, NVirt))
             allocate(V(NVirt, NVirt))
+            call real_SVD_workspace(SVD_VT, SVD_Work, SVD_IWork, NVirt, NVirt)
             !
             ! Singular value decomposition of T(aI,bJ)
             !
@@ -136,7 +140,7 @@ contains
                   do i = j, NOcc
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)
-                        call real_SVD(U, V, Sigma, Tabij, Info=ErrorCode)
+                        call real_SVD_x(U, V, Sigma, Tabij, SVD_VT, SVD_Work, SVD_IWork, ErrorCode)
                         if (ErrorCode == 0) then
                               NVirtPNO = 0
                               do x = 1, NVirt
