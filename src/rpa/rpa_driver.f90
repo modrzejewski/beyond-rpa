@@ -23,7 +23,7 @@ module rpa_driver
 contains
 
       subroutine rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, System, &
-            CholeskyVecs, Chol2Vecs, Chol2Params, THCGrid)
+            CholeskyVecs, Chol2Vecs, THCGrid)
             !
             ! Driver subroutine for the post-SCF part of the RPA energy calculation. Includes
             ! the singles correction of Klimes et al. Works for the single-point energies of molecules
@@ -39,7 +39,6 @@ contains
             type(TSystem), intent(inout)                              :: System
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
             type(TChol2Vecs), intent(inout)                           :: Chol2Vecs
-            type(TChol2Params), intent(in)                            :: Chol2Params
             type(TCoulTHCGrid), intent(inout)                         :: THCGrid
 
             real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB

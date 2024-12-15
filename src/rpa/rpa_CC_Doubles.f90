@@ -86,7 +86,7 @@ contains
 
             do i = 1, Ncolumns
                   Norm_i = norm2(M(:, i))
-                  M(:, i) = M(:, i) / Norm_i                  
+                  M(:, i) = M(:, i) / Norm_i  
             end do
       end subroutine rpa_CC_NormalizeColumns
 

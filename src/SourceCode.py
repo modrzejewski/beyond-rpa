@@ -63,6 +63,7 @@ FileList += [("DFT", ["linear-algebra/blas1.f90",
                  "linear-algebra/linalg.f90",
                  "linear-algebra/matexp.f90",
                  "linear-algebra/real_linalg.f90"])]
+FileList += [("DFT", ["linear-algebra/RandomizedSVD.f90"])]
 FileList += [("DFT", ["linear-algebra/blas5.f90",
                  "linear-algebra/blas6.f90"])]
 FileList += [("DFT", ["linear-algebra/blas_olenkifer.f90"])]

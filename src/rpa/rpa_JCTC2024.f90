@@ -3,6 +3,7 @@ module rpa_JCTC2024
       use math_constants
       use rpa_definitions
       use real_linalg
+      use RandomizedSVD
       use basis_sets
       use rpa_Orbitals
       use clock
@@ -38,7 +39,6 @@ contains
             real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
             integer :: i, j, mu, x
-            integer :: ErrorCode
             real(F64) :: EcRPA, Ec1b, Ec2bcd, Ec2ghij
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
             integer :: MaxNVirtPNO, NVirtPNO
@@ -48,15 +48,13 @@ contains
             real(F64), dimension(:), allocatable :: Sigma
             real(F64), dimension(:, :), allocatable :: U, V
             integer, dimension(:, :, :), allocatable :: PNOData
-            real(F64), dimension(:, :), allocatable :: SVD_VT
-            real(F64), dimension(:), allocatable :: SVD_Work
-            integer, dimension(:), allocatable :: SVD_IWork
             integer :: IJ
             type(TClock) :: timer_Total, timer_SVD, timer_Energy, timer_LO, timer_Schwarz
             real(F64) :: t_Total, t_SVD, t_Energy, t_LO
             real(F64) :: t_SOSEX, t_G, t_TrVGabij, t_TrVGaibj, t_ZYX, t_ZXX, t_Schwarz
             real(F64) :: MaxVabab
             integer :: NSmallVabij
+            type(TRSVDWorkspace) :: RSVDWorkspace
 
             call clock_start(timer_Total)
             call blankline()
@@ -70,7 +68,13 @@ contains
             call msg("1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski")
             call msg("   J. Chem. Theory Comput. 19, 6619 (2023);")
             call msg("   doi: 10.1021/acs.jctc.3c00496")
-            
+            call blankline()
+            if (RPAParams%SVDAlgorithm == RPA_SVD_FULL) then
+                  call msg("SVD of T(ab;ij): full decomposition")
+            end if
+            if (RPAParams%SVDAlgorithm == RPA_SVD_RANDOMIZED) then
+                  call msg("SVD of T(ab;ij): randomized")
+            end if
             NGridTHC = size(Zgk, dim=1)
             NCholesky = size(Zgk, dim=2)
             NVecsT2 = size(Am)
@@ -124,9 +128,28 @@ contains
             allocate(Sigma(NVirt))
             allocate(U(NVirt, NVirt))
             allocate(V(NVirt, NVirt))
-            call real_SVD_workspace(SVD_VT, SVD_Work, SVD_IWork, NVirt, NVirt)
+            if (RPAParams%SVDAlgorithm == RPA_SVD_FULL) then
+                  call rsvd_Init(&
+                        RSVDWorkspace, &
+                        NVirt, &
+                        NVirt, &
+                        RPAParams%SVDNSubspaceIters, &
+                        RPAParams%SVDOversampling, &
+                        RPAParams%CutoffThreshPNO, &
+                        0)
+            else
+                  call msg("Initial subspace dimension in randomized SVD: " // str(RPAParams%SVDNGuessVecs))
+                  call rsvd_Init( &
+                        RSVDWorkspace, &
+                        NVirt, &
+                        RPAParams%SVDNGuessVecs, &
+                        RPAParams%SVDNSubspaceIters, &
+                        RPAParams%SVDOversampling, &
+                        RPAParams%CutoffThreshPNO, &
+                        NVirt/2)
+            end if
             !
-            ! Singular value decomposition of T(aI,bJ)
+            ! Singular value decomposition of T(ab;ij) for i>=j
             !
             NOccPairs = (NOcc * (NOcc + 1)) / 2
             allocate(PNOTransform(NOccPairs))
@@ -140,30 +163,7 @@ contains
                   do i = j, NOcc
                         call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)
-                        call real_SVD_x(U, V, Sigma, Tabij, SVD_VT, SVD_Work, SVD_IWork, ErrorCode)
-                        if (ErrorCode == 0) then
-                              NVirtPNO = 0
-                              do x = 1, NVirt
-                                    if (Sigma(x) > RPAParams%CutoffThreshPNO) then
-                                          NVirtPNO = x
-                                    else
-                                          exit
-                                    end if
-                              end do
-                        else
-                              call msg("Algorithm 1 for singular value decoposition failed to converge", &
-                                    MSG_WARNING)
-                              call msg("Switching to algorithm 2", MSG_WARNING)
-                              call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
-                                    NOcc, NVirt, NVecsT2)
-                              call real_SVD_SignificantSubset(U, V, Sigma, NVirtPNO, &
-                                    Tabij, RPAParams%CutoffThreshPNO, Info=ErrorCode)
-                              if (ErrorCode /= 0) then
-                                    call msg("Algorithm 2 for singular value decomposition failed", &
-                                          MSG_ERROR)
-                                    error stop
-                              end if
-                        end if
+                        call rsvd_Decompose(U, V, Sigma, NVirtPNO, Tabij, RSVDWorkspace)
                         if (NVirtPNO > 0) then
                               IJ = IJ + 1
                               allocate(PNOTransform(IJ)%TaxPNO(NVirt, NVirtPNO, 2))
@@ -227,7 +227,10 @@ contains
             ! Beyond-RPA corrections
             !
             RPAOutput%Energy(RPA_ENERGY_CUMULANT_SOSEX) = (ONE/TWO) * Ec1b
-            RPAOutput%Energy(RPA_ENERGY_CUMULANT_PH3) = Ec2bcd + Ec2ghij ! 1/2(Ec2b + Ec2c) + Ec2d + Ec2g+Ec2h+Ec2i+Ec2j
+            !
+            ! EcPH3 = 1/2(Ec2b + Ec2c) + Ec2d + Ec2g+Ec2h+Ec2i+Ec2j
+            !
+            RPAOutput%Energy(RPA_ENERGY_CUMULANT_PH3) = Ec2bcd + Ec2ghij 
             call blankline()
             call msg("Calculation of particle-hole corrections completed")
             if (RPAParams%LocalizedOrbitals == RPA_LOCALIZED_ORBITALS_BOYS) then
@@ -251,34 +254,34 @@ contains
       end subroutine rpa_JCTC2024_Corrections
 
 
-      subroutine rpa_JCTC2024_MaxVabab_test(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
-            integer, intent(in)                                   :: NVirt
-            integer, intent(in)                                   :: NCholesky, NGridTHC
-            real(F64), intent(out)                                :: MaxVabab
-            real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Xga
-            real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
+      ! subroutine rpa_JCTC2024_MaxVabab_test(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
+      !       integer, intent(in)                                   :: NVirt
+      !       integer, intent(in)                                   :: NCholesky, NGridTHC
+      !       real(F64), intent(out)                                :: MaxVabab
+      !       real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Xga
+      !       real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
 
-            real(F64), dimension(:, :), allocatable :: XXga, ZXXka
-            real(F64), dimension(:), allocatable :: Vabab
-            real(F64) :: t
-            integer :: a, b, Na
+      !       real(F64), dimension(:, :), allocatable :: XXga, ZXXka
+      !       real(F64), dimension(:), allocatable :: Vabab
+      !       real(F64) :: t
+      !       integer :: a, b, Na
 
-            allocate(XXga(NGridTHC, NVirt))
-            allocate(ZXXka(NCholesky, NVirt))
-            allocate(Vabab(NVirt))
-            MaxVabab = ZERO
-            do b = 1, NVirt
-                  Na = NVirt - b + 1
-                  do a = b, NVirt
-                        XXga(:, a) = Xga(:, a) * Xga(:, b)
-                  end do
-                  call real_aTb(ZXXka(:, 1:Na), Zgk, XXga(:, 1:Na))
-                  ZXXka(:, 1:Na) = ZXXka(:, 1:Na)**2
-                  Vabab(1:Na) = sum(ZXXka(:, 1:Na), dim=1)
-                  t = maxval(Vabab(1:Na))
-                  MaxVabab = max(MaxVabab, t)
-            end do
-      end subroutine rpa_JCTC2024_MaxVabab_test
+      !       allocate(XXga(NGridTHC, NVirt))
+      !       allocate(ZXXka(NCholesky, NVirt))
+      !       allocate(Vabab(NVirt))
+      !       MaxVabab = ZERO
+      !       do b = 1, NVirt
+      !             Na = NVirt - b + 1
+      !             do a = b, NVirt
+      !                   XXga(:, a) = Xga(:, a) * Xga(:, b)
+      !             end do
+      !             call real_aTb(ZXXka(:, 1:Na), Zgk, XXga(:, 1:Na))
+      !             ZXXka(:, 1:Na) = ZXXka(:, 1:Na)**2
+      !             Vabab(1:Na) = sum(ZXXka(:, 1:Na), dim=1)
+      !             t = maxval(Vabab(1:Na))
+      !             MaxVabab = max(MaxVabab, t)
+      !       end do
+      ! end subroutine rpa_JCTC2024_MaxVabab_test
 
 
       subroutine rpa_JCTC2024_MaxVabab(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
