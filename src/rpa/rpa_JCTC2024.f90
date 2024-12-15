@@ -73,7 +73,10 @@ contains
                   call msg("SVD of T(ab;ij): full decomposition")
             end if
             if (RPAParams%SVDAlgorithm == RPA_SVD_RANDOMIZED) then
-                  call msg("SVD of T(ab;ij): randomized")
+                  call msg("SVD of T(ab;ij):    randomized")
+                  call msg("Subspace dimension  " // str(RPAParams%SVDNGuessVecs))
+                  call msg("Oversampling        " // str(RPAParams%SVDOversampling))
+                  call msg("Subspace iterations " // str(RPAParams%SVDNSubspaceIters))
             end if
             NGridTHC = size(Zgk, dim=1)
             NCholesky = size(Zgk, dim=2)
@@ -138,7 +141,6 @@ contains
                         RPAParams%CutoffThreshPNO, &
                         0)
             else
-                  call msg("Initial subspace dimension in randomized SVD: " // str(RPAParams%SVDNGuessVecs))
                   call rsvd_Init( &
                         RSVDWorkspace, &
                         NVirt, &

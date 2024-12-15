@@ -3778,6 +3778,15 @@ contains
                         call msg("Invalid value of SVDAlgorithm", MSG_ERROR)
                         error stop
                   end select
+            case ("SVDOVERSAMPLING")
+                  read(val, *) i
+                  RPAParams%SVDOversampling = i
+            case ("SVDNSUBSPACEITERS")
+                  read(val, *) i
+                  RPAParams%SVDNSubspaceIters = i
+            case ("SVDNGUESSVECS")
+                  read(val, *) i
+                  RPAParams%SVDNGuessVecs = i
             case ("T2AUXNOCUTOFFTHRESH")
                   read(val, *) m
                   if (m >= ZERO) then
@@ -3823,7 +3832,7 @@ contains
             case ("ADIABATIC-CONNECTION", "ADIABATICCONNECTION", "ADIABATIC_CONNECTION", "COUPLEDCLUSTERS", "COUPLED-CLUSTERS")
                   RPAParams%CoupledClusters = .true.
             case ("ACQUADPOINTS")
-                  read(val, *) i                  
+                  read(val, *) i
                   RPAParams%ACQuadPoints = i
             case ("AC_1RDMQUAD")
                   select case (uppercase(val))
