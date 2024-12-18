@@ -73,10 +73,11 @@ contains
                   call msg("SVD of T(ab;ij): full decomposition")
             end if
             if (RPAParams%SVDAlgorithm == RPA_SVD_RANDOMIZED) then
-                  call msg("SVD of T(ab;ij):    randomized")
-                  call msg("Subspace dimension  " // str(RPAParams%SVDNGuessVecs))
-                  call msg("Oversampling        " // str(RPAParams%SVDOversampling))
-                  call msg("Subspace iterations " // str(RPAParams%SVDNSubspaceIters))
+                  call msg("SVD of T(ab;ij)        randomized")
+                  call msg("Subspace dimension     " // str(RPAParams%SVDNGuessVecs))
+                  call msg("Oversampling           " // str(RPAParams%SVDOversampling))
+                  call msg("Subspace iterations    " // str(RPAParams%SVDNSubspaceIters))
+                  call msg("Switchover to full SVD " // str(nint(RPAParams%SVDSwitchoverRatio*NVirt)) // " vectors")
             end if
             NGridTHC = size(Zgk, dim=1)
             NCholesky = size(Zgk, dim=2)
@@ -148,7 +149,7 @@ contains
                         RPAParams%SVDNSubspaceIters, &
                         RPAParams%SVDOversampling, &
                         RPAParams%CutoffThreshPNO, &
-                        NVirt/2)
+                        nint(RPAParams%SVDSwitchoverRatio*NVirt))
             end if
             !
             ! Singular value decomposition of T(ab;ij) for i>=j

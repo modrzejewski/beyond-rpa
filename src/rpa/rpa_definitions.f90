@@ -540,6 +540,15 @@ module rpa_definitions
             ! the decomposition threshold
             !
             integer :: SVDOversampling = 50
+            !
+            ! NSubspaceDim/NVirt ratio at which the switchover occurs
+            ! from the randomized SVD algorithm to conventional full-rank
+            ! SVD. The assumption here is that for the matrix dimensions above
+            ! SVDSwitchOverRatio, the numerical rank of T2 is too close to
+            ! the full rank and the randomized subroutine becomes slower than
+            ! the straightforward approach.
+            !
+            real(F64) :: SVDSwitchoverRatio = TWO/THREE
       end type TRPAParams
 
       type TRPAGrids

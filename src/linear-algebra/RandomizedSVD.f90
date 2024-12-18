@@ -99,7 +99,32 @@ contains
 
       subroutine rsvd_Decompose(U, V, Sigma, NVecs, A, RSVDWorkspace)
             !
-            ! Randomized singular value decomposition
+            ! Compute the singular value decomposition
+            !
+            ! A = U(:, 1:NVecs) * Diag(Sigma(1:NVecs)) * V(:, 1:NVecs)**T
+            !
+            ! using the numerically-stable variant of the randomized SVD
+            ! algorithm of Halko et al.
+            !
+            ! U(:, 1:NVecs)
+            !                 Left singular vectors stored in columns
+            ! V(:, 1:NVecs)
+            !                 Right singular vectors stored in columns
+            ! Sigma(1:NVecs)
+            !                 Singular values
+            !
+            ! NVecs
+            !                 Numerical rank of A computed during the randomized
+            !                 singular value decomposition, i.e., the number of
+            !                 singular values satisfying Sigma(k)>AbsThresh,
+            !                 where AbsThresh is set during initialization
+            !
+            ! A
+            !                 Square input matrix (FullDim x FullDim)
+            !      
+            ! RSVDWorkspace
+            !                 Workspace and parameters defined during
+            !                 initialization
             !
             ! 1. N. Halko, P. G. Martinsson, and J. A. Tropp,
             !    Finding Structure with Randomness: Probabilistic
@@ -214,16 +239,19 @@ contains
                   B(:, :) = A(:, :)
                   call real_SVD(U, V, Sigma, B, Info)
                   if (Info > 0) then
+                        call msg("Algorithm 1 for full rank SVD did not converge", MSG_WARNING)
+                        call msg("rsvd_Decompose is switching to algorithm 2", MSG_WARNING)
                         AltFullRankSVD = .true.
                   else
-                        NVecs = count(Sigma(1:SubspaceDim) > AbsThresh)
+                        NVecs = count(Sigma > AbsThresh)
                   end if
             end if
             if (AltFullRankSVD) then
+                  B(:, :) = A(:, :)
                   call real_SVD_SignificantSubset(U, V, Sigma, NVecs, &
                         B, AbsThresh, Info)
                   if (Info /= 0) then
-                        call msg("SVD algorithm did not converge", MSG_ERROR)
+                        call msg("Algorithm 2 did not converge", MSG_ERROR)
                         error stop
                   end if
             end if

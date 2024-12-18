@@ -3780,13 +3780,36 @@ contains
                   end select
             case ("SVDOVERSAMPLING")
                   read(val, *) i
-                  RPAParams%SVDOversampling = i
+                  if (i > 0) then
+                        RPAParams%SVDOversampling = i
+                  else
+                        call msg("Invalid value of SVDOversampling", MSG_ERROR)
+                        error stop
+                  end if
             case ("SVDNSUBSPACEITERS")
                   read(val, *) i
-                  RPAParams%SVDNSubspaceIters = i
+                  if (i > 0) then
+                        RPAParams%SVDNSubspaceIters = i
+                  else
+                        call msg("Invalid value of SVDNSubspaceIters", MSG_ERROR)
+                        error stop
+                  end if
             case ("SVDNGUESSVECS")
                   read(val, *) i
-                  RPAParams%SVDNGuessVecs = i
+                  if (i > 0) then
+                        RPAParams%SVDNGuessVecs = i
+                  else
+                        call msg("Invalid value of SVDNGuessVecs", MSG_ERROR)
+                        error stop
+                  end if
+            case ("SVDSWITCHOVERRATIO")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%SVDSwitchoverRatio = m
+                  else
+                        call msg("Invalid value of SVDSwitchoverRatio", MSG_ERROR)
+                        error stop
+                  end if
             case ("T2AUXNOCUTOFFTHRESH")
                   read(val, *) m
                   if (m >= ZERO) then
