@@ -128,7 +128,7 @@ contains
                   call thc_ReduceGrid(THCGrid)
             end if
             call rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, &
-                  System, Rkpq, Chol2Vecs, Chol2Params, THCGrid)            
+                  System, Rkpq, Chol2Vecs, THCGrid)            
             call free_modules()
             call data_free()
       end subroutine task_uks_rpa

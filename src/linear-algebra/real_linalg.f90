@@ -222,7 +222,97 @@ contains
                   select_func = .true.
             end function select_func
       end subroutine real_Schur
-      
+
+
+      subroutine real_SVD_workspace(VT, Work, IWork, M, N)
+            real(F64), dimension(:, :), allocatable, intent(out) :: VT
+            real(F64), dimension(:), allocatable, intent(out)    :: Work
+            integer, dimension(:), allocatable, intent(out)      :: IWork
+            integer, intent(in)                                  :: M
+            integer, intent(in)                                  :: N
+
+            real(F64), dimension(1) :: A, U, Sigma
+            real(F64), dimension(1) :: Work0
+            integer :: ErrorCode
+            integer :: ldU, ldVT, ldA, Ns
+            integer :: lwork
+            
+            external :: dgesdd
+
+            Ns = min(M, N)
+            allocate(VT(Ns, N))
+            allocate(IWork(8 * min(M, N)))
+            ldU = M
+            ldVT = Ns
+            ldA = M
+            call dgesdd("S", M, N, A, ldA, Sigma, U, ldU, VT, ldVT, &
+                  Work0, -1, IWork, ErrorCode)
+            lwork = ceiling(Work0(1))
+            allocate(Work(lwork))
+      end subroutine real_SVD_workspace
+
+
+      subroutine real_SVD_x(U, V, Sigma, A, VT, Work, IWork, Info)
+            !
+            ! Singular value decomposition of a real matrix A
+            !
+            ! A = U Diag(Sigma) V**T
+            !
+            ! Array dimensions:
+            !
+            ! A          (m, n)
+            ! U          (m, min(m,n))
+            ! V          (n, min(m,n))
+            ! V**T       (min(m,n), n)
+            ! Sigma      min(m, n)
+            !
+            real(F64), dimension(:, :), intent(out)   :: U
+            real(F64), dimension(:, :), intent(out)   :: V
+            real(F64), dimension(:), intent(out)      :: Sigma
+            real(F64), dimension(:, :), intent(inout) :: A
+            real(F64), dimension(:, :), intent(out)   :: VT
+            real(F64), dimension(:), intent(out)      :: Work
+            integer, dimension(:), intent(out)        :: IWork
+            integer, intent(out)                      :: Info
+
+            integer :: M, N, Ns
+            integer :: ldA, ldU, ldVT
+            integer :: lwork
+            
+            external :: dgesdd
+
+            M = size(A, dim=1)
+            N = size(A, dim=2)
+            Ns = min(M, N)
+            ldA = M
+            ldU = size(U, dim=1)
+            ldVT = size(VT, dim=1)
+            lwork = size(Work)
+            if (size(U, dim=1) /= M .or. size(U, dim=2) /= Ns) then
+                  call msg("Invalid dimensions of the left singular vectors matrix", MSG_ERROR)
+                  error stop
+            end if
+            if (size(VT, dim=1) /= Ns .or. size(VT, dim=2) /= N) then
+                  call msg("Invalid dimensions of the right singular vectors matrix VT", MSG_ERROR)
+                  error stop
+            end if
+            if (size(V, dim=1) /= N .or. size(V, dim=2) /= Ns) then
+                  call msg("Invalid dimensions of the right singular vectors matrix V", MSG_ERROR)
+                  error stop
+            end if
+            if (size(Sigma) < Ns) then
+                  call msg("Invalid size of the singular values array", MSG_ERROR)
+                  error stop
+            end if            
+            call dgesdd("S", M, N, A, ldA, Sigma, U, ldU, VT, ldVT, Work, lwork, IWork, Info)
+            if (Info < 0) then
+                  call msg("Singular value decomposition failed with error code Info = " &
+                        // str(Info), MSG_ERROR)
+                  error stop
+            end if
+            V = transpose(VT)
+      end subroutine real_SVD_x
+
 
       subroutine real_SVD(U, V, Sigma, A, Info)
             !
@@ -235,9 +325,9 @@ contains
             !
             ! Matrix     Dimensions
             ! A          (m, n)
-            ! U          (m, m)
-            ! V          (n, n)
-            ! Sigma      array of size >= min(m, n)
+            ! U          (m, min(m,n))
+            ! V          (n, min(m,n))
+            ! Sigma      min(m, n)
             !
             real(F64), dimension(:, :), intent(out)   :: U
             real(F64), dimension(:, :), intent(out)   :: V
@@ -245,51 +335,16 @@ contains
             real(F64), dimension(:, :), intent(inout) :: A
             integer, optional, intent(out)            :: Info
 
-            integer :: m, n
-            integer :: ldA, ldVT, ldU, ErrorCode
             real(F64), dimension(:, :), allocatable :: VT
-            integer, dimension(:), allocatable :: iwork
-            real(F64), dimension(:), allocatable :: work
-            integer :: lwork
+            real(F64), dimension(:), allocatable :: Work
+            integer, dimension(:), allocatable :: IWork
+            integer :: ErrorCode
+            integer :: M, N
 
-            external :: dgesdd
-
-            m = size(A, dim=1)
-            n = size(A, dim=2)
-            ldA = m
-            ldU = m
-            if (size(U, dim=1) /= m .or. size(U, dim=2) /= m) then
-                  call msg("Invalid dimensions of the left singular vectors matrix", MSG_ERROR)
-                  error stop
-            end if
-            if (size(V, dim=1) /= n .or. size(V, dim=2) /= n) then
-                  call msg("Invalid dimensions of the right singular vectors matrix", MSG_ERROR)
-                  error stop
-            end if
-            if (size(Sigma) < min(m, n)) then
-                  call msg("Invalid size of the singular values array", MSG_ERROR)
-                  error stop
-            end if
-            allocate(VT(n, n))
-            ldVT = n
-            !
-            ! Query the optimal scratch space
-            !
-            allocate(iwork(8*min(m, n)))
-            allocate(work(1))
-            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, -1, iwork, ErrorCode)     
-            !
-            ! Proper SVD call
-            !
-            lwork = ceiling(work(1))
-            deallocate(work)
-            allocate(work(lwork))
-            call dgesdd("A", m, n, A, ldA, Sigma, U, ldU, VT, ldVT, work, lwork, iwork, ErrorCode)
-            if (ErrorCode < 0) then
-                  call msg("Singular value decomposition failed with error code Info = " &
-                        // str(ErrorCode), MSG_ERROR)
-                  error stop
-            end if
+            M = size(A, dim=1)
+            N = size(A, dim=2)
+            call real_SVD_workspace(VT, Work, IWork, M, N)
+            call real_SVD_x(U, V, Sigma, A, VT, Work, IWork, ErrorCode)
             if (ErrorCode > 0) then
                   if (.not. present(Info)) then
                         call msg("Singular value decomposition did not converge. Info = " &
@@ -297,12 +352,11 @@ contains
                         error stop
                   end if
             end if
-            V = transpose(VT)
             if (present(Info)) then
                   Info = ErrorCode
             end if
       end subroutine real_SVD
-
+      
 
       subroutine real_SVD_SignificantSubset(U, V, Sigma, NSignificant, A, Thresh, Info)
             !
@@ -327,13 +381,13 @@ contains
             ! V          (n, n)
             ! Sigma      array of size >= min(m, n)
             !
-            real(F64), dimension(:, :), intent(out) :: U
-            real(F64), dimension(:, :), intent(out) :: V
-            real(F64), dimension(:), intent(out)    :: Sigma
-            integer, intent(out)                    :: NSignificant
-            real(F64), dimension(:, :), intent(in)  :: A
-            real(F64), intent(in)                   :: Thresh
-            integer, optional, intent(out)          :: Info
+            real(F64), dimension(:, :), intent(out)    :: U
+            real(F64), dimension(:, :), intent(out)    :: V
+            real(F64), dimension(:), intent(out)       :: Sigma
+            integer, intent(out)                       :: NSignificant
+            real(F64), dimension(:, :), intent(inout)  :: A
+            real(F64), intent(in)                      :: Thresh
+            integer, optional, intent(out)             :: Info
 
             real(F64) :: FrobNorm
             real(F64) :: vl, vu

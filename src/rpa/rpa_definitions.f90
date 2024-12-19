@@ -147,14 +147,15 @@ module rpa_definitions
       ! T(ai,bj) = Sum(mu) U(a,xi; ij) sigma(xi; ij) V(b,xi; ij)
       !
       ! (1) Compute all singular eigenvalues and then select
-      !     the significant subset
+      !     the significant subset.
       !
       integer, parameter :: RPA_SVD_FULL = 1
       !
       ! (2) Compute only the significant subset of singular
-      ! values above the threshold
+      ! values above the threshold. This computation is carried
+      ! out using the randomized SVD algorithm.
       !
-      integer, parameter :: RPA_SVD_SIGNIFICANT = 2
+      integer, parameter :: RPA_SVD_RANDOMIZED = 2
       ! ---------------------------------------------------------
       !         RPA and beyond-RPA energy components
       !----------------------------------------------------------      
@@ -521,7 +522,33 @@ module rpa_definitions
             ! Algorithm for the SVD of the RPA amplitudes
             ! which presedes the computation of 2-RDM contributions
             !
-            integer :: SVDAlgorithm = RPA_SVD_FULL
+            integer :: SVDAlgorithm = RPA_SVD_RANDOMIZED
+            !
+            ! Parameters controlling the randomized singular value
+            ! decomposition of T2
+            ! ---
+            !
+            ! Number of random guess vectors
+            !
+            integer :: SVDNGuessVecs = 500
+            !
+            ! Number of subspace iterations
+            !
+            integer :: SVDNSubspaceIters = 2
+            !
+            ! Number of additional vectors in the subspace below
+            ! the decomposition threshold
+            !
+            integer :: SVDOversampling = 50
+            !
+            ! NSubspaceDim/NVirt ratio at which the switchover occurs
+            ! from the randomized SVD algorithm to conventional full-rank
+            ! SVD. The assumption here is that for the matrix dimensions above
+            ! SVDSwitchOverRatio, the numerical rank of T2 is too close to
+            ! the full rank and the randomized subroutine becomes slower than
+            ! the straightforward approach.
+            !
+            real(F64) :: SVDSwitchoverRatio = TWO/THREE
       end type TRPAParams
 
       type TRPAGrids

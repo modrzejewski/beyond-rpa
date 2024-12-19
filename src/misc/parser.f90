@@ -3768,16 +3768,48 @@ contains
                         call msg("Invalid value of T2AuxOrbitals", MSG_ERROR)
                         error stop
                   end select
-            case ("SVDALGO", "SVDALGORITHM")
+            case ("SVDALGO", "SVDALGORITHM", "SVD")
                   select case (uppercase(val))
                   case ("FULL")
                         RPAParams%SVDAlgorithm = RPA_SVD_FULL
-                  case ("SIGNIFICANT")
-                        RPAParams%SVDAlgorithm = RPA_SVD_SIGNIFICANT
+                  case ("RANDOM", "RANDOMIZED")
+                        RPAParams%SVDAlgorithm = RPA_SVD_RANDOMIZED
                   case default
                         call msg("Invalid value of SVDAlgorithm", MSG_ERROR)
                         error stop
                   end select
+            case ("SVDOVERSAMPLING")
+                  read(val, *) i
+                  if (i > 0) then
+                        RPAParams%SVDOversampling = i
+                  else
+                        call msg("Invalid value of SVDOversampling", MSG_ERROR)
+                        error stop
+                  end if
+            case ("SVDNSUBSPACEITERS")
+                  read(val, *) i
+                  if (i > 0) then
+                        RPAParams%SVDNSubspaceIters = i
+                  else
+                        call msg("Invalid value of SVDNSubspaceIters", MSG_ERROR)
+                        error stop
+                  end if
+            case ("SVDNGUESSVECS")
+                  read(val, *) i
+                  if (i > 0) then
+                        RPAParams%SVDNGuessVecs = i
+                  else
+                        call msg("Invalid value of SVDNGuessVecs", MSG_ERROR)
+                        error stop
+                  end if
+            case ("SVDSWITCHOVERRATIO")
+                  read(val, *) m
+                  if (m >= ZERO) then
+                        RPAParams%SVDSwitchoverRatio = m
+                  else
+                        call msg("Invalid value of SVDSwitchoverRatio", MSG_ERROR)
+                        error stop
+                  end if
             case ("T2AUXNOCUTOFFTHRESH")
                   read(val, *) m
                   if (m >= ZERO) then
@@ -3823,7 +3855,7 @@ contains
             case ("ADIABATIC-CONNECTION", "ADIABATICCONNECTION", "ADIABATIC_CONNECTION", "COUPLEDCLUSTERS", "COUPLED-CLUSTERS")
                   RPAParams%CoupledClusters = .true.
             case ("ACQUADPOINTS")
-                  read(val, *) i                  
+                  read(val, *) i
                   RPAParams%ACQuadPoints = i
             case ("AC_1RDMQUAD")
                   select case (uppercase(val))
