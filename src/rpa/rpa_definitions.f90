@@ -522,7 +522,7 @@ module rpa_definitions
             ! Algorithm for the SVD of the RPA amplitudes
             ! which presedes the computation of 2-RDM contributions
             !
-            integer :: SVDAlgorithm = RPA_SVD_FULL
+            integer :: SVDAlgorithm = RPA_SVD_RANDOMIZED
             !
             ! Parameters controlling the randomized singular value
             ! decomposition of T2
@@ -534,7 +534,7 @@ module rpa_definitions
             !
             ! Number of subspace iterations
             !
-            integer :: SVDNSubspaceIters = 3
+            integer :: SVDNSubspaceIters = 2
             !
             ! Number of additional vectors in the subspace below
             ! the decomposition threshold
