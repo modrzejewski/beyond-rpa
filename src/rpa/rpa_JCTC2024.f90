@@ -57,6 +57,11 @@ contains
             type(TRSVDWorkspace) :: RSVDWorkspace
 
             call clock_start(timer_Total)
+            NGridTHC = size(Zgk, dim=1)
+            NCholesky = size(Zgk, dim=2)
+            NVecsT2 = size(Am)
+            NOcc = size(Xgi, dim=2)
+            NVirt = size(Yga, dim=2)
             call blankline()
             call midrule()
             call msg(cfield("Particle-Hole Corrections to Direct RPA", 76))
@@ -79,11 +84,6 @@ contains
                   call msg("Subspace iterations    " // str(RPAParams%SVDNSubspaceIters))
                   call msg("Switchover to full SVD " // str(nint(RPAParams%SVDSwitchoverRatio*NVirt)) // " vectors")
             end if
-            NGridTHC = size(Zgk, dim=1)
-            NCholesky = size(Zgk, dim=2)
-            NVecsT2 = size(Am)
-            NOcc = size(Xgi, dim=2)
-            NVirt = size(Yga, dim=2)            
             allocate(Tabij(NVirt, NVirt))
             allocate(Pam(NVirt, NVecsT2))
             allocate(Qam(NVirt, NVecsT2))
