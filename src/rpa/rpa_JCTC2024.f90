@@ -257,36 +257,6 @@ contains
       end subroutine rpa_JCTC2024_Corrections
 
 
-      ! subroutine rpa_JCTC2024_MaxVabab_test(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
-      !       integer, intent(in)                                   :: NVirt
-      !       integer, intent(in)                                   :: NCholesky, NGridTHC
-      !       real(F64), intent(out)                                :: MaxVabab
-      !       real(F64), dimension(NGridTHC, NVirt), intent(in)     :: Xga
-      !       real(F64), dimension(NGridTHC, NCholesky), intent(in) :: Zgk
-
-      !       real(F64), dimension(:, :), allocatable :: XXga, ZXXka
-      !       real(F64), dimension(:), allocatable :: Vabab
-      !       real(F64) :: t
-      !       integer :: a, b, Na
-
-      !       allocate(XXga(NGridTHC, NVirt))
-      !       allocate(ZXXka(NCholesky, NVirt))
-      !       allocate(Vabab(NVirt))
-      !       MaxVabab = ZERO
-      !       do b = 1, NVirt
-      !             Na = NVirt - b + 1
-      !             do a = b, NVirt
-      !                   XXga(:, a) = Xga(:, a) * Xga(:, b)
-      !             end do
-      !             call real_aTb(ZXXka(:, 1:Na), Zgk, XXga(:, 1:Na))
-      !             ZXXka(:, 1:Na) = ZXXka(:, 1:Na)**2
-      !             Vabab(1:Na) = sum(ZXXka(:, 1:Na), dim=1)
-      !             t = maxval(Vabab(1:Na))
-      !             MaxVabab = max(MaxVabab, t)
-      !       end do
-      ! end subroutine rpa_JCTC2024_MaxVabab_test
-
-
       subroutine rpa_JCTC2024_MaxVabab(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
             integer, intent(in)                                   :: NVirt
             integer, intent(in)                                   :: NCholesky, NGridTHC
@@ -665,12 +635,26 @@ contains
             call real_abT(QS_jk_ik, PQ_ki(:, :, Qik), S_jk_ik)
             call real_abT(QS_kj_ki, PQ_ki(:, :, Qki), S_kj_ki)
             call real_abT(QS_kj_ik, PQ_ki(:, :, Qik), S_kj_ik)
-
+            !
+            ! In the computation of G and G', we use the following
+            ! identity:
+            !
+            ! Sum(xy) P(ax;ij) S(xy;ij,i'j') Q(by;i'j')
+            !          = Sum(xy) P(by;j'i') S(yx;j'i',ji) Q(ax;ji)
+            !
+            ! Hence, for example,
+            ! Ec2d = 2 Sum(aibjk) (ai|bj) Sum(xy) P(ax;ki) S(xy;ki,jk) Q(by;jk)
+            !      = 2 Sum(aibjk) (bj|ai) Sum(xy) P(by;kj) S(yx;kj,ik) Q(ax;ik)
+            !      = Sum(abij) (bj|ai) G(ba;ji)
+            ! Thanks to these transformations we decrease the number
+            ! of P*(SQ) matrix multiplications. Note that the above identity
+            ! is also used after the i<->j index transposition.
+            !
             if (GabijContrib) then
                   if (i /= j) then
                         QS(:, :, Pjk) = (TWO * c2g) * QS_jk_ki + (c2i+c2j) * QS_jk_ik  ! factor of 2 in Ec2g accounts for i<->j
                         QS(:, :, Pkj) = (TWO * c2h) * QS_kj_ik + (c2i+c2j) * QS_kj_ki  ! factor of 2 in Ec2h accounts for i<->j
-                        ! Ec2i+Ec2j for i<->j
+                                                                                       ! Ec2i+Ec2j for i<->j
                   else
                         QS(:, :, Pjk) = c2g * QS_jk_ki + (c2i+c2j) * QS_jk_ik
                         QS(:, :, Pkj) = c2h * QS_kj_ik
