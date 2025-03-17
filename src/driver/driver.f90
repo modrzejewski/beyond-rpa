@@ -28,7 +28,6 @@ program driver
       
       implicit none
 
-      character(len=:), allocatable :: cmd
       type(TSystem) :: System
       type(TSCFParams) :: SCFParams
       type(TRPAParams) :: RPAParams
@@ -46,30 +45,7 @@ program driver
       ! Init process-level parallelization
       !
       call img_setup()
-      !
-      ! Determine root directory
-      !
-      cmd = io_argv(0)
-      call read_rootdir(cmd)
-      !
-      ! Absolute path to the input file
-      ! ---
-      ! Input file name should be provided as first argument
-      ! after the executable name
-      !
-      INPUTFILE = io_argv(1)
-      if (isblank(INPUTFILE)) then
-            call msg("Input file has not been specified", MSG_ERROR)
-            stop
-      end if
-      if (.not. io_exists(INPUTFILE)) then
-            call msg("Input file is not accessible", MSG_ERROR)
-            stop
-      end if
-      DIRSEP = io_argv(3)
-      WORKDIR = dirname(INPUTFILE) // DIRSEP
-      JOBTITLE = io_argv(4)
-      call io_set_scratchdir(io_argv(2))
+      call ReadCommandLine()
       call read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, INPUTFILE)
       call sys_Init(System, SYS_TOTAL)
       ! ---------------------------------------------------------
@@ -273,6 +249,50 @@ program driver
       stop 0
       
 contains
+
+      subroutine ReadCommandLine()            
+            character(len=:), allocatable :: cmd
+            !
+            ! Ordering of command line arguments. The sequence of
+            ! command line arguments is defined in the launcher
+            ! script.
+            !
+            integer, parameter :: COMMAND_LINE_MAIN_PROGRAM        = 0
+            integer, parameter :: COMMAND_LINE_INPUT_FILE          = 1
+            integer, parameter :: COMMAND_LINE_DIRECTORY_SEPARATOR = 2
+            integer, parameter :: COMMAND_LINE_JOB_TITLE           = 3
+            !
+            ! Determine the root directory of the main program.
+            ! This is needed so that the program knows where
+            ! the tabulated data are stored, e.g., the basis set
+            ! parameters and quadrature weights.
+            !
+            cmd = io_CommandLineArgument(COMMAND_LINE_MAIN_PROGRAM)
+            call read_rootdir(cmd)
+            !
+            ! Absolute path to the input file
+            !
+            INPUTFILE = io_CommandLineArgument(COMMAND_LINE_INPUT_FILE)
+            if (isblank(INPUTFILE)) then
+                  call msg("Input file has not been specified", MSG_ERROR)
+                  error stop
+            end if
+            if (.not. io_exists(INPUTFILE)) then
+                  call msg("Input file is not accessible", MSG_ERROR)
+                  error stop
+            end if
+            !
+            ! The directory separator (e.g., "/" under linux) is passed as
+            ! an argument from the launcher script. Thanks to this we don't
+            ! need to change the main program's code to adapt it to different
+            ! operating systems.
+            !
+            DIRSEP = io_CommandLineArgument(COMMAND_LINE_DIRECTORY_SEPARATOR)
+            WORKDIR = dirname(INPUTFILE) // DIRSEP
+            JOBTITLE = io_CommandLineArgument(COMMAND_LINE_JOB_TITLE)
+            call io_set_scratchdir(WORKDIR)
+      end subroutine ReadCommandLine
+      
 
       subroutine task_visualize(molecule)
             type(tmolecule), intent(in) :: molecule

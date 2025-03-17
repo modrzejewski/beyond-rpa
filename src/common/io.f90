@@ -277,20 +277,30 @@ contains
       end function io_exists
 
 
-      function io_argv(k)
+      function io_CommandLineArgument(k)
             !
             ! Return a K-th command line argument of the command
             ! that invoked the main program.
             !
-            character(:), allocatable :: io_argv
+            character(:), allocatable :: io_CommandLineArgument
             integer, intent(in) :: k
 
             integer :: l
+            integer :: ErrorCode
 
             call get_command_argument(k, length=l)
-            allocate(character(l) :: io_argv)
-            call get_command_argument(k, io_argv)
-      end function io_argv
+            if (l > 0) then
+                  allocate(character(l) :: io_CommandLineArgument)
+                  call get_command_argument(k, io_CommandLineArgument, status=ErrorCode)
+                  if (ErrorCode /= 0) then
+                        call msg("Failed to read command line argument #" // str(k), MSG_ERROR)
+                        error stop
+                  end if
+            else
+                  call msg("Failed to read the length of command line argument #" // str(k), MSG_ERROR)
+                  error stop
+            end if
+      end function io_CommandLineArgument
 
 
       subroutine io_remove(f)

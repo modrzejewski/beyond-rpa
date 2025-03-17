@@ -3,18 +3,6 @@ import stat
 
 def make_runscript(RunscriptPath, BuildCmd, BuildDate, CAFLauncher="", IntelCAFConfig=""):
     #
-    # The root of users' scratch directories
-    # ---------------------------------------
-    # Scratch files by default will be written to
-    # /SCRATCHDIR_ROOT/user-name/a/job-identifier
-    # The subdirectories are created by the launcher script at runtime.
-    #
-    scratchdir_root_default = "/scratch"
-    #
-    # The program will atempt to read the SCRATCH environment
-    # variable. The default scratch location will be used if
-    # SCRATCH is undefined.
-    #
     # Default stack size in kibibytes. Too low stack size may lead
     # to segmentation faults. These segmentation faults are
     # particularly nasty, because their origin is not signalled by the
@@ -116,13 +104,6 @@ launcher = "{LAUNCHER}"
 pid = os.getpid()
 datestr_compressed = datetime_start.strftime("%Y%m%d%H%M%S")
 jobname = "{{DATE}}_{{PID}}".format(DATE=datestr_compressed, PID=pid)
-if "SCRATCH" in environ:
-    scratch_dir = path.join(environ["SCRATCH"], "a", jobname) + os.sep
-else:
-    scratch_dir = path.join("{SCRATCHDIR_ROOT}", user, "a", jobname) + os.sep
-if not path.exists(scratch_dir):
-   os.makedirs(scratch_dir)
-
 lib_dir = path.join(root_dir, "src", "lib")
 if path.exists(lib_dir):
       if "LD_LIBRARY_PATH" in environ:
@@ -139,7 +120,6 @@ print("% Compiler command         {BuildCmd}")
 print("% Source compiled at       {BUILDDATE}")
 print("% Process ID               {{s}}".format(s=pid))
 print("% Job identifier           {{s}}".format(s=jobname))
-print("% Scratch directory        {{s}}".format(s=scratch_dir))
 if UNLIMITED_MAIN_STACK:
     print("% Stack size (main thread) unlimited")
 else:
@@ -160,7 +140,7 @@ dirsep = os.sep
 #
 # Arguments passed to the main executable
 #
-exec_args = [inputfile, scratch_dir, dirsep, jobname]
+exec_args = [inputfile, dirsep, jobname]
 #
 # Number of OpenMP threads
 #
@@ -205,7 +185,10 @@ except KeyboardInterrupt:
     # spawned by mpiexec.hydra keep using the computer's resources long after the main Python
     # script is killed.
     #
-    os.killpg(process.pid, signal.SIGKILL)  # Kill only the spawned process group
+    try:
+        os.killpg(process.pid, signal.SIGKILL)  # Kill only the spawned process group
+    except ProcessLookupError:
+        pass  # Ignore if the process is already terminated
     sys.exit(1)
 #
 # Compute the duration time in hours
@@ -217,17 +200,7 @@ datestr_finish = datetime_finish.strftime(dateformat)
 print("% Job finished at {{datestr}}".format(datestr=datestr_finish))
 print("% Total wall clock time [hours]: {{WALLHOURS:.3f}}".format(WALLHOURS=wallhours))
 sys.stdout.flush()
-#
-# Test if the scratch directory is empty. If yes, remove it.
-#
-if os.listdir(scratch_dir) == []:
-    os.rmdir(scratch_dir)
-    print("% Removed empty scratch directory")
-else:
-    print("% Nonempty scratch directory remains on disk")
-
-""".format(SCRATCHDIR_ROOT=scratchdir_root_default,
-           BUILDDATE=BuildDate, 
+""".format(BUILDDATE=BuildDate, 
            STACKSIZE_THREADS=stacksize_threads,
            UNLIMITED_MAIN_STACK=unlimited_main_stack,
            COMMAND_DEF=command_def,
