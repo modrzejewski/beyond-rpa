@@ -57,7 +57,7 @@ end
 
 rpa
  accuracy default
- TheoryLevel JCTC2024
+ TheoryLevel RPA+ph
 end
 
 xyz
@@ -81,7 +81,7 @@ end
 
 rpa
  accuracy default
- TheoryLevel JCTC2024
+ TheoryLevel RPA+ph
 end
 
 xyz
@@ -107,7 +107,7 @@ end
 with contributions from:
 * Dominik Cieśliński (direct-ring amplitudes)
 * Aleksandra Tucholska (coupled-cluster 2-RDM)
-* Grzegorz Czekało (reference code for the quadratic corrections)
+* Grzegorz Czekało (reference code for RPA+ph+pp/hh)
 * Krystyna Syty (decomposition of amplitudes)
 * Khanh Ngoc Pham (finding bugs)
    
