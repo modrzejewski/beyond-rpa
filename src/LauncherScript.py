@@ -193,7 +193,11 @@ environ["MKL_DISABLE_FAST_MM"] = "1"
 {COMMAND_DEF}
 os.setpgrp()
 try:
-    subprocess.run(cmdlist)
+    process = subprocess.Popen(cmdlist, stderr=subprocess.STDOUT, bufsize=1,
+                               universal_newlines=True, stdout=sys.stdout)
+
+    process.wait()  # Wait for the process to finish
+    
 except KeyboardInterrupt:
     #
     # Ensure that all spawned processes are killed after the main program is interrupted.
@@ -201,7 +205,8 @@ except KeyboardInterrupt:
     # spawned by mpiexec.hydra keep using the computer's resources long after the main Python
     # script is killed.
     #
-    os.killpg(0, signal.SIGKILL)
+    os.killpg(process.pid, signal.SIGKILL)  # Kill only the spawned process group
+    sys.exit(1)
 #
 # Compute the duration time in hours
 #

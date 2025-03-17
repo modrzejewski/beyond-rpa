@@ -3897,11 +3897,11 @@ contains
                         RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
                         RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
                         RPAParams%TheoryLevel = RPA_THEORY_RPT2
-                  case ("JCTC2023", "DEFAULT")
+                  case ("JCTC2023", "DEFAULT", "RPA+SOSEX+2G")
                         RPAParams%TheoryLevel = RPA_THEORY_JCTC2023
-                  case ("JCTC2024")
+                  case ("JCTC2024", "RPA+PH")
                         RPAParams%TheoryLevel = RPA_THEORY_JCTC2024
-                  case ("ALL")
+                  case ("ALL", "RPA+PH+PP/HH")
                         RPAParams%TheoryLevel = RPA_THEORY_ALL
                   case default
                         call msg("Invalid value of TheoryLevel", MSG_ERROR)
