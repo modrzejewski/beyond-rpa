@@ -1916,4 +1916,15 @@ def MakeAll(MaxL, TargetLayout):
     FileList.append([FilePath])
     ParallelBuild.BuildScript(FileList, path.join(RootDir, "Build.py"))
 
-MakeAll(5, ["d", "c", "b", "a"])
+#
+# When increasing the maximum angular momentum, Auto2eMaxL,
+# keep in mind that more memory is needed for the temporary
+# storage during integral evaluation. ***As a result, your
+# program might crash because of a too low limit for the
+# stack memory.*** This will result in a segmentation fault.
+# Increase the limit for the stack memory for both the main
+# thread and worker threads (OMP threads) to guarantee a
+# proper workspace for the integral subroutines.
+#
+Auto2eMaxL = 5
+MakeAll(Auto2eMaxL, ["d", "c", "b", "a"])

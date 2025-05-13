@@ -143,7 +143,8 @@ contains
             ! coefficient in Eq. 32 and 33 in [2].
             !
             ! The implementation uses the equations given in Helgaker's
-            ! textbook (Eqs. 9.1.9-12 in Ref. 1), but rescaled by the factor
+            ! textbook (Eqs. 9.1.9-12 in Ref. 1). The spherical harmonics
+            ! according to Racah's definition are rescaled by the factor
             ! of Sqrt(2l+1/4Pi) to change the normalization integral to
             ! unity.
             !
@@ -151,8 +152,8 @@ contains
             ! is computed in a single call.
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m/Sqrt(2) Yl^m + 1/Sqrt(2)       Yl^(-m)
-            ! For m < 0: Sl^m =      i/Sqrt(2) Yl^m - i(-1)^m/Sqrt(2) Yl^(-m)
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
             ! For m = 0: Sl^m = Yl^m
             ! Yl^m are orthonormal, complex-valued spherical harmonics.
             ! ---------------------------------------------------------------
@@ -202,11 +203,10 @@ contains
             ! Sum(u+v+w=l+2*kappa) Clmk(lxlylzpos(u,v,w)) x**u y**v z**w
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Slm = (-1)**m/Sqrt(2) Ylm + 1/Sqrt(2)       Yl(-m)
-            ! For m < 0: Slm =       i/Sqrt(2) Ylm - i(-1)^m/Sqrt(2) Yl(-m)
-            ! For m = 0: Slm = Ylm
-            ! Yl^m are orthonormal, complex-valued spherical harmonics.
-            !
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
+            ! For m = 0: Sl^m = Yl^m
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! Definition of the expansion coefficients Clm:
             !
             ! r**l Slm = Sum(u+v+w=l) Clm(lxlylzpos(u,v,w)) x**u y**v z**w
@@ -285,10 +285,10 @@ contains
             ! Int d Omega S_{l'm'} S_{lm} = delta_{ll'}delta{mm'}
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m/Sqrt(2) Yl^m + 1/Sqrt(2)       Yl^(-m)
-            ! For m < 0: Sl^m =      i/Sqrt(2) Yl^m - i(-1)^m/Sqrt(2) Yl^(-m)
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
             ! For m = 0: Sl^m = Yl^m
-            ! Yl^m are orthonormal, complex-valued spherical harmonics.
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! ---------------------------------------------------------------
             ! 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
             !    Electronic-Structure Theory, Wiley & Sons Chichester
@@ -357,10 +357,10 @@ contains
             ! complex numbers.
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m/Sqrt(2) Yl^m + 1/Sqrt(2)       Yl^(-m)
-            ! For m < 0: Sl^m =      i/Sqrt(2) Yl^m - i(-1)^m/Sqrt(2) Yl^(-m)
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
             ! For m = 0: Sl^m = Yl^m
-            ! Yl^m are orthonormal, complex-valued spherical harmonics.
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             !
             real(F64), dimension(3), intent(out) :: lvec
             integer, intent(in)                  :: l

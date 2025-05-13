@@ -30,7 +30,7 @@
 !
 ! Maximum angular momentum: 5
 ! Memory layout of the output array: DCBA
-! Code generated automatically on 2018-07-02 14:09:14
+! Code generated automatically on 2025-05-13 14:17:58
 !
 module auto2e
 use auto2e_SpherTransf
