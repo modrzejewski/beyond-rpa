@@ -14,17 +14,19 @@ module drv_dft_rpa
       use CABS
       use PostSCF
       use MolproInterface
+      use basis_definitions
 
       implicit none
 
 contains
 
-      subroutine task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
-            type(TSystem), intent(inout)    :: System
-            type(TSCFParams), intent(in)    :: SCFParams
-            type(TRPAParams), intent(inout) :: RPAParams
-            type(TChol2Params), intent(in)  :: Chol2Params
-            type(TTHCParams), intent(inout) :: THCParams
+      subroutine task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams, BasisAssign)
+            type(TSystem), intent(inout)               :: System
+            type(TSCFParams), intent(in)               :: SCFParams
+            type(TRPAParams), intent(inout)            :: RPAParams
+            type(TChol2Params), intent(in)             :: Chol2Params
+            type(TTHCParams), intent(inout)            :: THCParams
+            type(TBasisAssignment), intent(in)         :: BasisAssign
             
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
@@ -50,7 +52,7 @@ contains
             call sys_Init(System, SYS_TOTAL)
             call data_load_2(System)
             call init_modules()
-            call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO)
+            call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO, BasisAssign=BasisAssign)
             ! -------------------------------------------------------------------------------
             !                        Tensor hypercontraction
             ! -------------------------------------------------------------------------------

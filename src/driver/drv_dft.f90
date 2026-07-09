@@ -16,8 +16,8 @@ module drv_dft
       use h_xcfunc
       use rttddft
       use AtomicDensities
-      use rpa_driver
       use basis_sets
+      use basis_definitions
       use scf_definitions
       use sys_definitions
 
@@ -711,9 +711,10 @@ contains
       end subroutine task_dft_int_ROKS
 
 
-      subroutine task_dft_UKS(System, SCFParams)
-            type(TSystem), intent(inout) :: System
-            type(TSCFParams), intent(in) :: SCFParams
+      subroutine task_dft_UKS(System, SCFParams, BasisAssign)
+            type(TSystem), intent(inout)       :: System
+            type(TSCFParams), intent(in)       :: SCFParams
+            type(TBasisAssignment), intent(in) :: BasisAssign
                         
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
@@ -736,7 +737,7 @@ contains
             call sys_Init(System, SYS_TOTAL)
             call data_load_2(System)
             call init_modules()
-            call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO)
+            call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO, BasisAssign=BasisAssign)
             do k = 1, NSystems
                   if (k > 1) then
                         call sys_Init(System, k)

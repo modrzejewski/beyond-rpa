@@ -413,6 +413,7 @@ FileList += [("DFT", ["integrals/Auto2e/src/auto2e_eri_dddd.f90",
 FileList += [("DFT", ["integrals/Auto2e/src/auto2e.f90"])]
 FileList += [("DFT", ["integrals/OverlapIntegrals.f90"])]
 FileList += [("DFT", ["integrals/sphergto.f90"])]
+FileList += [("DFT", ["integrals/basis_definitions.f90"])]
 FileList += [("DFT", ["integrals/basis_sets.f90"])]
 FileList += [("DFT", ["integrals/ECP/PseudopotentialData.f90"])]
 

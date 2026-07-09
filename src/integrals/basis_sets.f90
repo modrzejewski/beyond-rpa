@@ -12,45 +12,96 @@ module basis_sets
       use Auto2e
       use grid
       use real_linalg
+      use basis_definitions
       
       implicit none
 
-      type TAOBasis
-            real(F64), dimension(:, :), allocatable :: AtomCoords
-            integer, dimension(:), allocatable :: ShellCenters
-            integer, dimension(:), allocatable :: ShellParamsIdx
-            integer, dimension(:), allocatable :: ShellMomentum
-            integer, dimension(:, :, :), allocatable :: AtomShellMap
-            integer, dimension(:), allocatable :: AtomShellN
-            integer, dimension(:), allocatable :: NPrimitives
-            real(F64), dimension(:, :), allocatable :: CntrCoeffs
-            real(F64), dimension(:, :), allocatable :: Exponents
-            real(F64), dimension(:, :), allocatable :: NormFactorsCart
-            real(F64), dimension(:, :), allocatable :: NormFactorsSpher
-            integer, dimension(:), allocatable :: NAngFuncSpher
-            integer, dimension(:), allocatable :: NAngFuncCart
-            integer, dimension(:), allocatable :: ShellLocSpher
-            integer, dimension(:), allocatable :: ShellLocCart
-            integer, dimension(:, :), allocatable :: CartPolyX
-            integer, dimension(:, :), allocatable :: CartPolyY
-            integer, dimension(:, :), allocatable :: CartPolyZ
-            real(F64), dimension(:), allocatable :: R2Max
-            integer, dimension(:), allocatable :: MaxAtomL
-            logical :: SpherAO
+
+      type TBasisConfig
+            !
+            ! Basis set configuration for an atom or an element.
+            ! Z: Atomic number
+            ! PathToParams: Path to basis set parameters
+            ! NShellParams: Number of shell parameters per atom
+            ! Offset: Offset in global shell parameter arrays
+            !
+            integer :: Z
+            character(:), allocatable :: PathToParams
             integer :: NShellParams
-            integer :: NShells
-            integer :: LmaxGTO
-            integer :: MaxNPrimitives
-            integer :: NAOSpher
-            integer :: NAOCart
-            integer :: NAtoms
-            integer :: MaxNShells
-            character(:), allocatable :: FilePath
-      end type TAOBasis
-      
+            integer :: Offset
+      end type TBasisConfig
+
 contains
 
-      subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta)
+      subroutine basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, FilePath, BasisAssign)
+            type(TBasisConfig), allocatable, intent(out)    :: Configs(:)
+            integer, dimension(:), allocatable, intent(out) :: AtomConfigMap
+            integer, intent(out)                            :: NConfigs
+            type(TSystem), intent(in)                       :: System
+            character(*), intent(in)                        :: FilePath
+            type(TBasisAssignment), intent(in), optional    :: BasisAssign
+            
+            integer :: a, c, Z
+            character(:), allocatable :: PathToParams
+            logical :: found
+
+            allocate(Configs(System%NAtoms))
+            allocate(AtomConfigMap(System%NAtoms))
+            NConfigs = 0
+            
+            do a = 1, System%NAtoms
+                  Z = System%ZNumbers(a)
+                  PathToParams = ""
+                  if (present(BasisAssign)) then
+                        if (BasisAssign%initialized) then
+                              !
+                              ! Priority 1: Atom-specific
+                              !
+                              do c = 1, BasisAssign%NAtomRules
+                                    if (BasisAssign%AtomRules(c)%id == a) then
+                                          PathToParams = BasisAssign%AtomRules(c)%PathToParams
+                                          exit
+                                    end if
+                              end do
+                              !
+                              ! Priority 2: Element-specific
+                              !
+                              if (PathToParams == "") then
+                                    do c = 1, BasisAssign%NElementRules
+                                          if (BasisAssign%ElementRules(c)%id == Z) then
+                                                PathToParams = BasisAssign%ElementRules(c)%PathToParams
+                                                exit
+                                          end if
+                                    end do
+                              end if
+                              !
+                              ! Priority 3: Fallback '*'
+                              !
+                              if (PathToParams == "" .and. allocated(BasisAssign%GlobalFallback)) then
+                                    PathToParams = BasisAssign%GlobalFallback       
+                              end if
+                        end if
+                  end if
+                  if (PathToParams == "") PathToParams = FilePath
+                  
+                  found = .false.
+                  do c = 1, NConfigs
+                        if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
+                              AtomConfigMap(a) = c
+                              found = .true.
+                              exit
+                        end if
+                  end do
+                  if (.not. found) then
+                        NConfigs = NConfigs + 1
+                        Configs(NConfigs)%Z = Z
+                        Configs(NConfigs)%PathToParams = PathToParams
+                        AtomConfigMap(a) = NConfigs
+                  end if
+            end do
+      end subroutine basis_CreateConfigs
+
+      subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta, BasisAssign)
             !
             ! Create a new instance of a user-defined type which encapsulates all necessary
             ! basis-set data used to calculate integrals in the selected Gaussian-type
@@ -67,25 +118,26 @@ contains
             ! of the value of SpherAO. The SpherAO parameter can be safely changed
             ! without invoking this subroutine again.
             !
-            type(TAOBasis), intent(out)   :: AOBasis
-            type(TSystem), intent(in)     :: System
-            character(*), intent(in)      :: FilePath
-            logical, intent(in)           :: SpherAO
-            logical, optional, intent(in) :: SortAngularMomenta
+            type(TAOBasis), intent(out)                  :: AOBasis
+            type(TSystem), intent(in)                    :: System
+            character(*), intent(in)                     :: FilePath
+            logical, intent(in)                          :: SpherAO
+            logical, optional, intent(in)                :: SortAngularMomenta
+            type(TBasisAssignment), intent(in), optional :: BasisAssign
 
-            integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap
-            integer :: NElements
-            integer :: Z, L, k, p, p0, p1, a, q, q0, q1
+            type(TBasisConfig), allocatable :: Configs(:)
+            integer, dimension(:), allocatable :: AtomConfigMap
+            integer :: a, NConfigs, NShells
+            
+            integer :: L, k, p, p0, p1, q, q0, q1
             integer :: NShellParamsTotal, MaxNPrimitives, LmaxGTO
             integer :: MaxNPrimitives_k, LmaxGTO_k
             integer :: MaxNAngFuncCart
             integer :: n
-            integer :: NShells, NAtoms
             integer, dimension(:), allocatable :: ShellMomentum
             integer, dimension(:), allocatable :: NPrimitives
-            integer, dimension(:), allocatable :: NShellParams
             integer, dimension(:), allocatable :: ShellParamsIdx, ShellCenters
-            integer, dimension(:, :), allocatable :: ElementShellsMap
+            integer, dimension(:, :), allocatable :: ConfigShellsMap
             integer, dimension(:), allocatable :: S
             real(F64), dimension(:), allocatable :: W, R2Max
             real(F64), dimension(:, :), allocatable :: CntrCoeffs, Exponents, NormFactorsCart
@@ -96,34 +148,47 @@ contains
             else
                   SortRadii = .true.
             end if
-            NAtoms = System%NAtoms
-            allocate(AtomElementMap(NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
+            !
+            ! 1. Group Unique Blocks by (Z, PathToParams) & Determine Paths
+            !
+            if (present(BasisAssign)) then
+                  call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
+                        System, FilePath, BasisAssign)
+            else
+                  call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
+                        System, FilePath)
+            end if
+            !
+            ! 3. Query properties
+            !
             MaxNPrimitives = -1
             LmaxGTO = -1
-            allocate(NShellParams(NElements))
-            do k = 1, NElements
-                  Z = ZList(k)
-                  call basis_Query(NShellParams(k), MaxNPrimitives_k, LmaxGTO_k, Z, FilePath)
+            do k = 1, NConfigs
+                  call basis_Query(Configs(k)%NShellParams, MaxNPrimitives_k, LmaxGTO_k, &
+                        Configs(k)%Z, Configs(k)%PathToParams)
                   MaxNPrimitives = max(MaxNPrimitives, MaxNPrimitives_k)
                   LmaxGTO = max(LmaxGTO, LmaxGTO_k)                  
             end do
-            NShellParamsTotal = sum(NShellParams)
+            NShellParamsTotal = 0
+            do k = 1, NConfigs
+                  NShellParamsTotal = NShellParamsTotal + Configs(k)%NShellParams
+            end do
             allocate(NPrimitives(NShellParamsTotal))
             allocate(ShellMomentum(NShellParamsTotal))
             allocate(CntrCoeffs(MaxNPrimitives, NShellParamsTotal))
             allocate(Exponents(MaxNPrimitives, NShellParamsTotal))
-            allocate(ElementShellsMap(2, NElements))
+            allocate(ConfigShellsMap(2, NConfigs))
+
             p0 = 1
             p1 = 1
-            do k = 1, NElements
-                  Z = ZList(k)
-                  p1 = p0 + NShellParams(k) - 1
+            do k = 1, NConfigs
+                  p1 = p0 + Configs(k)%NShellParams - 1
                   call basis_ReadElementData(CntrCoeffs(:, p0:p1), Exponents(:, p0:p1), &
-                        ShellMomentum(p0:p1), NPrimitives(p0:p1), Z, FilePath)
-                  ElementShellsMap(1, k) = p0
-                  ElementShellsMap(2, k) = p1
-                  p0 = p0 + NShellParams(k)
+                        ShellMomentum(p0:p1), NPrimitives(p0:p1), Configs(k)%Z, Configs(k)%PathToParams)
+                  ConfigShellsMap(1, k) = p0
+                  ConfigShellsMap(2, k) = p1
+                  Configs(k)%Offset = p0 - 1
+                  p0 = p0 + Configs(k)%NShellParams
             end do
             MaxNAngFuncCart = ((LmaxGTO + 1) * (LmaxGTO + 2)) / 2
             allocate(NormFactorsCart(MaxNAngFuncCart, NShellParamsTotal))
@@ -155,9 +220,9 @@ contains
                   do p = 1, NShellParamsTotal
                         S(p) = p
                   end do
-                  do k = 1, NElements
-                        p0 = ElementShellsMap(1, k)
-                        p1 = ElementShellsMap(2, k)
+                  do k = 1, NConfigs
+                        p0 = ConfigShellsMap(1, k)
+                        p1 = ConfigShellsMap(2, k)
                         n = p1 - p0 + 1
                         W(1:n) = -R2Max(p0:p1)
                         call dsort(W(1:n), S(p0:p1), n)
@@ -174,9 +239,9 @@ contains
                   R2Max = huge(ONE)
                   allocate(S(NShellParamsTotal))
                   S = -1
-                  do k = 1, NElements
-                        p0 = ElementShellsMap(1, k)
-                        p1 = ElementShellsMap(2, k)
+                  do k = 1, NConfigs
+                        p0 = ConfigShellsMap(1, k)
+                        p1 = ConfigShellsMap(2, k)
                         q = 0
                         do L = 0, LmaxGTO
                               do p = p0, p1
@@ -192,19 +257,19 @@ contains
             ! Assign shells to each atom in the system
             !
             NShells = 0
-            do a = 1, NAtoms
-                  k = AtomElementMap(a)
-                  p0 = ElementShellsMap(1, k)
-                  p1 = ElementShellsMap(2, k)
+            do a = 1, System%NAtoms
+                  k = AtomConfigMap(a)
+                  p0 = ConfigShellsMap(1, k)
+                  p1 = ConfigShellsMap(2, k)
                   NShells = NShells + p1 - p0 + 1
             end do
             allocate(ShellParamsIdx(NShells))
             allocate(ShellCenters(NShells))
             q = 0
-            do a = 1, NAtoms
-                  k = AtomElementMap(a)
-                  p0 = ElementShellsMap(1, k)
-                  p1 = ElementShellsMap(2, k)
+            do a = 1, System%NAtoms
+                  k = AtomConfigMap(a)
+                  p0 = ConfigShellsMap(1, k)
+                  p1 = ConfigShellsMap(2, k)
                   n = p1 - p0 + 1
                   q0 = q + 1
                   q1 = q + n
@@ -214,7 +279,6 @@ contains
             end do
             call basis_NewAOBasis_2(AOBasis, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
                   NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, SpherAO)
-            AOBasis%FilePath = FilePath
       end subroutine basis_NewAOBasis
 
 
@@ -948,7 +1012,6 @@ contains
             
             call basis_NewAOBasis_2(AOBasisAB, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
                   NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, SpherAO)
-            AOBasisAB%FilePath = ""
       end subroutine basis_FuseBasisSets
 
 

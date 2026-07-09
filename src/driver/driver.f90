@@ -8,6 +8,7 @@ program driver
       use initialize
       use display
       use periodic
+      use basis_definitions
       use parser
       use report
       use gridfunc
@@ -33,6 +34,7 @@ program driver
       type(TRPAParams) :: RPAParams
       type(TChol2Params) :: Chol2Params
       type(TTHCParams) :: THCParams
+      type(TBasisAssignment) :: BasisAssign
       type(tmolecule) :: geom_a, geom_b, geom_ab
       type(tsystemdep_params) :: par
       integer, parameter :: max_ncells = 10
@@ -46,7 +48,8 @@ program driver
       !
       call img_setup()
       call ReadCommandLine()
-      call read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, INPUTFILE)
+      call read_inputfile(System, SCFParams, RPAParams, &
+            Chol2Params, THCParams, BasisAssign, INPUTFILE)
       call sys_Init(System, SYS_TOTAL)
       ! ---------------------------------------------------------
       ! Compute spherically-averaged densities of isolated atoms
@@ -86,10 +89,10 @@ program driver
             end do
 
       case (JOB_REAL_UKS_RPA)
-            call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
+            call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_REAL_UKS_SP)
-            call task_dft_UKS(System, SCFParams)
+            call task_dft_UKS(System, SCFParams, BasisAssign)
             
       case (JOB_RTTDDFT_POLAR)
             if (DOREPORT .and. IMG_ISMASTER) then
@@ -109,7 +112,7 @@ program driver
             end do
 
       case (JOB_REAL_UKS_INT)
-            call task_dft_UKS(System, SCFParams)
+            call task_dft_UKS(System, SCFParams, BasisAssign)
             
       case (JOB_DFT_INT)
             if (DOREPORT .and. IMG_ISMASTER) then

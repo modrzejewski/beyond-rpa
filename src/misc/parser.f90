@@ -5,6 +5,7 @@ module parser
       use math_constants
       use string
       use periodic
+      use basis_definitions
       use display
       use images
       use report
@@ -1086,13 +1087,14 @@ contains
       end function isnew_element
 
 
-      subroutine read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, filename)
-            type(TSystem), intent(out)      :: System
-            type(TSCFParams), intent(out)   :: SCFParams
-            type(TRPAParams), intent(out)   :: RPAParams
-            type(TChol2Params), intent(out) :: Chol2Params
-            type(TTHCParams), intent(out)   :: THCParams
-            character(len=*), intent(in)    :: filename
+      subroutine read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, BasisAssign, filename)
+            type(TSystem), intent(out)          :: System
+            type(TSCFParams), intent(out)       :: SCFParams
+            type(TRPAParams), intent(out)       :: RPAParams
+            type(TChol2Params), intent(out)     :: Chol2Params
+            type(TTHCParams), intent(out)       :: THCParams
+            type(TBasisAssignment), intent(out) :: BasisAssign
+            character(len=*), intent(in)        :: filename
 
             integer :: OldXYZFormat
             character(len=DEFLEN) :: line
@@ -1113,6 +1115,7 @@ contains
             integer, parameter :: block_RPA = 7
             integer, parameter :: block_XYZ = 8
             integer, parameter :: block_SCF = 9
+            integer, parameter :: block_basis_assign = 10
 
             RPADefined = .false.
             XYZDefined = .false.
@@ -1175,6 +1178,9 @@ contains
                         cycle lines
                   case ("SCF")
                         current_block = block_SCF
+                        cycle lines
+                  case ("BASIS_ASSIGNMENT")
+                        current_block = block_basis_assign
                         cycle lines
                   case ("XYZ")
                         if (JOBTYPE == JOB_REAL_UKS_RPA .or. JOBTYPE == JOB_REAL_UKS_SP &
@@ -1245,6 +1251,8 @@ contains
                         call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
                   else if (current_block == block_SCF) then
                         call read_block_SCF(SCFParams, line)
+                  else if (current_block == block_basis_assign) then
+                        call BasisAssign%read_line(line)
                   else if (current_block == block_XYZ) then
                         call read_block_XYZ(System, AtomIdx, line)
                   else
