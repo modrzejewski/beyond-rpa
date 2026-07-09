@@ -20,6 +20,7 @@ module drv_dft
       use basis_definitions
       use scf_definitions
       use sys_definitions
+      use rpa_driver
 
       implicit none
 
