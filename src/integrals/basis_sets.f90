@@ -53,7 +53,7 @@ contains
                   Z = System%ZNumbers(a)
                   PathToParams = ""
                   if (present(BasisAssign)) then
-                        if (BasisAssign%initialized) then
+                        if (BasisAssign%Initialized) then
                               !
                               ! Priority 1: Atom-specific
                               !

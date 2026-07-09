@@ -20,7 +20,7 @@ module basis_definitions
             ! 2. ElementRules: Element atomic numbers (e.g., Z=8 for O)
             ! 3. GlobalFallback: The fallback defined inside the `basis_assignment` block via '*'
             !
-            logical :: initialized = .false.
+            logical :: Initialized = .false.
             
             type(TBasisRule), allocatable :: AtomRules(:)
             integer :: NAtomRules = 0
@@ -37,6 +37,62 @@ module basis_definitions
       end type TBasisAssignment
 
       type TAOBasis
+            !
+            ! Gaussian atomic orbital basis set parameters and mapping arrays.
+            !
+            ! A contracted Cartesian Gaussian orbital centered on atom c at Rc has the form:
+            !   Phi(r) = N * (x-Xc)**lx * (y-Yc)**ly * (z-Zc)**lz * Sum_i [ c_i * exp(-alpha_i * |r-Rc|**2) ]
+            !
+            ! Spherical AOs are formed by contracting Cartesian Gaussians with solid
+            ! harmonic coefficients. The normalization factor N depends on whether
+            ! the final AO is Cartesian or spherical (see docstrings in integrals/Auto2e).
+            !
+            ! Parameters:
+            !   N       : Normalization constant from NormFactorsCart or NormFactorsSpher.
+            !   lx,ly,lz: Cartesian polynomial exponents from CartPolyX/Y/Z.
+            !   c_i     : Contraction coefficients from CntrCoeffs.
+            !   alpha_i : Gaussian exponents from Exponents.
+            !   Rc      : (Xc, Yc, Zc) coordinates of atom c from AtomCoords.
+            !
+            ! Scalars:
+            !   SpherAO          : True if spherical AOs are preferred, but parameters for both spherical
+            !                      and Cartesian AOs are present in this structure.
+            !   NShellParams     : Total number of unique shell parameter sets. Using atom-specific basis
+            !                      assignments can result in different basis sets for atoms of the same
+            !                      element, increasing this number.
+            !   NShells          : Total number of shells instantiated on atoms.
+            !   LmaxGTO          : Maximum angular momentum in the basis.
+            !   MaxNPrimitives   : Maximum primitives in any single shell.
+            !   NAOSpher         : Total number of spherical basis functions.
+            !   NAOCart          : Total number of Cartesian basis functions.
+            !   NAtoms           : Number of atoms.
+            !   MaxNShells       : Maximum shells assigned to any single atom.
+            !
+            ! Arrays:
+            !   AtomCoords       : (3, NAtoms) Cartesian coordinates of atoms.
+            !   ShellCenters     : (NShells) Atom index each shell is centered on.
+            !   ShellParamsIdx   : (NShells) Index mapping a shell to its unique parameter set.
+            !   ShellMomentum    : (NShellParams) Angular momentum quantum number (L).
+            !   AtomShellMap     : (2, MaxNShellSegments, NAtoms) Start and end shell indices for
+            !                      contiguous segments.
+            !   AtomShellN       : (NAtoms) Number of contiguous shell segments per atom.
+            !   NPrimitives      : (NShellParams) Number of Gaussian primitives per shell.
+            !   CntrCoeffs       : (MaxNPrimitives, NShellParams) Contraction coefficients.
+            !   Exponents        : (MaxNPrimitives, NShellParams) Gaussian exponents.
+            !   NormFactorsCart  : (MaxNAngFuncCart, NShellParams) Normalization constants for
+            !                      Cartesian functions.
+            !   NormFactorsSpher : (MaxNAngFuncSpher, NShellParams) Normalization constants for
+            !                      spherical functions.
+            !   NAngFuncSpher    : (NShellParams) Number of spherical functions (2L+1).
+            !   NAngFuncCart     : (NShellParams) Number of Cartesian functions.
+            !   ShellLocSpher    : (NShells) Global starting index in the spherical basis.
+            !   ShellLocCart     : (NShells) Global starting index in the Cartesian basis.
+            !   CartPolyX/Y/Z    : (MaxNAngFuncCart, 0:LmaxGTO) Cartesian polynomial exponents (lx, ly, lz)
+            !                      defining the angular part x**lx * y**ly * z**lz.
+            !   R2Max            : (NShellParams) Effective squared radial extent of an orbital used
+            !                      for grid screening.
+            !   MaxAtomL         : (NAtoms) Maximum angular momentum on a given atom.
+            !
             real(F64), dimension(:, :), allocatable :: AtomCoords
             integer, dimension(:), allocatable :: ShellCenters
             integer, dimension(:), allocatable :: ShellParamsIdx
@@ -92,6 +148,7 @@ contains
                   BasisAssign%AtomRules(1)%PathToParams = PathToParams
             end if
             BasisAssign%NAtomRules = BasisAssign%NAtomRules + 1
+            BasisAssign%Initialized = .true.
       end subroutine basis_add_atom_rule
 
       subroutine basis_add_element_rule(BasisAssign, Z, PathToParams)
@@ -116,6 +173,7 @@ contains
                   BasisAssign%ElementRules(1)%PathToParams = PathToParams
             end if
             BasisAssign%NElementRules = BasisAssign%NElementRules + 1
+            BasisAssign%Initialized = .true.
       end subroutine basis_add_element_rule
 
       subroutine basis_add_global_fallback(BasisAssign, PathToParams)
@@ -123,6 +181,7 @@ contains
             character(*), intent(in)               :: PathToParams
             
             BasisAssign%GlobalFallback = PathToParams
+            BasisAssign%Initialized = .true.
       end subroutine basis_add_global_fallback
 
       subroutine basis_ReadAssignLine(BasisAssign, line)
@@ -131,8 +190,6 @@ contains
 
             character(:), allocatable :: key, val
             integer :: start_idx, end_idx, a, Z
-            
-            BasisAssign%initialized = .true.
             
             call split(line, key, val)
 
