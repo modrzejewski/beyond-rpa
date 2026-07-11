@@ -885,7 +885,7 @@ FileList += [("CC", ["ccsd/ccsd.f90"])]
 FileList += [("DFT", ["misc/mp2.f90"])]
 FileList += [("DFT", ["driver/initialize.f90"])]
 FileList += [("CC", ["driver/drv_wm_intermediates_init.f90"])]
-
+FileList += [("DFT", ["driver/drv_eri.f90"])]
 FileList += [("DFT", ["driver/drv_dft.f90",
                       "driver/drv_mp2.f90",
                       "driver/drv_dft_rpa.f90"])]

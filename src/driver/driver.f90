@@ -92,7 +92,7 @@ program driver
             call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_REAL_UKS_SP)
-            call task_dft_UKS(System, SCFParams, BasisAssign)
+            call task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_RTTDDFT_POLAR)
             if (DOREPORT .and. IMG_ISMASTER) then
@@ -112,7 +112,7 @@ program driver
             end do
 
       case (JOB_REAL_UKS_INT)
-            call task_dft_UKS(System, SCFParams, BasisAssign)
+            call task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_DFT_INT)
             if (DOREPORT .and. IMG_ISMASTER) then

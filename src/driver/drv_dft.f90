@@ -21,6 +21,10 @@ module drv_dft
       use scf_definitions
       use sys_definitions
       use rpa_driver
+      use thc_definitions
+      use TwoStepCholesky_definitions
+      use drv_eri
+      use TwoStepCholesky
 
       implicit none
 
@@ -92,6 +96,7 @@ contains
             HirshSCFParams%ConvThreshRho = 1.0E-6
             HirshSCFParams%ConvThreshGrad = 2.0E-5
             HirshSCFParams%AUXInt_Type1 = AUX_HIRSHFELD_VOLUME_FREE
+            HirshSCFParams%ERI_Algorithm = SCF_ERI_EXACT
             MaxNShells = AOBasis%MaxNShells
             allocate(HirshSCFParams%AUXIn(0, 0))
             allocate(SCFParams%AUXIn(((MaxNShells+1)*MaxNShells)/2, NElements))
@@ -712,13 +717,18 @@ contains
       end subroutine task_dft_int_ROKS
 
 
-      subroutine task_dft_UKS(System, SCFParams, BasisAssign)
+      subroutine task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
             type(TSystem), intent(inout)       :: System
             type(TSCFParams), intent(in)       :: SCFParams
+            type(TChol2Params), intent(in)     :: Chol2Params
+            type(TTHCParams), intent(inout)    :: THCParams
             type(TBasisAssignment), intent(in) :: BasisAssign
                         
             type(TSCFOutput), dimension(15) :: SCFOutput
             type(TAOBasis) :: AOBasis
+            type(TChol2Vecs) :: Chol2Vecs
+            type(TCoulTHCGrid) :: THCGrid
+            real(F64), dimension(:, :, :), allocatable :: Rkpq[:]
             real(F64), dimension(15) :: EtotDFT, EdispDFT
             real(F64) :: EtotDFT_AB, EtotDFT_ABC, EtotDFT_ABCD
             real(F64) :: EdispDFT_AB, EdispDFT_ABC, EdispDFT_ABCD
@@ -739,13 +749,18 @@ contains
             call data_load_2(System)
             call init_modules()
             call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO, BasisAssign=BasisAssign)
+            
+            call drv_eri_run(Rkpq, Chol2Vecs, THCGrid, &
+                  AOBasis, System, SCFParams, Chol2Params, THCParams)
+
             do k = 1, NSystems
                   if (k > 1) then
                         call sys_Init(System, k)
                         call data_load_2(System)
                         call init_modules()
                   end if
-                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System)
+                  call scf_driver_SpinUnres(SCFOutput(k), SCFParams, AOBasis, System, &
+                        Rkpq, Chol2Vecs, THCGrid)
                   if (.not. SCFOutput(k)%Converged) then
                         call msg("SCF not converged. Cannot continue with a post-SCF calculation", MSG_ERROR)
                         error stop
@@ -755,6 +770,7 @@ contains
                   call free_modules()
                   call data_free()
             end do
+
             if (System%SystemKind == SYS_MOLECULE) then
                   call msg("DFT Single-Point Energies (a.u.)", underline=.true.)
 
