@@ -33,13 +33,12 @@ module basis_sets
 
 contains
 
-      subroutine basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, FilePath, BasisAssign)
+      subroutine basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, BasisAssign)
             type(TBasisConfig), allocatable, intent(out)    :: Configs(:)
             integer, dimension(:), allocatable, intent(out) :: AtomConfigMap
             integer, intent(out)                            :: NConfigs
             type(TSystem), intent(in)                       :: System
-            character(*), intent(in)                        :: FilePath
-            type(TBasisAssignment), intent(in), optional    :: BasisAssign
+            type(TBasisAssignment), intent(in)              :: BasisAssign
             
             integer :: a, c, Z
             character(:), allocatable :: PathToParams
@@ -52,37 +51,38 @@ contains
             do a = 1, System%NAtoms
                   Z = System%ZNumbers(a)
                   PathToParams = ""
-                  if (present(BasisAssign)) then
-                        if (BasisAssign%Initialized) then
-                              !
-                              ! Priority 1: Atom-specific
-                              !
-                              do c = 1, BasisAssign%NAtomRules
-                                    if (BasisAssign%AtomRules(c)%id == a) then
-                                          PathToParams = BasisAssign%AtomRules(c)%PathToParams
+                  if (BasisAssign%Initialized) then
+                        !
+                        ! Priority 1: Atom-specific
+                        !
+                        do c = 1, BasisAssign%NAtomRules
+                              if (BasisAssign%AtomRules(c)%id == a) then
+                                    PathToParams = BasisAssign%AtomRules(c)%PathToParams
+                                    exit
+                              end if
+                        end do
+                        !
+                        ! Priority 2: Element-specific
+                        !
+                        if (PathToParams == "") then
+                              do c = 1, BasisAssign%NElementRules
+                                    if (BasisAssign%ElementRules(c)%id == Z) then
+                                          PathToParams = BasisAssign%ElementRules(c)%PathToParams
                                           exit
                                     end if
                               end do
-                              !
-                              ! Priority 2: Element-specific
-                              !
-                              if (PathToParams == "") then
-                                    do c = 1, BasisAssign%NElementRules
-                                          if (BasisAssign%ElementRules(c)%id == Z) then
-                                                PathToParams = BasisAssign%ElementRules(c)%PathToParams
-                                                exit
-                                          end if
-                                    end do
-                              end if
-                              !
-                              ! Priority 3: Fallback '*'
-                              !
-                              if (PathToParams == "" .and. allocated(BasisAssign%GlobalFallback)) then
-                                    PathToParams = BasisAssign%GlobalFallback       
-                              end if
+                        end if
+                        !
+                        ! Priority 3: Fallback '*'
+                        !
+                        if (PathToParams == "" .and. allocated(BasisAssign%GlobalFallback)) then
+                              PathToParams = BasisAssign%GlobalFallback       
                         end if
                   end if
-                  if (PathToParams == "") PathToParams = FilePath
+                  if (PathToParams == "") then
+                        call msg("basis_CreateConfigs: No basis set assigned for atom", MSG_ERROR)
+                        error stop
+                  end if
                   
                   found = .false.
                   do c = 1, NConfigs
@@ -118,10 +118,30 @@ contains
             ! of the value of SpherAO. The SpherAO parameter can be safely changed
             ! without invoking this subroutine again.
             !
+            ! Arguments:
+            !   AOBasis              Output TAOBasis object to be initialized.
+            !
+            !   System               TSystem object containing atomic coordinates and numbers.
+            !
+            !   FilePath             (Optional) Intended as the primary basis set file. 
+            !                        At least one of FilePath or BasisAssign must be provided. 
+            !                        If provided alongside BasisAssign, it must match the 
+            !                        global fallback of BasisAssign.
+            !
+            !   SpherAO              (Optional) Logical flag indicating if spherical harmonics 
+            !                        are used (default: .true.).
+            !
+            !   SortAngularMomenta   (Optional) Logical flag to sort shells by angular momenta 
+            !                        instead of radii.
+            !
+            !   BasisAssign          (Optional) TBasisAssignment object that provides a detailed 
+            !                        basis set-to-atom map. At least one of FilePath or 
+            !                        BasisAssign must be provided.
+            !
             type(TAOBasis), intent(out)                  :: AOBasis
             type(TSystem), intent(in)                    :: System
-            character(*), intent(in)                     :: FilePath
-            logical, intent(in)                          :: SpherAO
+            character(*), intent(in), optional           :: FilePath
+            logical, intent(in), optional                :: SpherAO
             logical, optional, intent(in)                :: SortAngularMomenta
             type(TBasisAssignment), intent(in), optional :: BasisAssign
 
@@ -142,6 +162,34 @@ contains
             real(F64), dimension(:), allocatable :: W, R2Max
             real(F64), dimension(:, :), allocatable :: CntrCoeffs, Exponents, NormFactorsCart
             logical :: SortRadii
+            logical :: Spherical
+            type(TBasisAssignment) :: ActualBasisAssign
+
+            if (.not. present(FilePath) .and. .not. present(BasisAssign)) then
+                  call msg("basis_NewAOBasis: At least one of FilePath or BasisAssign must be provided", MSG_ERROR)
+                  error stop
+            end if
+
+            if (present(BasisAssign)) then
+                  ActualBasisAssign = BasisAssign
+            end if
+
+            if (present(FilePath)) then
+                  if (allocated(ActualBasisAssign%GlobalFallback)) then
+                        if (FilePath /= ActualBasisAssign%GlobalFallback) then
+                              call msg("basis_NewAOBasis: FilePath and BasisAssign%GlobalFallback must be equal", MSG_ERROR)
+                              error stop
+                        end if
+                  else
+                        call ActualBasisAssign%add_global_fallback(FilePath)
+                  end if
+            end if
+
+            if (present(SpherAO)) then
+                  Spherical = SpherAO
+            else
+                  Spherical = .true.
+            end if
 
             if (present(SortAngularMomenta)) then
                   SortRadii = (.not. SortAngularMomenta)
@@ -151,13 +199,8 @@ contains
             !
             ! 1. Group Unique Blocks by (Z, PathToParams) & Determine Paths
             !
-            if (present(BasisAssign)) then
-                  call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
-                        System, FilePath, BasisAssign)
-            else
-                  call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
-                        System, FilePath)
-            end if
+            call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
+                  System, ActualBasisAssign)
             !
             ! 3. Query properties
             !
@@ -278,7 +321,7 @@ contains
                   q = q + n
             end do
             call basis_NewAOBasis_2(AOBasis, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
-                  NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, SpherAO)
+                  NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, Spherical)
       end subroutine basis_NewAOBasis
 
 
