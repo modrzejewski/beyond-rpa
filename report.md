@@ -8,10 +8,12 @@ The objective of the modifications in the `development` branch is to extend the 
 
 ### `parser.f90`
 - **Logic Validation:** Added proper recognition of the `BASIS_ASSIGNMENT` block. The changes successfully route the contents of this block to `BasisAssign%read_line(line)`.
+- **Refactoring:** A large block of standard EMSL basis sets strings resolution was correctly extracted out from `parser.f90` and placed into `basis_ResolvePath`. This removes hundreds of lines of code inside the `parser.f90` and properly delegates the responsibility of basis string-to-path mapping.
 - **Syntax Validation:** Standard parameter block matching logic was implemented perfectly.
 
 ### `basis_definitions.f90`
 - **Logic Validation:** A new `TBasisAssignment` type was introduced. The priority structure correctly identifies `AtomRules` as highest priority, followed by `ElementRules`, and finally a `GlobalFallback`. It parses the assignment lines, appropriately differentiating between wildcard `*`, ranges of atoms `1-3`, single atoms, and element symbols.
+- **Refactoring Validation:** The new `basis_ResolvePath` subroutine has been successfully added to centralize and manage how basis aliases (e.g. `6-31G**`) or `FILE /path` definitions are mapped to absolute configuration paths (`FullParamsPath`).
 - **Syntax Validation:** Fortran type-bound procedures are implemented efficiently using `class` and `intent(inout)` as expected. Re-allocation logic using `move_alloc` inside `basis_add_atom_rule` and `basis_add_element_rule` correctly appends rules dynamically.
 
 ### `basis_sets.f90`
