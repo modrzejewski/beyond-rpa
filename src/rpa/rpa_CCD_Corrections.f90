@@ -39,7 +39,7 @@ contains
             logical, parameter :: Compute_1b2g = .true.
             logical, parameter :: Compute_2bcd = .false.
 
-            if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2024) then
+            if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2025_PH) then
                   call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
                         RPAParams, AOBasis)
             else if (RPAParams%TheoryLevel==RPA_THEORY_ALL) then
@@ -48,7 +48,7 @@ contains
                   !
                   call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgk, Yga, Xgi, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))                  
-            else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2023) then
+            else if (RPAParams%TheoryLevel==RPA_THEORY_JCTC2023_2G) then
                   call msg("CCD corrections to RPA correlation energy")
                   call clock_start(timer_total)
                   allocate(Zgh(NGridTHC, NGridTHC))

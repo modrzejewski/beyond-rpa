@@ -260,8 +260,8 @@ module rpa_definitions
       
       integer, parameter :: RPA_THEORY_DIRECT_RING = 0        ! RPA
       integer, parameter :: RPA_THEORY_RPT2        = 1        ! RPA + SOSEX + singles correction (Ren et al.)
-      integer, parameter :: RPA_THEORY_JCTC2023    = 2        ! RPA + 1b (SOSEX) + 2g
-      integer, parameter :: RPA_THEORY_JCTC2024    = 3        ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
+      integer, parameter :: RPA_THEORY_JCTC2023_2G    = 2        ! RPA + 1b (SOSEX) + 2g
+      integer, parameter :: RPA_THEORY_JCTC2025_PH    = 3        ! RPA + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
       integer, parameter :: RPA_THEORY_ALL         = 4        ! all third-order corrections
       
       type TRPAParams
@@ -462,7 +462,7 @@ module rpa_definitions
             !
             real(F64) :: THC_QRThresh = 1.0E-3_F64
             integer   :: THC_BlockDim = 500
-            integer :: TheoryLevel = RPA_THEORY_JCTC2024
+            integer :: TheoryLevel = RPA_THEORY_JCTC2025_PH
             !
             ! Use numerical integration to evaluate Ec1RDMQuad.
             ! If false, the integrand is evaluated only at Lambda=1
@@ -622,9 +622,9 @@ contains
             type(TSCFParams), intent(in)      :: SCFParams
 
             select case (RPAParams%TheoryLevel)
-            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023, RPA_THEORY_RPT2)
+            case (RPA_THEORY_DIRECT_RING, RPA_THEORY_JCTC2023_2G, RPA_THEORY_RPT2)
                   RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
-            case (RPA_THEORY_JCTC2024, RPA_THEORY_ALL)
+            case (RPA_THEORY_JCTC2025_PH, RPA_THEORY_ALL)
                   if (SCFParams%XCFunc == XCF_HF) then
                         RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
                   else

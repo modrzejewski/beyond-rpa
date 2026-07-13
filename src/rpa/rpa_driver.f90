@@ -188,7 +188,7 @@ contains
                               if (RPAParams%T2AuxOrbitals==RPA_AUX_NATURAL_ORBITALS .and. k > 1) then
                                     RPAParams%ComputeNaturalOrbitals = .true.
                                     RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
-                                    call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+                                    call rpa_entrypoint_JCTC2025(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                           RPAGrids, THCGrid, T2CutoffCommonThresh)
                                     EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
                                     EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
@@ -198,7 +198,7 @@ contains
                                     RPAParams%TheoryLevel = TheoryLevel_NOBasis
                               end if
                                                             
-                              call rpa_THC_Etot(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+                              call rpa_entrypoint_JCTC2025(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
                                     RPAGrids, THCGrid, T2CutoffCommonThresh)
 
                               EcRPA_T2_PNO(k) = RPAOutput(k)%Energy(RPA_ENERGY_PNO_DIRECT_RING)
@@ -211,11 +211,11 @@ contains
                               end if                              
                         else
                               if (RPAParams%CoupledClusters) then
-                                    call rpa_CC_Etot(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
+                                    call rpa_entrypoint_JCTC2023(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
                                           RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, Chol2Vecs, &
                                           SCFParams, System)
                               else
-                                    call rpa_Etot(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, &
+                                    call rpa_entrypoint_JCTC2020(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, &
                                           System, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
                                           CholeskyVecs, Chol2Vecs)
                               end if
@@ -433,23 +433,20 @@ contains
       end subroutine Rpa_EintNadd4Body
 
 
-      subroutine rpa_Etot(Energy, SCFOutput, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
+      subroutine rpa_entrypoint_JCTC2020(Energy, SCFOutput, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
             RPABasis, CholeskyVecs, Chol2Vecs)
             !
-            ! Compute total random-phase approximation energy (EtotRPA) including the HF-like contribution
-            ! (EtotHF=Enucl+Ekin+Ene+Ecoul+Eexch), the correction for singles (EcSingles, Eq. 33 in Ref. 1),
-            ! and the direct random-phase correlation energy (EcRPA).
+            ! Direct random-phase approximation with singles correction. Used as a proof-of-concept 
+            ! implementation to study the propagation of numerical errors in the post-KS RPA 
+            ! workflow. Superseded by JCTC2025.
             !
-            ! The direct RPA correlation, EcRPA, is computed using randomized trace estimation. The numerical
-            ! precision is controlled by the set of thresholds defined in RPAParams.
+            ! Marcin Modrzejewski, Sirous Yourdkhani, Jiří Klimeš,
+            ! Random Phase Approximation Applied to Many-Body Noncovalent Systems,
+            ! J. Chem. Theory Comput. 16, 427 (2020); doi: 10.1021/acs.jctc.9b00979
             !
-            ! The singles correction is computed using Eq. 33 in Ref. 1 instead of Eq. 32 in Ref. 1 to
-            ! reduce the errors propagating from an imperfectly converged SCF.
-            ! (The errors resulting from Eq. 32 would be significant, I checked that by
-            ! performing HF SCF, for which EcSingles should be exactly zero.)
-            !
-            ! 1. Klimes, J., Kaltak, M., Maggio, E., Kresse, G. J. Chem. Phys. 143, 102816 (2015);
-            !    doi: 10.1063/1.4929346
+            ! Marcin Modrzejewski, Sirous Yourdkhani, Szymon Śmiga, and Jiří Klimeš,
+            ! Random-Phase Approximation in Many-Body Noncovalent Systems: Methane in a Dodecahedral Water Cage,
+            ! J. Chem. Theory Comput. 17, 804 (2021); doi: 10.1021/acs.jctc.0c00966
             !
             real(F64), dimension(:), intent(out)                      :: Energy
             type(TSCFOutput), intent(in)                              :: SCFOutput
@@ -683,7 +680,7 @@ contains
             if (NImages > 1) then
                   call co_broadcast(Energy, source_image=1)
             end if
-      end subroutine rpa_Etot
+      end subroutine rpa_entrypoint_JCTC2020
 
 
       subroutine rpa_EcSingles_Ren2013(EcSingles, C_oao, F_oao, NOcc, NVirt)
@@ -730,8 +727,18 @@ contains
       end subroutine rpa_EcSingles_Ren2013
 
 
-      subroutine rpa_CC_Etot(Energy, SCFOutput, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
+      subroutine rpa_entrypoint_JCTC2023(Energy, SCFOutput, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
             RPABasis, CholeskyVecs, Chol2Vecs, SCFParams, System)
+            !
+            ! Proof-of-concept implementation used to explore the accuracy of the 
+            ! coupled-cluster formulation of beyond-RPA terms. Handles both HF and Kohn-Sham 
+            ! reference states. Superseded by JCTC2025.
+            !
+            ! Dominik Cieśliński, Aleksandra M. Tucholska, and Marcin Modrzejewski,
+            ! Post-Kohn–Sham Random-Phase Approximation and Correction Terms in the 
+            ! Expectation-Value Coupled-Cluster Formulation,
+            ! J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+            !
 
             real(F64), dimension(:), intent(out)                      :: Energy
             type(TSCFOutput), intent(in)                              :: SCFOutput
@@ -818,11 +825,23 @@ contains
             end if
             call blankline()            
             call co_broadcast(Energy, source_image=1)
-      end subroutine rpa_CC_Etot
+      end subroutine rpa_entrypoint_JCTC2023
 
 
-      subroutine rpa_THC_Etot(RPAOutput, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, &
+      subroutine rpa_entrypoint_JCTC2025(RPAOutput, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, &
             T2CutoffCommonThresh)
+            !
+            ! Faster than JCTC2020 and JCTC2023 and well tested. Designed only for the HF
+            ! reference state. The singles corrections (referred to 1-RDM linear and 1-RDM 
+            ! quadratic) are computed to correct the numerical errors originating from the 
+            ! approximate-two electron integrals used in the self-consistent field. After 
+            ! the addition of those terms, the accuracy of interaction energies is sufficient 
+            ! for the many-body expansion of the crystal lattice energy.
+            !
+            ! Krystyna Syty, Grzegorz Czekało, Khanh Ngoc Pham, and Marcin Modrzejewski,
+            ! Multi-Level Coupled-Cluster Description of Crystal Lattice Energies,
+            ! J. Chem. Theory Computat 21, 5533 (2025); doi: 10.1021/acs.jctc.5c00428
+            !
             
             type(TRPAOutput), intent(out)                             :: RPAOutput
             type(TMeanField), intent(in)                              :: MeanField
@@ -892,7 +911,7 @@ contains
                   call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))                  
                   call blankline()            
             end associate
-      end subroutine rpa_THC_Etot
+      end subroutine rpa_entrypoint_JCTC2025
 
 
       subroutine rpa_THC_GatherEnergyContribs(Energy, MeanField)
@@ -935,8 +954,8 @@ contains
             character(:), allocatable :: line
 
             SatisfiedAccuracyTarget = .true.
-            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023 .or. &
-                  RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G .or. &
+                  RPAParams%TheoryLevel == RPA_THEORY_JCTC2025_PH) then
                   continue
             else
                   return
@@ -957,12 +976,12 @@ contains
                   call blankline()
                   if (System%SystemKind == SYS_DIMER) then
                         line = lfield("T2CutoffThresh", 17) // rfield("Eint(direct ring)", 20)
-                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                               line = line // rfield("Eint(2g)", 20) // rfield("Eint(SOSEX)", 20)
                         end if
                   else
                         line = lfield("T2CutoffThresh", 17) // rfield("EintNadd(direct ring)", 20)
-                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                               line = line // rfield("EintNadd(2g)", 20) // rfield("EintNadd(SOSEX)", 20)
                         end if
                   end if
@@ -972,32 +991,32 @@ contains
                         select case (System%SystemKind)
                         case (SYS_DIMER)
                               call rpa_Eint2Body(EintRPA(i), EcRPA)
-                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                                     call rpa_Eint2Body(Eint2g(i), Ec2g)
                                     call rpa_Eint2Body(EintSOSEX(i), EcSOSEX)
                               end if
                         case (SYS_TRIMER)
                               call rpa_EintNadd(EintRPA(i), EcRPA)
-                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                                     call rpa_EintNadd(Eint2g(i), Ec2g)
                                     call rpa_EintNadd(EintSOSEX(i), EcSOSEX)
                               end if
                         case (SYS_TETRAMER)
                               call rpa_EintNadd4Body(EintRPA(i), EcRPA)
-                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                                     call rpa_EintNadd4Body(Eint2g(i), Ec2g)
                                     call rpa_EintNadd4Body(EintSOSEX(i), EcSOSEX)
                               end if
                         end select
                         line = lfield(str(AltCutoffs(i),d=3), 17) // rfield(str(tokcal(EintRPA(i)),d=6), 20)
-                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                               line = line // rfield(str(tokcal(Eint2g(i)),d=6), 20) // rfield(str(tokcal(EintSOSEX(i)),d=6), 20)
                         end if
                         call msg(line)
                   end do
                   DintRPA = abs(maxval(EintRPA) - minval(EintRPA))
                   RelDintRPA = DintRPA / abs(EintRPA(0))
-                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                         Dint2g = abs(maxval(Eint2g) - minval(Eint2g))
                         DintSOSEX = abs(maxval(EintSOSEX) - minval(EintSOSEX))
                         RelDint2g = Dint2g / abs(Eint2g(0))
@@ -1009,12 +1028,12 @@ contains
                         RelDintSOSEX = ZERO
                   end if
                   line = lfield("max abs diff", 17) // rfield(str(tokcal(DintRPA),d=1), 20)
-                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                         line = line // rfield(str(tokcal(Dint2g),d=1), 20) // rfield(str(tokcal(DintSOSEX),d=1), 20)
                   end if
                   call msg(line)
                   line = lfield("max rel diff", 17) // rfield(str(RelDintRPA,d=1), 20)
-                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                  if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                         line = line // rfield(str(RelDint2g,d=1), 20) // rfield(str(RelDintSOSEX,d=1), 20)
                   end if
                   call msg(line)
@@ -1063,7 +1082,7 @@ contains
                         end do
                         if (NVecsT2(k) > 0) then
                               EcRPA(k) = sum(RPAOutput(k)%EigRPA(1:NVecsT2(k)))
-                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+                              if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                                     Ec2g(k) = sum(RPAOutput(k)%Eig2g(1:NVecsT2(k)))
                                     EcSOSEX(k) = sum(RPAOutput(k)%EigSOSEX(1:NVecsT2(k)))
                               end if
@@ -1129,7 +1148,7 @@ contains
 
             call rpa_EstimateEcRPAError(Error_NO, Chi_MO, Chi_NO, EcRPA_Chi_MO, EcRPA_Chi_NO, System)
             call rpa_EstimateEcRPAError(Error_T2, Chi_NO, T2_NO, EcRPA_Chi_NO, EcRPA_T2_NO, System)
-            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2025_PH) then
                   call rpa_EstimateEcRPAError(Error_PNO, T2_NO, T2_PNO, EcRPA_T2_NO, EcRPA_T2_PNO, System)
             end if            
             call midrule()
@@ -1154,7 +1173,7 @@ contains
                   rfield(str(Chi_NO,d=6),20) // rfield(str(Error_NO, d=1), 20))
             call msg(lfield("3", 3) //lfield("eigendecomposition of T2", 30) // &
                   rfield(str(T2_NO,d=6),20) // rfield(str(Error_T2,d=1), 20))
-            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2025_PH) then
                   call msg(lfield("4", 3) // lfield("pair-natural orbitals", 30) // &
                         rfield(str(T2_PNO,d=6),20) // rfield(str(Error_PNO,d=1), 20))
             end if
@@ -1243,14 +1262,14 @@ contains
                   ]
 
             DisplayedValues = .false.
-            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2023_2G) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2G) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2C) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_2D) = .true.
             end if
-            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+            if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2025_PH) then
                   DisplayedValues(RPA_ENERGY_CUMULANT_1B) = .true.
                   DisplayedValues(RPA_ENERGY_CUMULANT_PH3) = .true.
             end if
@@ -1326,7 +1345,7 @@ contains
                         Labels(RPA_ENERGY_CUMULANT_2P)                 = lfield(Prefix // "2p" // Postfix, ColWidth)
                         Labels(RPA_ENERGY_TOTAL)                       = lfield(Prefix // "total" // Postfix, ColWidth)
 
-                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2024) then
+                        if (RPAParams%TheoryLevel == RPA_THEORY_JCTC2025_PH) then
                               Labels(RPA_ENERGY_CUMULANT_PH3)          = lfield(Prefix // "3rd order ph" // Postfix, ColWidth)
                         end if
                   else

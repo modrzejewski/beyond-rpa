@@ -13,7 +13,7 @@ module basis_sets
       use grid
       use real_linalg
       use basis_definitions
-      
+
       implicit none
 
 
@@ -39,7 +39,7 @@ contains
             integer, intent(out)                            :: NConfigs
             type(TSystem), intent(in)                       :: System
             type(TBasisAssignment), intent(in)              :: BasisAssign
-            
+
             integer :: a, c, Z
             character(:), allocatable :: PathToParams
             logical :: found
@@ -47,7 +47,7 @@ contains
             allocate(Configs(System%NAtoms))
             allocate(AtomConfigMap(System%NAtoms))
             NConfigs = 0
-            
+
             do a = 1, System%NAtoms
                   Z = System%ZNumbers(a)
                   PathToParams = ""
@@ -83,7 +83,7 @@ contains
                         call msg("basis_CreateConfigs: No basis set assigned for atom", MSG_ERROR)
                         error stop
                   end if
-                  
+
                   found = .false.
                   do c = 1, NConfigs
                         if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
@@ -148,7 +148,7 @@ contains
             type(TBasisConfig), allocatable :: Configs(:)
             integer, dimension(:), allocatable :: AtomConfigMap
             integer :: a, NConfigs, NShells
-            
+
             integer :: L, k, p, p0, p1, q, q0, q1
             integer :: NShellParamsTotal, MaxNPrimitives, LmaxGTO
             integer :: MaxNPrimitives_k, LmaxGTO_k
@@ -328,7 +328,7 @@ contains
       function basis_Ang2Int(Momentum)
             integer                  :: basis_Ang2Int
             character(1), intent(in) :: Momentum
-            
+
             select case (uppercase(Momentum))
             case ("S")
                   basis_Ang2Int = 0
@@ -456,7 +456,7 @@ contains
             integer, dimension(:), intent(out)      :: NPrimitives
             integer, intent(in)                     :: Z
             character(*), intent(in)                :: FilePath
-            
+
             integer :: u
             logical :: eof
             logical :: found_element, end_of_data
@@ -587,12 +587,12 @@ contains
             integer :: L, lx, ly, i, j, a, b, j0
             integer :: k
             integer :: NShellsI
-            
+
             associate (NShellParams=>AOBasis%NShellParams, NShells=>AOBasis%NShells, &
                   LmaxGTO=>AOBasis%LmaxGTO, NAOSpher=>AOBasis%NAOSpher, NAOCart=>AOBasis%NAOCart, &
                   MaxNPrimitives=>AOBasis%MaxNPrimitives, NAtoms=>AOBasis%NAtoms, &
                   MaxNShells=>AOBasis%MaxNShells)
-                  
+
                   NShellParams = size(ShellMomentum)
                   NShells = size(ShellCenters)
                   NAtoms = size(AtomCoords, dim=2)
@@ -672,7 +672,7 @@ contains
                                     end if
                               end do
                         end do kloop
-                  end do                              
+                  end do
                   MaxNShells = 0
                   do i = 1, NAtoms
                         NShellsI = 0
@@ -733,11 +733,11 @@ contains
                   end do
             end associate
       end subroutine basis_NewAOBasis_2
-      
-      
+
+
       subroutine basis_CountOrbitals(NAOSpher, NAOCart, NAngFuncSpher, NAngFuncCart, &
             ShellLocSpher, ShellLocCart, ShellMomentum, ShellParamsIdx, NShellParams, NShells)
-            
+
             integer, intent(out)                          :: NAOSpher, NAOCart
             integer, dimension(NShellParams), intent(out) :: NAngFuncSpher, NAngFuncCart
             integer, dimension(NShells), intent(out)      :: ShellLocSpher, ShellLocCart
@@ -877,7 +877,7 @@ contains
                         NormFactorsCart(1, a))
                   R2Max(a) = Ra**2
             end do
-            
+
       contains
 
             function phi_radial(r, L, NPrimitives, CntrCoeffs, Exponents, NormFactor)
@@ -1004,11 +1004,11 @@ contains
             real(F64), dimension(:), allocatable :: R2Max
             real(F64), dimension(:, :), allocatable :: CntrCoeffs, Exponents, NormFactorsCart
             integer :: Na, Nb, Ma, Mb
-            
+
             MaxNPrimitives = max(AOBasisA%MaxNPrimitives, AOBasisB%MaxNPrimitives)
             LmaxGTO = max(AOBasisA%LmaxGTO, AOBasisB%LmaxGTO)
             NShellParamsTotal = AOBasisA%NShellParams + AOBasisB%NShellParams
-            
+
             allocate(NPrimitives(NShellParamsTotal))
             Na = AOBasisA%NShellParams
             Nb = AOBasisB%NShellParams
@@ -1018,14 +1018,14 @@ contains
             allocate(ShellMomentum(NShellParamsTotal))
             ShellMomentum(1:Na) = AOBasisA%ShellMomentum(1:Na)
             ShellMomentum(Na+1:Na+Nb) = AOBasisB%ShellMomentum(1:Nb)
-            
+
             allocate(CntrCoeffs(MaxNPrimitives, NShellParamsTotal))
             Ma = AOBasisA%MaxNPrimitives
             Mb = AOBasisB%MaxNPrimitives
             CntrCoeffs = ZERO
             CntrCoeffs(1:Ma, 1:Na) = AOBasisA%CntrCoeffs(1:Ma, 1:Na)
             CntrCoeffs(1:Mb, Na+1:Na+Nb) = AOBasisB%CntrCoeffs(1:Mb, 1:Nb)
-            
+
             allocate(Exponents(MaxNPrimitives, NShellParamsTotal))
             Exponents = ZERO
             Exponents(1:Ma, 1:Na) = AOBasisA%Exponents(1:Ma, 1:Na)
@@ -1038,7 +1038,7 @@ contains
             Mb = ((AOBasisB%LmaxGTO + 1) * (AOBasisB%LmaxGTO + 2)) / 2
             NormFactorsCart(1:Ma, 1:Na) = AOBasisA%NormFactorsCart(1:Ma, 1:Na)
             NormFactorsCart(1:Mb, Na+1:Na+Nb) = AOBasisB%NormFactorsCart(1:Mb, 1:Nb)
-            
+
             allocate(R2Max(NShellParamsTotal))
             R2Max(1:Na) = AOBasisA%R2Max(1:Na)
             R2Max(Na+1:Na+Nb) = AOBasisB%R2Max(1:Nb)
@@ -1052,7 +1052,7 @@ contains
             ShellParamsIdx(Ma+1:Ma+Mb) = AOBasisB%ShellParamsIdx(1:Mb) + Na
             ShellCenters(1:Ma) = AOBasisA%ShellCenters(1:Ma)
             ShellCenters(Ma+1:Ma+Mb) = AOBasisB%ShellCenters(1:Mb)
-            
+
             call basis_NewAOBasis_2(AOBasisAB, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
                   NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, SpherAO)
       end subroutine basis_FuseBasisSets
