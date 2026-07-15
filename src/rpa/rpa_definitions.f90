@@ -682,7 +682,7 @@ contains
    subroutine postprocess(this)
       class(TRPAParams), intent(inout) :: this
 
-      if (this%TheoryLevel /= RPA_THEORY_UNDEFINED) then
+      if (this%TheoryLevel /= RPA_THEORY_NONE) then
          call this%select_algorithm()
          call this%select_orbitals()
       end if
