@@ -1,0 +1,21 @@
+! reference energy from pyscf: -76.0315623434763
+
+jobtype uks sp
+basis cc-pVTZ
+
+basis_assignment
+ 1 cc-pVDZ
+ 2 cc-pVTZ
+ 3 cc-pVDZ
+end
+
+scf
+ xcfunc HF
+end
+
+xyz
+3
+O    0.00000000 0.000000   0.00000000                                                                                                                         
+H  0.00000000    0.7573266735    -0.58638126729                                                                                                              
+H  0.00000000    -0.7573266735    -0.58638126729
+end
