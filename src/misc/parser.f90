@@ -1579,13 +1579,10 @@ contains
                   call SCFParams%ECPFile%set_default(SCFParams%AOBasisPath)
             end if
             !
-            ! Choose the set of orbitals applied in the RPA calculations.
-            ! This adjustment can only be done once the level of beyond-RPA
-            ! corrections is defined (TheoryLevel).
+            ! Configure the internal algorithm and orbital settings based
+            ! on the specified TheoryLevel.
             !
-            if (RPADefined) then
-                  call rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
-            end if
+            call RPAParams%postprocess()
             !
             ! Update effective nuclear charges if a pseudopotential is defined
             ! The ECP nuclear charges will be the same as physical charges if there's no pseudopotential
@@ -3243,16 +3240,7 @@ contains
 
             call split(line, key, val)
             select case (uppercase(key))
-            case ("ALGORITHM")
-                  select case (uppercase(val))
-                  case ("AO")
-                        RPAParams%MOAlgorithm = .false.
-                  case ("MO")
-                        RPAParams%MOAlgorithm = .true.
-                  case default
-                        call msg("Invalid value of Algorithm", MSG_ERROR)
-                        error stop
-                  end select
+
             case ("ACCURACY")
                   select case (uppercase(val))
                   case ("DEFAULT")
@@ -3289,7 +3277,6 @@ contains
                   RPAParams%CoupledClusters = .true.
                   RPAParams%T1Approx = RPA_T1_MEAN_FIELD
                   RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
-                  RPAParams%ChiOrbitals = RPA_ORBITALS_CANONICAL
                   RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
                   RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
                   RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
@@ -3468,7 +3455,6 @@ contains
                         RPAParams%CoupledClusters = .true.
                         RPAParams%T1Approx = RPA_T1_MEAN_FIELD
                         RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
-                        RPAParams%ChiOrbitals = RPA_ORBITALS_CANONICAL
                         RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
                         RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
                         RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
@@ -3539,16 +3525,6 @@ contains
                         RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
                   case default
                         call msg("Invalid partitioning of the mean-field hamiltonian", MSG_ERROR)
-                        error stop
-                  end select
-            case ("CHIORBITALS", "CHI-ORBITALS")
-                  select case (uppercase(val))
-                  case ("SEMI", "SEMICANONICAL")
-                        RPAParams%ChiOrbitals = RPA_ORBITALS_SEMICANONICAL
-                  case ("CANONICAL")
-                        RPAParams%ChiOrbitals = RPA_ORBITALS_CANONICAL
-                  case default
-                        call msg("Invalid RPA orbitals type", MSG_ERROR)
                         error stop
                   end select
             case ("EXCHANGEAPPROX", "EXCHANGE-APPROX", "EXCHANGEAPPROXIMATION", "EXCHANGE-APPROXIMATION")

@@ -272,7 +272,6 @@ module rpa_definitions
    integer, parameter :: RPA_ALGO_JCTC2025    = 4
 
    type TRPAParams
-      logical :: MOAlgorithm = .true.
       !
       ! The most important RPA energy threshold. Controls
       ! the size of the random vector basis G. The random vectors
@@ -472,9 +471,9 @@ module rpa_definitions
       integer :: TheoryLevel = RPA_THEORY_NONE
       !
       ! Code path selected to compute the properties at
-      ! the selected TheoryLevel. Should be defined after
+      ! the selected TheoryLevel. It should be assigned after
       ! all other parameters are set by calling
-      ! the  select_algorithm() subroutine.
+      ! the postprocess() subroutine.
       !
       integer :: Algorithm = RPA_ALGO_UNDEFINED
       !
@@ -565,6 +564,8 @@ module rpa_definitions
       real(F64) :: SVDSwitchoverRatio = TWO/THREE
    contains
       procedure :: select_algorithm
+      procedure :: select_orbitals
+      procedure :: postprocess
    end type TRPAParams
 
    type TRPAGrids
@@ -659,23 +660,33 @@ contains
       end if
    end subroutine select_algorithm
 
-   subroutine rpa_Params_ChooseOrbitals(RPAParams, SCFParams)
-      type(TRPAParams), intent(inout)   :: RPAParams
-      type(TSCFParams), intent(in)      :: SCFParams
+   subroutine select_orbitals(this)
+      class(TRPAParams), intent(inout) :: this
 
-      select case (RPAParams%TheoryLevel)
-       case (RPA_THEORY_DIRECT_RING, RPA_THEORY_2G, RPA_THEORY_RPT2)
-         RPAParams%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+      select case (this%TheoryLevel)
+       case (RPA_THEORY_RSE, RPA_THEORY_RPT2, RPA_THEORY_DIRECT_RING)
+         this%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+         this%ChiOrbitals = RPA_ORBITALS_CANONICAL
+       case (RPA_THEORY_2G)
+         this%T2AuxOrbitals = RPA_AUX_MOLECULAR_ORBITALS
+         this%ChiOrbitals = RPA_ORBITALS_SEMICANONICAL
        case (RPA_THEORY_PH, RPA_THEORY_PH_PP_HH)
-         if (SCFParams%XCFunc == XCF_HF) then
-            RPAParams%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
-         else
-            call msg("Selected TheoryLevel can only be applied with HF orbitals", MSG_ERROR)
-            error stop
-         end if
+         this%T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
+         this%ChiOrbitals = RPA_ORBITALS_CANONICAL
+       case default
+         call msg("Unsupported TheoryLevel provided during orbital selection", priority=MSG_ERROR)
+         error stop
       end select
-   end subroutine rpa_Params_ChooseOrbitals
+   end subroutine select_orbitals
 
+   subroutine postprocess(this)
+      class(TRPAParams), intent(inout) :: this
+
+      if (this%TheoryLevel /= RPA_THEORY_UNDEFINED) then
+         call this%select_algorithm()
+         call this%select_orbitals()
+      end if
+   end subroutine postprocess
 
    subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
       type(TRPAParams), intent(inout)   :: RPAParams
