@@ -43,10 +43,12 @@ contains
       integer :: a, c, Z
       character(:), allocatable :: PathToParams
       logical :: found
+      logical :: all_assigned
 
       allocate(Configs(System%NAtoms))
       allocate(AtomConfigMap(System%NAtoms))
       NConfigs = 0
+      all_assigned = .true.
 
       do a = 1, System%NAtoms
          Z = System%ZNumbers(a)
@@ -79,26 +81,35 @@ contains
                PathToParams = BasisAssign%GlobalFallback%PathToParams
             end if
          end if
-         if (PathToParams == "") then
-            call msg("basis_CreateConfigs: No basis set assigned for atom", MSG_ERROR)
-            error stop
-         end if
 
-         found = .false.
-         do c = 1, NConfigs
-            if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
-               AtomConfigMap(a) = c
-               found = .true.
-               exit
+         if (PathToParams == "") then
+            if (all_assigned) then
+               call msg("basis_CreateConfigs: Missing basis set assignments detected.", MSG_ERROR)
+               all_assigned = .false.
             end if
-         end do
-         if (.not. found) then
-            NConfigs = NConfigs + 1
-            Configs(NConfigs)%Z = Z
-            Configs(NConfigs)%PathToParams = PathToParams
-            AtomConfigMap(a) = NConfigs
+            call msg("No basis set assigned for atom " // str(a) // &
+                   & " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+         else
+            found = .false.
+            do c = 1, NConfigs
+               if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
+                  AtomConfigMap(a) = c
+                  found = .true.
+                  exit
+               end if
+            end do
+            if (.not. found) then
+               NConfigs = NConfigs + 1
+               Configs(NConfigs)%Z = Z
+               Configs(NConfigs)%PathToParams = PathToParams
+               AtomConfigMap(a) = NConfigs
+            end if
          end if
       end do
+
+      if (.not. all_assigned) then
+         error stop
+      end if
    end subroutine basis_CreateConfigs
 
    subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta, BasisAssign)
