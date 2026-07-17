@@ -299,6 +299,7 @@ contains
       logical :: SortRadii
       logical :: Spherical
       type(TBasisRule)       :: ResolvedRule
+      type(TBasisAssignment) :: Assignment
 
       if (present(FilePath) .and. present(BasisAssign)) then
          call msg("basis_NewAOBasis: FilePath and BasisAssign cannot be provided simultaneously.", MSG_ERROR)
@@ -310,11 +311,11 @@ contains
       end if
 
       if (present(BasisAssign)) then
-         AOBasis%Assignment = BasisAssign
+         Assignment = BasisAssign
       else if (present(FilePath)) then
-         call basis_ResolvePath(ResolvedRule, AOBasis%Assignment, "FILE " // FilePath)
+         call basis_ResolvePath(ResolvedRule, Assignment, "FILE " // FilePath)
          ResolvedRule%id = 0
-         call AOBasis%Assignment%add_global_fallback(ResolvedRule)
+         call Assignment%add_global_fallback(ResolvedRule)
       end if
 
       if (present(SpherAO)) then
@@ -332,7 +333,7 @@ contains
       ! 1. Group Unique Blocks by (Z, PathToParams) & Determine Paths
       !
       call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
-         System, AOBasis%Assignment)
+         System, Assignment)
       !
       ! 3. Query properties
       !
@@ -454,6 +455,7 @@ contains
       end do
       call basis_NewAOBasis_2(AOBasis, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
          NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, Spherical)
+      AOBasis%Assignment = Assignment
    end subroutine basis_NewAOBasis
 
 
