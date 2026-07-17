@@ -51,3 +51,8 @@ Key architectural improvements include:
 - **Dynamic Configuration:** As mentioned, the codebase contains a lot of `select case` statements for strings (e.g., basis sets, XC functionals, Theory Levels). The next major refactor should target abstracting these mappings into external files or a centralized registry pattern to avoid endlessly growing `if/else` ladders in Fortran.
 
 Overall, the development branch introduces robust architectural improvements that make the codebase cleaner, more modular, and easier to extend.
+
+### 5. String Operations Enhancement
+**Change:** The `src/common/string.f90` file was enhanced with a pure function `endswith` for string operations.
+**Opinion:** Adding utility functions like `endswith` improves the readability and simplicity of string parsing logic throughout the codebase, removing repetitive and error-prone index-checking boilerplate. The rating of 8/10 reflects that while it's a solid, necessary utility, it's a relatively minor addition compared to the architectural shifts in other files. It serves its purpose well but is standard boilerplate utility rather than a major feature.
+**Suggestion:** Consider supplementing it with a corresponding `startswith` function if one doesn't exist, as they frequently appear together in string parsing contexts. Ensure these utility functions are covered by unit tests.
