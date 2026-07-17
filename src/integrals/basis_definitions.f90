@@ -8,23 +8,49 @@ module basis_definitions
    implicit none
 
    type TBasisRule
+      !
+      ! Atom index, element atomic number,
+      ! or zero for a global fallback rule
+      ! applied to the entire system
+      !
       integer :: id
+      !
+      ! Path to the basis set parameters file,
+      ! which can be part of the library or a
+      ! user-provided file
+      !
       character(:), allocatable :: PathToParams
+      !
+      ! Internal basis set name or filename base
+      !
       character(:), allocatable :: BaseName
+      !
+      ! Human-readable name of the basis set
+      !
       character(:), allocatable :: DisplayedName
+      !
+      ! Path to the density guess file for the
+      ! given basis set. Allocated only if the
+      ! guess is available
+      !
       character(:), allocatable :: PathToGuess
       logical :: GuessAvailable = .false.
+      !
+      ! Flag indicating if the basis set is loaded
+      ! from the library directory where all basis
+      ! sets are stored
+      !
       logical :: FromLibrary = .false.
    end type TBasisRule
 
    type TBasisAssignment
       !
-      ! Structure that maps basis set files to specific atoms or elements.
+      ! Mapping between atoms or elements and basis set files
       !
-      ! Fallbacks are resolved in the following priority:
+      ! Rules are evaluated in the following order of priority:
       ! 1. AtomRules: Explicit atom indices (e.g., atom 3)
       ! 2. ElementRules: Element atomic numbers (e.g., Z=8 for O)
-      ! 3. GlobalFallback: The fallback defined inside the `basis_assignment` block via '*'
+      ! 3. GlobalFallback: Defined via '*' in the `basis_assignment` block
       !
       logical :: Initialized = .false.
 
@@ -302,30 +328,11 @@ contains
       !   BasisAssign         : Input TBasisAssignment object containing LibraryDir and GuessDir state.
       !   ValString           : Input basis string, either an EMSL alias or 'FILE path'.
       !
-      !   IsFilePath          : (Optional) If true, treat ValString as a raw file path.
-      !
       type(TBasisRule), intent(out)       :: Rule
       class(TBasisAssignment), intent(in) :: BasisAssign
       character(*), intent(in)            :: ValString
-      logical, intent(in), optional       :: IsFilePath
 
       character(:), allocatable :: a1, a2, p, n
-      logical :: IsFile
-
-      if (present(IsFilePath)) then
-         IsFile = IsFilePath
-      else
-         IsFile = .false.
-      end if
-
-      if (IsFile) then
-         Rule%PathToParams = trim(ValString)
-         Rule%DisplayedName = trim(ValString)
-         Rule%BaseName = trim(ValString)
-         Rule%FromLibrary = .false.
-         Rule%GuessAvailable = .false.
-         return
-      end if
 
       call split(ValString, a1, a2)
       if (uppercase(a1) == "FILE") then

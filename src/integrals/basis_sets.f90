@@ -187,7 +187,7 @@ contains
       if (present(BasisAssign)) then
          AOBasis%Assignment = BasisAssign
       else if (present(FilePath)) then
-         call basis_ResolvePath(ResolvedRule, AOBasis%Assignment, FilePath, IsFilePath=.true.)
+         call basis_ResolvePath(ResolvedRule, AOBasis%Assignment, "FILE " // FilePath)
          ResolvedRule%id = 0
          call AOBasis%Assignment%add_global_fallback(ResolvedRule)
       end if
