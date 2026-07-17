@@ -73,6 +73,7 @@ module basis_definitions
       procedure :: add_global_fallback => basis_add_global_fallback
       procedure :: read_line => basis_ReadAssignLine
       procedure :: assign => basis_assignment_copy
+      procedure :: is_uniform => basis_is_uniform
       generic :: assignment(=) => assign
    end type TBasisAssignment
 
@@ -322,6 +323,42 @@ contains
          lhs%GuessDir = rhs%GuessDir
       end if
    end subroutine basis_assignment_copy
+
+
+   function basis_is_uniform(this)
+      !
+      ! Check if the basis assignment is globally uniform, that is,
+      ! without special cases for selected elements or atoms
+      !
+      logical                             :: basis_is_uniform
+      class(TBasisAssignment), intent(in) :: this
+      integer                             :: k
+      character(:), allocatable           :: RefPath
+
+      if (.not. this%Initialized) then
+         call msg("basis_is_uniform: TBasisAssignment is not initialized", MSG_ERROR)
+         error stop
+      end if
+
+      basis_is_uniform = .true.
+      if (this%NAtomRules == 0 .and. this%NElementRules == 0) return
+
+      if (this%FallbackAvailable) then
+         RefPath = this%GlobalFallback%PathToParams
+      else if (this%NElementRules > 0) then
+         RefPath = this%ElementRules(1)%PathToParams
+      else
+         RefPath = this%AtomRules(1)%PathToParams
+      end if
+
+      do k = 1, this%NAtomRules
+         if (this%AtomRules(k)%PathToParams /= RefPath) basis_is_uniform = .false.
+      end do
+      do k = 1, this%NElementRules
+         if (this%ElementRules(k)%PathToParams /= RefPath) basis_is_uniform = .false.
+      end do
+   end function basis_is_uniform
+
 
    subroutine basis_ResolvePath(Rule, BasisAssign, ValString)
       !
