@@ -53,7 +53,7 @@ contains
       call sys_Init(System, SYS_TOTAL)
       call data_load_2(System)
       call init_modules()
-      call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO, BasisAssign=BasisAssign)
+      call basis_NewAOBasis(AOBasis, System, BasisAssign=BasisAssign)
       !
       ! Precompute tensors required for electron repulsion integrals
       !

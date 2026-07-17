@@ -134,11 +134,10 @@ contains
       !
       !   System               TSystem object containing atomic coordinates and numbers.
       !
-      !   FilePath             (Optional) Intended as the primary basis set file.
-      !                        At least one of FilePath or BasisAssign must be provided.
-      !                        If provided alongside BasisAssign, it must match the
-      !                        global fallback of BasisAssign.
-      !
+      !   FilePath             (Optional) Path to EMSL-format basis set parameters file.
+      !                        Use this for a global basis set applied to all atoms.
+      !                        For per-atom assignments, use BasisAssign instead.
+      !                        Either FilePath or BasisAssign must be provided.
       !   SpherAO              (Optional) Logical flag indicating if spherical harmonics
       !                        are used (default: .true.).
       !
@@ -146,8 +145,8 @@ contains
       !                        instead of radii.
       !
       !   BasisAssign          (Optional) TBasisAssignment object that provides a detailed
-      !                        basis set-to-atom map. At least one of FilePath or
-      !                        BasisAssign must be provided.
+      !                        basis set-to-atom map. Either FilePath or BasisAssign
+      !                        must be provided, but not both.
       !
       type(TAOBasis), intent(out)                  :: AOBasis
       type(TSystem), intent(in)                    :: System
@@ -174,29 +173,23 @@ contains
       real(F64), dimension(:, :), allocatable :: CntrCoeffs, Exponents, NormFactorsCart
       logical :: SortRadii
       logical :: Spherical
-      type(TBasisAssignment) :: ActualBasisAssign
       type(TBasisRule)       :: ResolvedRule
 
+      if (present(FilePath) .and. present(BasisAssign)) then
+         call msg("basis_NewAOBasis: FilePath and BasisAssign cannot be provided simultaneously.", MSG_ERROR)
+         error stop
+      end if
       if (.not. present(FilePath) .and. .not. present(BasisAssign)) then
          call msg("basis_NewAOBasis: At least one of FilePath or BasisAssign must be provided", MSG_ERROR)
          error stop
       end if
 
       if (present(BasisAssign)) then
-         ActualBasisAssign = BasisAssign
-      end if
-
-      if (present(FilePath)) then
-         if (ActualBasisAssign%FallbackAvailable) then
-            if (FilePath /= ActualBasisAssign%GlobalFallback%PathToParams) then
-               call msg("basis_NewAOBasis: FilePath and BasisAssign%GlobalFallback must be equal", MSG_ERROR)
-               error stop
-            end if
-         else
-            call basis_ResolvePath(ResolvedRule, ActualBasisAssign, FilePath, IsFilePath=.true.)
-            ResolvedRule%id = 0
-            call ActualBasisAssign%add_global_fallback(ResolvedRule)
-         end if
+         AOBasis%Assignment = BasisAssign
+      else if (present(FilePath)) then
+         call basis_ResolvePath(ResolvedRule, AOBasis%Assignment, FilePath, IsFilePath=.true.)
+         ResolvedRule%id = 0
+         call AOBasis%Assignment%add_global_fallback(ResolvedRule)
       end if
 
       if (present(SpherAO)) then
@@ -214,7 +207,7 @@ contains
       ! 1. Group Unique Blocks by (Z, PathToParams) & Determine Paths
       !
       call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, &
-         System, ActualBasisAssign)
+         System, AOBasis%Assignment)
       !
       ! 3. Query properties
       !

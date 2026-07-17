@@ -748,7 +748,7 @@ contains
             call sys_Init(System, SYS_TOTAL)
             call data_load_2(System)
             call init_modules()
-            call basis_NewAOBasis(AOBasis, System, SCFParams%AOBasisPath, SCFParams%SpherAO, BasisAssign=BasisAssign)
+            call basis_NewAOBasis(AOBasis, System, BasisAssign=BasisAssign)
             
             call drv_eri_run(Rkpq, Chol2Vecs, THCGrid, &
                   AOBasis, System, SCFParams, Chol2Params, THCParams)

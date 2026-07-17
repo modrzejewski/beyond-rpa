@@ -107,6 +107,11 @@ module basis_definitions
       !                      for grid screening.
       !   MaxAtomL         : (NAtoms) Maximum angular momentum on a given atom.
       !
+      ! Objects:
+      !   Assignment       : Stores file paths to basis set parameters for each atom.
+      !                      Allows different basis sets for atoms of the same element.
+      !                      Used as metadata to track the origin of basis set parameters.
+      !
       real(F64), dimension(:, :), allocatable :: AtomCoords
       integer, dimension(:), allocatable :: ShellCenters
       integer, dimension(:), allocatable :: ShellParamsIdx
@@ -127,6 +132,7 @@ module basis_definitions
       integer, dimension(:, :), allocatable :: CartPolyZ
       real(F64), dimension(:), allocatable :: R2Max
       integer, dimension(:), allocatable :: MaxAtomL
+      type(TBasisAssignment) :: Assignment
       logical :: SpherAO
       integer :: NShellParams
       integer :: NShells
