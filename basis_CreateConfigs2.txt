@@ -1,0 +1,163 @@
++   subroutine basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, BasisAssign)
++      type(TBasisConfig), allocatable, intent(out)    :: Configs(:)
++      integer, dimension(:), allocatable, intent(out) :: AtomConfigMap
++      integer, intent(out)                            :: NConfigs
++      type(TSystem), intent(in)                       :: System
++      type(TBasisAssignment), intent(in)              :: BasisAssign
++
++      integer :: a, c, Z
++      character(:), allocatable :: PathToParams
++      character(:), allocatable :: PathToGuessDir
++      character(:), allocatable :: PathToGuess
++      logical :: GuessAvailable
++      logical :: found
++      logical :: all_assigned
++
++      if (.not. BasisAssign%Initialized) then
++         call msg("basis_CreateConfigs: BasisAssign is not initialized.", MSG_ERROR)
++         error stop
++      end if
++
++      allocate(Configs(System%NAtoms))
++      allocate(AtomConfigMap(System%NAtoms))
++      NConfigs = 0
++      all_assigned = .true.
++
++      do a = 1, System%NAtoms
++         Z = System%ZNumbers(a)
++         PathToParams = ""
++         PathToGuessDir = ""
++         PathToGuess = ""
++         GuessAvailable = .false.
++
++         if (BasisAssign%Initialized) then
+             !
+-            ! Create a new instance of a user-defined type which encapsulates all necessary
+-            ! basis-set data used to calculate integrals in the selected Gaussian-type
+-            ! atomic orbital basis set. The coefficients are loaded from a text file
+-            ! in the EMSL database format for the GAMESS program.
++            ! Priority 1: Atom-specific
+             !
+-            ! The data includes contraction coefficients, exponents, number of primitives,
+-            ! angular momenta, centers on which the functions are located, location of a particular
+-            ! orbital shell within a vector of AO indices, etc.
++            do c = 1, BasisAssign%NAtomRules
++               if (BasisAssign%AtomRules(c)%id == a) then
++                  PathToParams = BasisAssign%AtomRules(c)%PathToParams
++                  if (BasisAssign%AtomRules(c)%GuessAvailable) then
++                     PathToGuessDir = BasisAssign%AtomRules(c)%PathToGuessDir
++                     GuessAvailable = .true.
++                  end if
++                  exit
++               end if
++            end do
+             !
+-            ! The same instance of TAOBasis can be used for subroutines which work in Cartesian
+-            ! and spherical Gaussian basis sets. That is because the relevant quantities
+-            ! are computed for both spherical harmonic and Cartesian basis sets, regardless
+-            ! of the value of SpherAO. The SpherAO parameter can be safely changed
+-            ! without invoking this subroutine again.
++            ! Priority 2: Element-specific
+             !
+-            type(TAOBasis), intent(out)   :: AOBasis
+-            type(TSystem), intent(in)     :: System
+-            character(*), intent(in)      :: FilePath
+-            logical, intent(in)           :: SpherAO
+-            logical, optional, intent(in) :: SortAngularMomenta
+-
+-            integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap
+-            integer :: NElements
+-            integer :: Z, L, k, p, p0, p1, a, q, q0, q1
+-            integer :: NShellParamsTotal, MaxNPrimitives, LmaxGTO
+-            integer :: MaxNPrimitives_k, LmaxGTO_k
+-            integer :: MaxNAngFuncCart
+-            integer :: n
+-            integer :: NShells, NAtoms
+-            integer, dimension(:), allocatable :: ShellMomentum
+-            integer, dimension(:), allocatable :: NPrimitives
+-            integer, dimension(:), allocatable :: NShellParams
+-            integer, dimension(:), allocatable :: ShellParamsIdx, ShellCenters
+-            integer, dimension(:, :), allocatable :: ElementShellsMap
+-            integer, dimension(:), allocatable :: S
+--
++   end subroutine basis_CreateConfigs
++
++
++   subroutine basis_AtomicRhoGuess(Rho_ao, AOBasis, System, SpherAO)
++      !
++      ! Generate guess density matrix as a superposition of atomic block-diagonal densities.
++      ! Read the correct guess density for each atom from disk using the AOBasis%Assignment rules.
++      !
++      ! Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.
++      !
++      ! The guess density is generated only for non-ghost (real) atoms.
++      !
++      real(F64), dimension(:, :), intent(out) :: Rho_ao
++      type(TAOBasis), intent(in)              :: AOBasis
++      type(TSystem), intent(in)               :: System
++      logical, intent(in)                     :: SpherAO
++
++      type(TBasisConfig), allocatable :: Configs(:)
++      integer, dimension(:), allocatable :: AtomConfigMap
++      integer :: NConfigs
++      integer :: a, c, s
++      integer :: i0, i1, p0, p1
++      integer :: sh1, sh2
++      logical :: rholoaded
++
++      if (AOBasis%Fused) then
++         call msg("basis_AtomicRhoGuess: Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.", MSG_ERROR)
++         stop
++      end if
++
++      Rho_ao = ZERO
++
++      call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, AOBasis%Assignment)
++
++      associate(AtomShellMap => AOBasis%AtomShellMap, &
++         ShellLocSpher => AOBasis%ShellLocSpher, &
++         ShellLocCart => AOBasis%ShellLocCart, &
++         ShellParamsIdx => AOBasis%ShellParamsIdx)
++         do c = 1, NConfigs
++            if (Configs(c)%GuessAvailable) then
++               rholoaded = .false.
++               do s = 1, 2
++                  do a = System%RealAtoms(1, s), System%RealAtoms(2, s)
++                     if (AtomConfigMap(a) == c) then
++                        !
++                        ! Determine the basis function boundaries for atom
++                        ! Since fused basis sets are not supported, there is only 1 segment
++                        !
++                        sh1 = AtomShellMap(1, 1, a)
++                        sh2 = AtomShellMap(2, 1, a)
++
++                        if (SpherAO) then
++                           i0 = ShellLocSpher(sh1)
++                           i1 = ShellLocSpher(sh2) + AOBasis%NAngFuncSpher(ShellParamsIdx(sh2)) - 1
+                         else
+-                              if (line==ElementLabel) then
+-                                    found_element = .true.
+-                              end if
++                           i0 = ShellLocCart(sh1)
++                           i1 = ShellLocCart(sh2) + AOBasis%NAngFuncCart(ShellParamsIdx(sh2)) - 1
+                         end if
+-                  end if
+-            end do
+-            NShellParams = 0
+-            LmaxGTO = -1
+-            MaxNPrimitives = -1
+-            if (found_element .and. .not. eof) then
+-                  end_of_data = .false.
+-                  do while (.not. end_of_data)
+-                        call io_text_readline(raw_line, u, eof)
+-                        line = uppercase(trim(raw_line))
+-                        blank = isblank(line)
+-                        comment = iscomment(line)
+-                        endkey = (line=="$END")
+-                        if (eof .or. blank .or. comment .or. endkey) end_of_data = .true.
+-                        if (.not. end_of_data) then
+-                              read(line, *) Momentum, NPrimitives
+-                              L = basis_Ang2Int(Momentum)
+-                              if (L == -2) then
+-                                    call msg("Unknown angular function symbol", MSG_ERROR)
+-                                    error stop

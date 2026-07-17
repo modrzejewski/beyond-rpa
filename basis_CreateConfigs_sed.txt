@@ -1,0 +1,75 @@
++         end do
++         if (.not. found) then
++            if (allocated(this%default_string)) then
++               stringlist_get = this%default_string
+             end if
+-      end function rfield
+-
+-
+-      pure function cfield(s, w)
+-            !
+-            ! Create a centered character string of width W.
+-            ! Centered cells are useful for printing table headers.
+-            !
+-            character(:), allocatable :: cfield
+-            character(*), intent(in) :: s
+-            integer, intent(in) :: w
+-            integer :: k0, k1, l, ls
+-
+-            ls = len_trim(s)
+-            if (ls >= w) then
+-                  cfield = s(1:ls)
++         end if
++      else if (allocated(this%default_string)) then
++         stringlist_get = this%default_string
++      end if
++   end function stringlist_get
++
++
++   subroutine stringlist_free(this)
++      class(tstringlist), intent(inout) :: this
++      type(tstring), pointer :: current, next
++      integer :: k
++
++      if (allocated(this%default_string)) deallocate(this%default_string)
++      if (this%nitems == 0) then
++         return
++      else
++         current => this%first
++         do k = 1, this%nitems
++            if (k < this%nitems) then
++               next => current%next
++               deallocate(current)
++               current => next
+             else
+-                  allocate(character(w) :: cfield)
+-                  l = min(w, len_trim(s))
+-                  k0 = (w - l) / 2 + 1
+-                  k1 = k0 + l - 1
+-                  cfield(1:w) = " "
+-                  cfield(k0:k1) = s(1:l)
++               deallocate(current)
+             end if
+-      end function cfield
+-
+-
+-      pure function uppercase(s)
+-            !
+-            ! Convert characters to uppercase.
+-            ! Numbers and special characters are ignored.
+-            !
+-            character(:), allocatable :: uppercase
+-            character(*), intent(in)  :: s
+-            integer :: idx, k
+-
+-            uppercase = s
+-            do k = 1, len_trim(s)
+-                  idx = index(STR_LETTER_LOWER, s(k:k))
+-                  if (idx > 0) then
+-                        uppercase(k:k) = STR_LETTER_UPPER(idx:idx)
+-                  end if
+-            end do
+-      end function uppercase
+-
+-
+-      pure function lowercase(s)

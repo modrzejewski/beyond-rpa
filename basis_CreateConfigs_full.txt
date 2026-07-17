@@ -1,0 +1,163 @@
++   use io
++   use string
++   use Auto2e
++   use grid
++   use real_linalg
++   use basis_definitions
++
++   implicit none
++
++
++   type TBasisConfig
++      !
++      ! Basis set configuration for an atom or an element
++      ! ---
++      !
++      ! Atomic number
++      !
++      integer :: Z
++      !
++      ! Path to the text file with basis set parameters
++      !
++      character(:), allocatable :: PathToParams
++      !
++      ! Path to guess density matrix
++      !
++      character(:), allocatable :: PathToGuess
++      logical :: GuessAvailable
++      !
++      ! Number of shell parameter sets per atom
++      !
++      integer :: NShellParams
++      !
++      ! Offset in global shell parameter arrays
++      !
++      integer :: Offset
++   end type TBasisConfig
++
+ contains
+
+-      subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta)
++   subroutine basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, BasisAssign)
++      type(TBasisConfig), allocatable, intent(out)    :: Configs(:)
++      integer, dimension(:), allocatable, intent(out) :: AtomConfigMap
++      integer, intent(out)                            :: NConfigs
++      type(TSystem), intent(in)                       :: System
++      type(TBasisAssignment), intent(in)              :: BasisAssign
++
++      integer :: a, c, Z
++      character(:), allocatable :: PathToParams
++      character(:), allocatable :: PathToGuessDir
++      character(:), allocatable :: PathToGuess
++      logical :: GuessAvailable
++      logical :: found
++      logical :: all_assigned
++
++      if (.not. BasisAssign%Initialized) then
++         call msg("basis_CreateConfigs: BasisAssign is not initialized.", MSG_ERROR)
++         error stop
++      end if
++
++      allocate(Configs(System%NAtoms))
++      allocate(AtomConfigMap(System%NAtoms))
++      NConfigs = 0
++      all_assigned = .true.
++
++      do a = 1, System%NAtoms
++         Z = System%ZNumbers(a)
++         PathToParams = ""
++         PathToGuessDir = ""
++         PathToGuess = ""
++         GuessAvailable = .false.
++
++         if (BasisAssign%Initialized) then
+             !
+-            ! Create a new instance of a user-defined type which encapsulates all necessary
+-            ! basis-set data used to calculate integrals in the selected Gaussian-type
+-            ! atomic orbital basis set. The coefficients are loaded from a text file
+-            ! in the EMSL database format for the GAMESS program.
++            ! Priority 1: Atom-specific
+             !
+-            ! The data includes contraction coefficients, exponents, number of primitives,
+--
+-            integer :: u
+-            logical :: eof
+-            logical :: found_element, end_of_data
+-            logical :: blank, comment, endkey
+-            character(1) :: Momentum
+-            integer :: NPrimitives, L, k
+-            character(:), allocatable :: ElementLabel
+-            character(:), allocatable :: raw_line, line
+-
+-            if (Z < 1 .or. Z > KNOWN_ELEMENTS) then
+-                  call msg("Elements list includes invalid element", MSG_ERROR)
+-                  error stop
++            if (.not. found) then
++               NConfigs = NConfigs + 1
++               Configs(NConfigs)%Z = Z
++               Configs(NConfigs)%PathToParams = PathToParams
++               Configs(NConfigs)%GuessAvailable = GuessAvailable
++               if (GuessAvailable) then
++                  Configs(NConfigs)%PathToGuess = PathToGuess
++               end if
++               AtomConfigMap(a) = NConfigs
+             end if
+-            u = io_text_open(FilePath, "OLD")
+-            ElementLabel = uppercase(trim(ELNAME_LONG(Z)))
+-            eof = .false.
+-            found_element = .false.
+-            do while (.not. (eof .or. found_element))
+-                  call io_text_readline(raw_line, u, eof)
+-                  if (.not. eof) then
+-                        line = uppercase(trim(raw_line))
+-                        if (isblank(line) .or. iscomment(line)) then
+-                              cycle
+-                        else if (line=="$END") then
+-                              eof = .true.
++         end if
++      end do
++
++      if (.not. all_assigned) then
++         error stop
++      end if
++   end subroutine basis_CreateConfigs
++
++
++   subroutine basis_AtomicRhoGuess(Rho_ao, AOBasis, System, SpherAO)
++      !
++      ! Generate guess density matrix as a superposition of atomic block-diagonal densities.
++      ! Read the correct guess density for each atom from disk using the AOBasis%Assignment rules.
++      !
++      ! Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.
++      !
++      ! The guess density is generated only for non-ghost (real) atoms.
++      !
++      real(F64), dimension(:, :), intent(out) :: Rho_ao
++      type(TAOBasis), intent(in)              :: AOBasis
++      type(TSystem), intent(in)               :: System
++      logical, intent(in)                     :: SpherAO
++
++      type(TBasisConfig), allocatable :: Configs(:)
++      integer, dimension(:), allocatable :: AtomConfigMap
++      integer :: NConfigs
++      integer :: a, c, s
++      integer :: i0, i1, p0, p1
++      integer :: sh1, sh2
++      logical :: rholoaded
++
++      if (AOBasis%Fused) then
++         call msg("basis_AtomicRhoGuess: Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.", MSG_ERROR)
++         stop
++      end if
++
++      Rho_ao = ZERO
++
++      call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, AOBasis%Assignment)
++
++      associate(AtomShellMap => AOBasis%AtomShellMap, &
++         ShellLocSpher => AOBasis%ShellLocSpher, &
++         ShellLocCart => AOBasis%ShellLocCart, &
++         ShellParamsIdx => AOBasis%ShellParamsIdx)
++         do c = 1, NConfigs
++            if (Configs(c)%GuessAvailable) then
++               rholoaded = .false.

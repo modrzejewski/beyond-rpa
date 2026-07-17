@@ -1,0 +1,83 @@
+-            ElementLabel = uppercase(trim(ELNAME_LONG(Z)))
+-            eof = .false.
+-            found_element = .false.
+-            do while (.not. (eof .or. found_element))
+-                  call io_text_readline(raw_line, u, eof)
+-                  if (.not. eof) then
+-                        line = uppercase(trim(raw_line))
+-                        if (isblank(line) .or. iscomment(line)) then
+-                              cycle
+-                        else if (line=="$END") then
+-                              eof = .true.
++         end if
++      end do
++
++      if (.not. all_assigned) then
++         error stop
++      end if
++   end subroutine basis_CreateConfigs
++
++
++   subroutine basis_AtomicRhoGuess(Rho_ao, AOBasis, System, SpherAO)
++      !
++      ! Generate guess density matrix as a superposition of atomic block-diagonal densities.
++      ! Read the correct guess density for each atom from disk using the AOBasis%Assignment rules.
++      !
++      ! Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.
++      !
++      ! The guess density is generated only for non-ghost (real) atoms.
++      !
++      real(F64), dimension(:, :), intent(out) :: Rho_ao
++      type(TAOBasis), intent(in)              :: AOBasis
++      type(TSystem), intent(in)               :: System
++      logical, intent(in)                     :: SpherAO
++
++      type(TBasisConfig), allocatable :: Configs(:)
++      integer, dimension(:), allocatable :: AtomConfigMap
++      integer :: NConfigs
++      integer :: a, c, s
++      integer :: i0, i1, p0, p1
++      integer :: sh1, sh2
++      logical :: rholoaded
+--
++
++                        if (.not. rholoaded) then
++                           call io_text_read(Rho_ao(i0:i1, i0:i1), Configs(c)%PathToGuess)
++                           rholoaded = .true.
++                           p0 = i0
++                           p1 = i1
++                        else
++                           Rho_ao(i0:i1, i0:i1) = Rho_ao(p0:p1, p0:p1)
+                         end if
++                     end if
+                   end do
++               end do
++            else
++               call msg("Note: Incomplete SCF guess. Atomic density missing for " // trim(elname_short(Configs(c)%Z)))
+             end if
+-            if (NShellParams == 0 .or. LmaxGTO < 0 .or. MaxNPrimitives <= 0) then
+-                  call msg("Invalid basis set parameters for " // ElementLabel, MSG_ERROR)
+-                  error stop
++         end do
++      end associate
++   end subroutine basis_AtomicRhoGuess
++
++
++   subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta, BasisAssign)
++      !
++      ! Create a new instance of a user-defined type which encapsulates all necessary
++      ! basis-set data used to calculate integrals in the selected Gaussian-type
++      ! atomic orbital basis set. The coefficients are loaded from a text file
++      ! in the EMSL database format for the GAMESS program.
++      !
++      ! The data includes contraction coefficients, exponents, number of primitives,
++      ! angular momenta, centers on which the functions are located, location of a particular
++      ! orbital shell within a vector of AO indices, etc.
++      !
++      ! The same instance of TAOBasis can be used for subroutines which work in Cartesian
++      ! and spherical Gaussian basis sets. That is because the relevant quantities
++      ! are computed for both spherical harmonic and Cartesian basis sets, regardless
++      ! of the value of SpherAO. The SpherAO parameter can be safely changed
++      ! without invoking this subroutine again.
++      !
++      ! Arguments:
