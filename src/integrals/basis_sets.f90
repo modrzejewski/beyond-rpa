@@ -19,15 +19,28 @@ module basis_sets
 
    type TBasisConfig
       !
-      ! Basis set configuration for an atom or an element.
-      ! Z: Atomic number
-      ! PathToParams: Path to basis set parameters
-      ! NShellParams: Number of shell parameters per atom
-      ! Offset: Offset in global shell parameter arrays
+      ! Basis set configuration for an atom or an element
+      ! ---
+      !
+      ! Atomic number
       !
       integer :: Z
+      !
+      ! Path to the text file with basis set parameters
+      !
       character(:), allocatable :: PathToParams
+      !
+      ! Path to guess density matrix
+      !
+      character(:), allocatable :: PathToGuess
+      logical :: GuessAvailable
+      !
+      ! Number of shell parameter sets per atom
+      !
       integer :: NShellParams
+      !
+      ! Offset in global shell parameter arrays
+      !
       integer :: Offset
    end type TBasisConfig
 
@@ -42,8 +55,16 @@ contains
 
       integer :: a, c, Z
       character(:), allocatable :: PathToParams
+      character(:), allocatable :: PathToGuessDir
+      character(:), allocatable :: PathToGuess
+      logical :: GuessAvailable
       logical :: found
       logical :: all_assigned
+
+      if (.not. BasisAssign%Initialized) then
+         call msg("basis_CreateConfigs: BasisAssign is not initialized.", MSG_ERROR)
+         error stop
+      end if
 
       allocate(Configs(System%NAtoms))
       allocate(AtomConfigMap(System%NAtoms))
@@ -53,6 +74,10 @@ contains
       do a = 1, System%NAtoms
          Z = System%ZNumbers(a)
          PathToParams = ""
+         PathToGuessDir = ""
+         PathToGuess = ""
+         GuessAvailable = .false.
+
          if (BasisAssign%Initialized) then
             !
             ! Priority 1: Atom-specific
@@ -60,6 +85,10 @@ contains
             do c = 1, BasisAssign%NAtomRules
                if (BasisAssign%AtomRules(c)%id == a) then
                   PathToParams = BasisAssign%AtomRules(c)%PathToParams
+                  if (BasisAssign%AtomRules(c)%GuessAvailable) then
+                     PathToGuessDir = BasisAssign%AtomRules(c)%PathToGuessDir
+                     GuessAvailable = .true.
+                  end if
                   exit
                end if
             end do
@@ -70,6 +99,10 @@ contains
                do c = 1, BasisAssign%NElementRules
                   if (BasisAssign%ElementRules(c)%id == Z) then
                      PathToParams = BasisAssign%ElementRules(c)%PathToParams
+                     if (BasisAssign%ElementRules(c)%GuessAvailable) then
+                        PathToGuessDir = BasisAssign%ElementRules(c)%PathToGuessDir
+                        GuessAvailable = .true.
+                     end if
                      exit
                   end if
                end do
@@ -79,6 +112,18 @@ contains
             !
             if (PathToParams == "" .and. BasisAssign%FallbackAvailable) then
                PathToParams = BasisAssign%GlobalFallback%PathToParams
+               if (BasisAssign%GlobalFallback%GuessAvailable) then
+                  PathToGuessDir = BasisAssign%GlobalFallback%PathToGuessDir
+                  GuessAvailable = .true.
+               end if
+            end if
+         end if
+
+         if (GuessAvailable) then
+            PathToGuess = PathToGuessDir // trim(lowercase(elname_short(Z))) // ".txt"
+            if (.not. io_exists(PathToGuess)) then
+               GuessAvailable = .false.
+               PathToGuess = ""
             end if
          end if
 
@@ -88,7 +133,7 @@ contains
                all_assigned = .false.
             end if
             call msg("No basis set assigned for atom " // str(a) // &
-                   & " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+            & " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
          else
             found = .false.
             do c = 1, NConfigs
@@ -102,6 +147,10 @@ contains
                NConfigs = NConfigs + 1
                Configs(NConfigs)%Z = Z
                Configs(NConfigs)%PathToParams = PathToParams
+               Configs(NConfigs)%GuessAvailable = GuessAvailable
+               if (GuessAvailable) then
+                  Configs(NConfigs)%PathToGuess = PathToGuess
+               end if
                AtomConfigMap(a) = NConfigs
             end if
          end if
@@ -111,6 +160,82 @@ contains
          error stop
       end if
    end subroutine basis_CreateConfigs
+
+
+   subroutine basis_AtomicRhoGuess(Rho_ao, AOBasis, System, SpherAO)
+      !
+      ! Generate guess density matrix as a superposition of atomic block-diagonal densities.
+      ! Read the correct guess density for each atom from disk using the AOBasis%Assignment rules.
+      !
+      ! Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.
+      !
+      ! The guess density is generated only for non-ghost (real) atoms.
+      !
+      real(F64), dimension(:, :), intent(out) :: Rho_ao
+      type(TAOBasis), intent(in)              :: AOBasis
+      type(TSystem), intent(in)               :: System
+      logical, intent(in)                     :: SpherAO
+
+      type(TBasisConfig), allocatable :: Configs(:)
+      integer, dimension(:), allocatable :: AtomConfigMap
+      integer :: NConfigs
+      integer :: a, c, s
+      integer :: i0, i1, p0, p1
+      integer :: sh1, sh2
+      logical :: rholoaded
+
+      if (AOBasis%Fused) then
+         call msg("basis_AtomicRhoGuess: Fused basis sets made by composition of two basis sets with basis_FuseBasisSets are not supported.", MSG_ERROR)
+         stop
+      end if
+
+      Rho_ao = ZERO
+
+      call basis_CreateConfigs(Configs, AtomConfigMap, NConfigs, System, AOBasis%Assignment)
+
+      associate(AtomShellMap => AOBasis%AtomShellMap, &
+         ShellLocSpher => AOBasis%ShellLocSpher, &
+         ShellLocCart => AOBasis%ShellLocCart, &
+         ShellParamsIdx => AOBasis%ShellParamsIdx)
+         do c = 1, NConfigs
+            if (Configs(c)%GuessAvailable) then
+               rholoaded = .false.
+               do s = 1, 2
+                  do a = System%RealAtoms(1, s), System%RealAtoms(2, s)
+                     if (AtomConfigMap(a) == c) then
+                        !
+                        ! Determine the basis function boundaries for atom
+                        ! Since fused basis sets are not supported, there is only 1 segment
+                        !
+                        sh1 = AtomShellMap(1, 1, a)
+                        sh2 = AtomShellMap(2, 1, a)
+
+                        if (SpherAO) then
+                           i0 = ShellLocSpher(sh1)
+                           i1 = ShellLocSpher(sh2) + AOBasis%NAngFuncSpher(ShellParamsIdx(sh2)) - 1
+                        else
+                           i0 = ShellLocCart(sh1)
+                           i1 = ShellLocCart(sh2) + AOBasis%NAngFuncCart(ShellParamsIdx(sh2)) - 1
+                        end if
+
+                        if (.not. rholoaded) then
+                           call io_text_read(Rho_ao(i0:i1, i0:i1), Configs(c)%PathToGuess)
+                           rholoaded = .true.
+                           p0 = i0
+                           p1 = i1
+                        else
+                           Rho_ao(i0:i1, i0:i1) = Rho_ao(p0:p1, p0:p1)
+                        end if
+                     end if
+                  end do
+               end do
+            else
+               call msg("Note: Incomplete SCF guess. Atomic density missing for " // trim(elname_short(Configs(c)%Z)))
+            end if
+         end do
+      end associate
+   end subroutine basis_AtomicRhoGuess
+
 
    subroutine basis_NewAOBasis(AOBasis, System, FilePath, SpherAO, SortAngularMomenta, BasisAssign)
       !
@@ -1062,6 +1187,12 @@ contains
 
       call basis_NewAOBasis_2(AOBasisAB, System%AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
          NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2Max, SpherAO)
+      AOBasisAB%Fused = .true.
+      !
+      ! The metadata about the origin of basis set parameters
+      ! is not carried to the fused basis object.
+      !
+      AOBasisAB%Assignment%Initialized = .false.
    end subroutine basis_FuseBasisSets
 
 

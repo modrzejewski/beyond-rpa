@@ -5,7 +5,6 @@ module real_scf
       use gparam
       use h_xcfunc
       use scf_definitions
-      use guess
       use real_linalg
       use uks_arh
       use mbd
@@ -243,11 +242,13 @@ contains
       end subroutine scf_DispersionCorrection
             
 
-      subroutine scf_RhoStart(Rho_cao, GuessType, PathA, PathB)
+      subroutine scf_RhoStart(Rho_cao, GuessType, PathA, PathB, AOBasis, System)
             real(F64), dimension(:, :, :), intent(out) :: Rho_cao
-            integer, intent(in) :: GuessType
-            character(*), intent(in) :: PathA
-            character(*), intent(in) :: PathB
+            integer, intent(in)                        :: GuessType
+            character(*), intent(in)                   :: PathA
+            character(*), intent(in)                   :: PathB
+            type(TAOBasis), intent(in)                 :: AOBasis
+            type(TSystem), intent(in)                  :: System
 
             integer :: NAOCart, NSpin
             integer :: ThisImage, NImages
@@ -263,7 +264,10 @@ contains
                         Rho_cao = ZERO
                   case (SCF_GUESS_ATOMIC)
                         call msg("SCF guess: superposition of atomic densities")
-                        call guess_atomic(Rho_cao(:, :, 1))
+                        !
+                        ! Guess density matrices are stored in the Cartesian Gaussian AO basis
+                        !
+                        call basis_AtomicRhoGuess(Rho_cao(:, :, 1), AOBasis, System, .false.)
                         if (NSpin == 2) then
                               Rho_cao(:, :, 1) = (ONE/TWO) * Rho_cao(:, :, 1)
                               Rho_cao(:, :, 2) = Rho_cao(:, :, 1)
@@ -1579,7 +1583,7 @@ contains
                   if (allocated(SCFParams%guess_rhoa_path)) GuessPathA = SCFParams%guess_rhoa_path
                   if (allocated(SCFParams%guess_rhob_path)) GuessPathB = SCFParams%guess_rhob_path
                   allocate(SCFOutput%Rho_cao(NAOCart, NAOCart, NSpins))
-                  call scf_RhoStart(SCFOutput%Rho_cao, guess_type, GuessPathA, GuessPathB)
+                  call scf_RhoStart(SCFOutput%Rho_cao, guess_type, GuessPathA, GuessPathB, AOBasis, System)
                   ! ------------------------------------------------------------------------
                   !                     MAIN SELF-CONSISTENT FIELD LOOP
                   ! ------------------------------------------------------------------------

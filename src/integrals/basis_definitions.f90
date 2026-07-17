@@ -29,11 +29,11 @@ module basis_definitions
       !
       character(:), allocatable :: DisplayedName
       !
-      ! Path to the density guess file for the
-      ! given basis set. Allocated only if the
-      ! guess is available
+      ! Path to the directory containing guess density
+      ! files for the given basis set. Allocated only
+      ! if guesses are available for this basis set.
       !
-      character(:), allocatable :: PathToGuess
+      character(:), allocatable :: PathToGuessDir
       logical :: GuessAvailable = .false.
       !
       ! Flag indicating if the basis set is loaded
@@ -107,6 +107,7 @@ module basis_definitions
       !   NAOCart          : Total number of Cartesian basis functions.
       !   NAtoms           : Number of atoms.
       !   MaxNShells       : Maximum shells assigned to any single atom.
+      !   Fused            : True if this basis set was created by joining two TAOBasis objects.
       !
       ! Arrays:
       !   AtomCoords       : (3, NAtoms) Cartesian coordinates of atoms.
@@ -116,6 +117,8 @@ module basis_definitions
       !   AtomShellMap     : (2, MaxNShellSegments, NAtoms) Start and end shell indices for
       !                      contiguous segments.
       !   AtomShellN       : (NAtoms) Number of contiguous shell segments per atom.
+      !                      This can be greater than one only if it's a fused basis set
+      !                      created by joining two TAOBasis objects with basis_FuseBasisSets.
       !   NPrimitives      : (NShellParams) Number of Gaussian primitives per shell.
       !   CntrCoeffs       : (MaxNPrimitives, NShellParams) Contraction coefficients.
       !   Exponents        : (MaxNPrimitives, NShellParams) Gaussian exponents.
@@ -160,6 +163,7 @@ module basis_definitions
       integer, dimension(:), allocatable :: MaxAtomL
       type(TBasisAssignment) :: Assignment
       logical :: SpherAO
+      logical :: Fused = .false.
       integer :: NShellParams
       integer :: NShells
       integer :: LmaxGTO
@@ -556,7 +560,13 @@ contains
 
       if (allocated(BasisAssign%GuessDir) .and. Rule%FromLibrary) then
          Rule%GuessAvailable = .true.
-         Rule%PathToGuess = BasisAssign%GuessDir // Rule%BaseName // ".txt"
+         !
+         ! GuessDir points to a root directory containing guess density files.
+         ! Each basis set has its own subdirectory under GuessDir named after
+         ! the BaseName of the basis set. The guess files for individual elements
+         ! will reside inside this subdirectory.
+         !
+         Rule%PathToGuessDir = BasisAssign%GuessDir // Rule%BaseName // "/"
       else
          Rule%GuessAvailable = .false.
       end if
