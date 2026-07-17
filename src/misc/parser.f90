@@ -1565,7 +1565,7 @@ contains
          BASIS_SET_NAME = BasisAssign%GlobalFallback%DisplayedName
 
          if (BasisAssign%GlobalFallback%GuessAvailable) then
-            ATOMIC_GUESS_DIR = BasisAssign%GlobalFallback%PathToGuess
+            ATOMIC_GUESS_DIR = BasisAssign%GlobalFallback%PathToGuessDir
          end if
       end if
 
