@@ -174,9 +174,83 @@ module basis_definitions
       integer :: NAOCart
       integer :: NAtoms
       integer :: MaxNShells
+   contains
+      procedure :: display => basis_display
    end type TAOBasis
 
 contains
+
+   subroutine basis_display(this)
+      class(TAOBasis), intent(in) :: this
+
+      integer :: i, z_num, atom_idx
+      integer :: n_items, current_item
+      character(:), allocatable :: param_str
+      character(2)  :: sym
+      integer, parameter :: w = 45 ! Control the width of the label column
+
+      call msg("Atomic orbital basis set")
+      call dotted_separator(76)
+
+      call imsg("atomic centers", this%NAtoms, width=w)
+      call imsg("shell parameter sets", this%NShellParams, width=w)
+      call imsg("spherical AOs", this%NAOSpher, width=w)
+      call imsg("max angular momentum", this%LmaxGTO, width=w)
+
+      if (this%Assignment%is_uniform()) then
+         if (this%Assignment%FallbackAvailable) then
+            call smsg("parameter set", this%Assignment%GlobalFallback%DisplayedName, width=w)
+         else
+            if (this%Assignment%NElementRules > 0) then
+               call smsg("parameter set", this%Assignment%ElementRules(1)%DisplayedName, width=w)
+            else if (this%Assignment%NAtomRules > 0) then
+               call smsg("parameter set", this%Assignment%AtomRules(1)%DisplayedName, width=w)
+            end if
+         end if
+      else
+         call msg(" parameter set")
+
+         n_items = 0
+         if (this%Assignment%FallbackAvailable) n_items = n_items + 1
+         n_items = n_items + this%Assignment%NElementRules + this%Assignment%NAtomRules
+
+         current_item = 0
+
+         if (this%Assignment%FallbackAvailable) then
+            current_item = current_item + 1
+            if (current_item < n_items) then
+               call smsg("   ├─ default", this%Assignment%GlobalFallback%DisplayedName, width=w)
+            else
+               call smsg("   └─ default", this%Assignment%GlobalFallback%DisplayedName, width=w)
+            end if
+         end if
+
+         do i = 1, this%Assignment%NElementRules
+            current_item = current_item + 1
+            z_num = this%Assignment%ElementRules(i)%id
+            sym = ELNAME_SHORT(z_num)
+            if (current_item < n_items) then
+               param_str = "   ├─ " // trim(sym)
+            else
+               param_str = "   └─ " // trim(sym)
+            end if
+            call smsg(param_str, this%Assignment%ElementRules(i)%DisplayedName, width=w)
+         end do
+
+         do i = 1, this%Assignment%NAtomRules
+            current_item = current_item + 1
+            atom_idx = this%Assignment%AtomRules(i)%id
+            if (current_item < n_items) then
+               param_str = "   ├─ atom #" // str(atom_idx)
+            else
+               param_str = "   └─ atom #" // str(atom_idx)
+            end if
+            call smsg(param_str, this%Assignment%AtomRules(i)%DisplayedName, width=w)
+         end do
+      end if
+      call dotted_separator(76)
+   end subroutine basis_display
+
 
    subroutine basis_add_atom_rule(BasisAssign, a, Rule)
       class(TBasisAssignment), intent(inout) :: BasisAssign
@@ -403,7 +477,7 @@ contains
          basis_get_atom_rule = this%GlobalFallback
       else
          call msg("No basis set assigned for atom " // str(atom_idx) // &
-                  " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+            " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
          error stop
       end if
    end function basis_get_atom_rule

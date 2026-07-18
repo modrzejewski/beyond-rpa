@@ -97,7 +97,7 @@ contains
       end subroutine geprn
 
       
-      subroutine imsg(s, i, priority)
+      subroutine imsg(s, i, priority, width)
             ! --------------------------------------------------------
             ! Display a label-number message in the two-column format:
             ! DESCRIPTION_STRING  INTEGER_NUMBER
@@ -107,11 +107,17 @@ contains
             character(len=*), intent(in) :: s
             integer, intent(in)          :: i
             integer, optional            :: priority
+            integer, optional, intent(in):: width
            
-            integer, parameter :: firstcol_max_len = 40
-            character(:), allocatable :: label
-            character(firstcol_max_len) :: label0
+            integer :: max_len
+            character(:), allocatable :: label, label0
             integer :: p
+
+            if (present(width)) then
+                  max_len = width
+            else
+                  max_len = 40
+            end if
 
             if (present(priority)) then
                   p = priority
@@ -120,12 +126,14 @@ contains
             end if
             if (this_image() == 1 .or. p > MSG_NORMAL) then
                   if (p >= MSG_PRIORITY_THRESH) then
-                        label = trim(adjustl(s))
-                        if (len(label) < firstcol_max_len) then
+                        label = s
+                        if (len_trim(label) <= max_len) then
+                              allocate(character(max_len) :: label0)
                               label0 = label
                               write(STDOUNIT, "(1X,A,I0)") label0, i
+                              deallocate(label0)
                         else
-                              write(STDOUNIT, "(1X,A)") label // " ..."
+                              write(STDOUNIT, "(1X,A)") trim(label) // " ..."
                               write(STDOUNIT, "(1X,I0)") i
                         end if
                         flush(STDOUNIT)
@@ -134,7 +142,7 @@ contains
       end subroutine imsg
 
 
-      subroutine dmsg(s, d, fmt, priority)
+      subroutine dmsg(s, d, fmt, priority, width)
             ! ------------------------------------------
             ! Display "nubmer of ..." message:
             ! call imsg("NUBER OF A", 20.d+0)
@@ -144,10 +152,18 @@ contains
             real(F64), intent(in)                  :: d
             character(len=*), optional, intent(in) :: fmt
             integer, optional                      :: priority
+            integer, optional, intent(in)          :: width
 
-            character(len=40) :: title
+            character(:), allocatable :: title
             character(len=20) :: strd
-            integer :: p
+            integer :: p, w
+            character(len=20) :: outfmt
+
+            if (present(width)) then
+                  w = width
+            else
+                  w = 40
+            end if
 
             if (present(priority)) then
                   p = priority
@@ -156,20 +172,24 @@ contains
             end if
             if (this_image() == 1 .or. p > MSG_NORMAL) then
                   if (p >= MSG_PRIORITY_THRESH) then
-                        write(title, "(A)") trim(s)
+                        allocate(character(w) :: title)
+                        title = s
+                        write(outfmt, '("(1X,A",I0,",A)")') w
                         if (present(fmt)) then
                               write(strd, "("//trim(fmt)//")") d
-                              write(STDOUNIT, "(1X,A40,A)") adjustl(title), adjustl(strd)
+                              write(STDOUNIT, outfmt) title, adjustl(strd)
                         else
-                              write(STDOUNIT, "(1X,A40,F20.12)") adjustl(title), d
+                              write(outfmt, '("(1X,A",I0,",F20.12)")') w
+                              write(STDOUNIT, outfmt) title, d
                         end if
+                        deallocate(title)
                         flush(STDOUNIT)
                   end if
             end if
       end subroutine dmsg 
 
 
-      subroutine smsg(s1, s2, priority)
+      subroutine smsg(s1, s2, priority, width)
             ! ------------------------------------------
             ! Display "nubmer of ..." message:
             ! call imsg("NUBER OF A", 20.d+0)
@@ -177,9 +197,17 @@ contains
             !
             character(len=*), intent(in) :: s1, s2
             integer, optional            :: priority
+            integer, optional, intent(in):: width
 
-            character(len=40) :: title
-            integer :: p
+            character(:), allocatable :: title
+            integer :: p, w
+            character(len=20) :: fmt
+
+            if (present(width)) then
+                  w = width
+            else
+                  w = 40
+            end if
 
             if (present(priority)) then
                   p = priority
@@ -188,8 +216,11 @@ contains
             end if
             if (this_image() == 1 .or. p > MSG_NORMAL) then
                   if (p >= MSG_PRIORITY_THRESH) then
-                        write(title, "(A)") trim(s1)
-                        write(STDOUNIT, "(1X,A40,A)") adjustl(title), adjustl(s2)
+                        allocate(character(w) :: title)
+                        title = s1
+                        write(fmt, '("(1X,A",I0,",A)")') w
+                        write(STDOUNIT, fmt) title, adjustl(s2)
+                        deallocate(title)
                         flush(STDOUNIT)
                   end if
             end if
@@ -316,4 +347,25 @@ contains
                   end if
             end if
       end subroutine blankline
+
+
+      subroutine dotted_separator(n, priority)
+            integer, intent(in) :: n
+            integer, optional, intent(in) :: priority
+
+            integer :: p
+            character(:), allocatable :: s
+
+            if (present(priority)) then
+                  p = priority
+            else
+                  p = MSG_NORMAL
+            end if
+            if (this_image() == 1 .or. p > MSG_NORMAL) then
+                  if (p >= MSG_PRIORITY_THRESH) then
+                        s = repeat(". ", n / 2 + 1)
+                        write(STDOUNIT, "(1X,A)") s(1:n)
+                  end if
+            end if
+      end subroutine dotted_separator
 end module display
