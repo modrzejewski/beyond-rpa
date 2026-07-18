@@ -56,7 +56,7 @@ program driver
       ! if the Hirshfeld population analysis is requested
       ! ---------------------------------------------------------
       if (SCFParams%Hirsh .and. System%NAtoms>1) then
-            call task_dft_IsolatedHirshfeldAtoms_UKS(SCFParams, System)
+            call task_dft_IsolatedHirshfeldAtoms_UKS(SCFParams, System, BasisAssign)
       else
             allocate(SCFParams%AUXIn(0, 0))
             allocate(SCFParams%HirshVolumes(0))

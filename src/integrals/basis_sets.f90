@@ -59,106 +59,49 @@ contains
       character(:), allocatable :: PathToGuess
       logical :: GuessAvailable
       logical :: found
-      logical :: all_assigned
-
-      if (.not. BasisAssign%Initialized) then
-         call msg("basis_CreateConfigs: BasisAssign is not initialized.", MSG_ERROR)
-         error stop
-      end if
+      type(TBasisRule) :: Rule
 
       allocate(Configs(System%NAtoms))
       allocate(AtomConfigMap(System%NAtoms))
       NConfigs = 0
-      all_assigned = .true.
 
       do a = 1, System%NAtoms
          Z = System%ZNumbers(a)
-         PathToParams = ""
-         PathToGuessDir = ""
          PathToGuess = ""
          GuessAvailable = .false.
 
-         if (BasisAssign%Initialized) then
-            !
-            ! Priority 1: Atom-specific
-            !
-            do c = 1, BasisAssign%NAtomRules
-               if (BasisAssign%AtomRules(c)%id == a) then
-                  PathToParams = BasisAssign%AtomRules(c)%PathToParams
-                  if (BasisAssign%AtomRules(c)%GuessAvailable) then
-                     PathToGuessDir = BasisAssign%AtomRules(c)%PathToGuessDir
-                     GuessAvailable = .true.
-                  end if
-                  exit
-               end if
-            end do
-            !
-            ! Priority 2: Element-specific
-            !
-            if (PathToParams == "") then
-               do c = 1, BasisAssign%NElementRules
-                  if (BasisAssign%ElementRules(c)%id == Z) then
-                     PathToParams = BasisAssign%ElementRules(c)%PathToParams
-                     if (BasisAssign%ElementRules(c)%GuessAvailable) then
-                        PathToGuessDir = BasisAssign%ElementRules(c)%PathToGuessDir
-                        GuessAvailable = .true.
-                     end if
-                     exit
-                  end if
-               end do
-            end if
-            !
-            ! Priority 3: Fallback '*'
-            !
-            if (PathToParams == "" .and. BasisAssign%FallbackAvailable) then
-               PathToParams = BasisAssign%GlobalFallback%PathToParams
-               if (BasisAssign%GlobalFallback%GuessAvailable) then
-                  PathToGuessDir = BasisAssign%GlobalFallback%PathToGuessDir
-                  GuessAvailable = .true.
-               end if
-            end if
-         end if
-
-         if (GuessAvailable) then
+         Rule = BasisAssign%get_atom_rule(a, Z)
+         PathToParams = Rule%PathToParams
+         
+         if (Rule%GuessAvailable) then
+            PathToGuessDir = Rule%PathToGuessDir
             PathToGuess = PathToGuessDir // trim(lowercase(elname_short(Z))) // ".txt"
-            if (.not. io_exists(PathToGuess)) then
-               GuessAvailable = .false.
+            if (io_exists(PathToGuess)) then
+               GuessAvailable = .true.
+            else
                PathToGuess = ""
             end if
          end if
 
-         if (PathToParams == "") then
-            if (all_assigned) then
-               call msg("basis_CreateConfigs: Missing basis set assignments detected.", MSG_ERROR)
-               all_assigned = .false.
+         found = .false.
+         do c = 1, NConfigs
+            if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
+               AtomConfigMap(a) = c
+               found = .true.
+               exit
             end if
-            call msg("No basis set assigned for atom " // str(a) // &
-            & " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
-         else
-            found = .false.
-            do c = 1, NConfigs
-               if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
-                  AtomConfigMap(a) = c
-                  found = .true.
-                  exit
-               end if
-            end do
-            if (.not. found) then
-               NConfigs = NConfigs + 1
-               Configs(NConfigs)%Z = Z
-               Configs(NConfigs)%PathToParams = PathToParams
-               Configs(NConfigs)%GuessAvailable = GuessAvailable
-               if (GuessAvailable) then
-                  Configs(NConfigs)%PathToGuess = PathToGuess
-               end if
-               AtomConfigMap(a) = NConfigs
+         end do
+         if (.not. found) then
+            NConfigs = NConfigs + 1
+            Configs(NConfigs)%Z = Z
+            Configs(NConfigs)%PathToParams = PathToParams
+            Configs(NConfigs)%GuessAvailable = GuessAvailable
+            if (GuessAvailable) then
+               Configs(NConfigs)%PathToGuess = PathToGuess
             end if
+            AtomConfigMap(a) = NConfigs
          end if
       end do
-
-      if (.not. all_assigned) then
-         error stop
-      end if
    end subroutine basis_CreateConfigs
 
 

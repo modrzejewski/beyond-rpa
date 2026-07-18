@@ -74,6 +74,7 @@ module basis_definitions
       procedure :: read_line => basis_ReadAssignLine
       procedure :: assign => basis_assignment_copy
       procedure :: is_uniform => basis_is_uniform
+      procedure :: get_atom_rule => basis_get_atom_rule
       generic :: assignment(=) => assign
    end type TBasisAssignment
 
@@ -358,6 +359,54 @@ contains
          if (this%ElementRules(k)%PathToParams /= RefPath) basis_is_uniform = .false.
       end do
    end function basis_is_uniform
+
+
+   function basis_get_atom_rule(this, atom_idx, Z)
+      !
+      ! Extract basis rule for atom.
+      !
+      ! Resolution priorities:
+      ! 1. Atom-specific rules.
+      ! 2. Element-specific rules.
+      ! 3. Global fallback.
+      !
+      ! Note that in most cases there is only a single uniform basis set
+      ! assigned to the entire system, which corresponds to the global
+      ! fallback without any other atom-specific or element-specific exceptions.
+      !
+      type(TBasisRule)                    :: basis_get_atom_rule
+      class(TBasisAssignment), intent(in) :: this
+      integer, intent(in)                 :: atom_idx
+      integer, intent(in)                 :: Z
+      integer                             :: c
+
+      if (.not. this%Initialized) then
+         call msg("basis_get_atom_rule: TBasisAssignment is not initialized.", MSG_ERROR)
+         error stop
+      end if
+
+      do c = 1, this%NAtomRules
+         if (this%AtomRules(c)%id == atom_idx) then
+            basis_get_atom_rule = this%AtomRules(c)
+            return
+         end if
+      end do
+
+      do c = 1, this%NElementRules
+         if (this%ElementRules(c)%id == Z) then
+            basis_get_atom_rule = this%ElementRules(c)
+            return
+         end if
+      end do
+
+      if (this%FallbackAvailable) then
+         basis_get_atom_rule = this%GlobalFallback
+      else
+         call msg("No basis set assigned for atom " // str(atom_idx) // &
+                  " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+         error stop
+      end if
+   end function basis_get_atom_rule
 
 
    subroutine basis_ResolvePath(Rule, BasisAssign, ValString)
