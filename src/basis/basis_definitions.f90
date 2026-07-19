@@ -192,19 +192,19 @@ contains
       call msg("Atomic orbital basis set")
       call dotted_separator(76)
 
-      call imsg("atomic centers", this%NAtoms, width=w)
-      call imsg("shell parameter sets", this%NShellParams, width=w)
-      call imsg("spherical AOs", this%NAOSpher, width=w)
-      call imsg("max angular momentum", this%LmaxGTO, width=w)
+      call msg(lfield("atomic centers", w) // str(this%NAtoms))
+      call msg(lfield("shell parameter sets", w) // str(this%NShellParams))
+      call msg(lfield("spherical AOs", w) // str(this%NAOSpher))
+      call msg(lfield("max angular momentum", w) // str(this%LmaxGTO))
 
       if (this%Assignment%is_uniform()) then
          if (this%Assignment%FallbackAvailable) then
-            call smsg("parameter set", this%Assignment%GlobalFallback%DisplayedName, width=w)
+            call msg(lfield("parameter set", w) // this%Assignment%GlobalFallback%DisplayedName)
          else
             if (this%Assignment%NElementRules > 0) then
-               call smsg("parameter set", this%Assignment%ElementRules(1)%DisplayedName, width=w)
+               call msg(lfield("parameter set", w) // this%Assignment%ElementRules(1)%DisplayedName)
             else if (this%Assignment%NAtomRules > 0) then
-               call smsg("parameter set", this%Assignment%AtomRules(1)%DisplayedName, width=w)
+               call msg(lfield("parameter set", w) // this%Assignment%AtomRules(1)%DisplayedName)
             end if
          end if
       else
@@ -219,9 +219,9 @@ contains
          if (this%Assignment%FallbackAvailable) then
             current_item = current_item + 1
             if (current_item < n_items) then
-               call smsg("   ├─ default", this%Assignment%GlobalFallback%DisplayedName, width=w)
+               call msg(lfield("   ├─ default", w) // this%Assignment%GlobalFallback%DisplayedName)
             else
-               call smsg("   └─ default", this%Assignment%GlobalFallback%DisplayedName, width=w)
+               call msg(lfield("   └─ default", w) // this%Assignment%GlobalFallback%DisplayedName)
             end if
          end if
 
@@ -234,7 +234,7 @@ contains
             else
                param_str = "   └─ " // trim(sym)
             end if
-            call smsg(param_str, this%Assignment%ElementRules(i)%DisplayedName, width=w)
+            call msg(lfield(param_str, w) // this%Assignment%ElementRules(i)%DisplayedName)
          end do
 
          do i = 1, this%Assignment%NAtomRules
@@ -245,7 +245,7 @@ contains
             else
                param_str = "   └─ atom #" // str(atom_idx)
             end if
-            call smsg(param_str, this%Assignment%AtomRules(i)%DisplayedName, width=w)
+            call msg(lfield(param_str, w) // this%Assignment%AtomRules(i)%DisplayedName)
          end do
       end if
       call dotted_separator(76)
