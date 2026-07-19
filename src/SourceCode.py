@@ -69,7 +69,7 @@ FileList += [("DFT", ["linear-algebra/blas5.f90",
 FileList += [("DFT", ["linear-algebra/blas_olenkifer.f90"])]
 
 FileList += [("DFT", ["integrals/chebinterp.f90",
-                      "integrals/spherh.f90",
+                      "basis/spherh.f90",
                       "integrals/hermite.f90",
                       "integrals/hermite_automatic.f90",
                       "integrals/ericonst.f90",
@@ -412,9 +412,9 @@ FileList += [("DFT", ["integrals/Auto2e/src/auto2e_eri_dddd.f90",
 "integrals/Auto2e/src/auto2e_eri_ssss.f90"])]
 FileList += [("DFT", ["integrals/Auto2e/src/auto2e.f90"])]
 FileList += [("DFT", ["integrals/OverlapIntegrals.f90"])]
-FileList += [("DFT", ["integrals/sphergto.f90"])]
-FileList += [("DFT", ["integrals/basis_definitions.f90"])]
-FileList += [("DFT", ["integrals/basis_sets.f90"])]
+FileList += [("DFT", ["basis/sphergto.f90"])]
+FileList += [("DFT", ["basis/basis_definitions.f90"])]
+FileList += [("DFT", ["basis/basis_sets.f90"])]
 FileList += [("DFT", ["integrals/ECP/PseudopotentialData.f90"])]
 
 FileList += [("DFT", ["integrals/Cholesky/ParallelCholesky.f90",

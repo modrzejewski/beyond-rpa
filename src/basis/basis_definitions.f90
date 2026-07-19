@@ -208,7 +208,7 @@ contains
             end if
          end if
       else
-         call msg(" parameter set")
+         call msg("parameter set")
 
          n_items = 0
          if (this%Assignment%FallbackAvailable) n_items = n_items + 1
