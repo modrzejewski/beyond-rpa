@@ -109,9 +109,8 @@ contains
             integer, optional            :: priority
             integer, optional, intent(in):: width
            
-            integer :: max_len
-            character(:), allocatable :: label, label0
-            integer :: p
+            integer :: max_len, p
+            character(:), allocatable :: label
 
             if (present(width)) then
                   max_len = width
@@ -124,20 +123,13 @@ contains
             else
                   p = MSG_NORMAL
             end if
-            if (this_image() == 1 .or. p > MSG_NORMAL) then
-                  if (p >= MSG_PRIORITY_THRESH) then
-                        label = s
-                        if (len_trim(label) <= max_len) then
-                              allocate(character(max_len) :: label0)
-                              label0 = label
-                              write(STDOUNIT, "(1X,A,I0)") label0, i
-                              deallocate(label0)
-                        else
-                              write(STDOUNIT, "(1X,A)") trim(label) // " ..."
-                              write(STDOUNIT, "(1X,I0)") i
-                        end if
-                        flush(STDOUNIT)
-                  end if
+
+            label = s
+            if (len_trim(label) <= max_len) then
+                  call msg(lfield(label, max_len) // str(i), priority=p)
+            else
+                  call msg(trim(label) // " ...", priority=p)
+                  call msg(str(i), priority=p)
             end if
       end subroutine imsg
 
@@ -154,10 +146,8 @@ contains
             integer, optional                      :: priority
             integer, optional, intent(in)          :: width
 
-            character(:), allocatable :: title
             character(len=20) :: strd
-            integer :: p, w
-            character(len=20) :: outfmt
+            integer :: w, p
 
             if (present(width)) then
                   w = width
@@ -170,22 +160,13 @@ contains
             else
                   p = MSG_NORMAL
             end if
-            if (this_image() == 1 .or. p > MSG_NORMAL) then
-                  if (p >= MSG_PRIORITY_THRESH) then
-                        allocate(character(w) :: title)
-                        title = s
-                        write(outfmt, '("(1X,A",I0,",A)")') w
-                        if (present(fmt)) then
-                              write(strd, "("//trim(fmt)//")") d
-                              write(STDOUNIT, outfmt) title, adjustl(strd)
-                        else
-                              write(outfmt, '("(1X,A",I0,",F20.12)")') w
-                              write(STDOUNIT, outfmt) title, d
-                        end if
-                        deallocate(title)
-                        flush(STDOUNIT)
-                  end if
+
+            if (present(fmt)) then
+                  write(strd, "("//trim(fmt)//")") d
+            else
+                  write(strd, "(F20.12)") d
             end if
+            call msg(lfield(s, w) // adjustl(strd), priority=p)
       end subroutine dmsg 
 
 
@@ -199,9 +180,7 @@ contains
             integer, optional            :: priority
             integer, optional, intent(in):: width
 
-            character(:), allocatable :: title
-            integer :: p, w
-            character(len=20) :: fmt
+            integer :: w, p
 
             if (present(width)) then
                   w = width
@@ -214,16 +193,8 @@ contains
             else
                   p = MSG_NORMAL
             end if
-            if (this_image() == 1 .or. p > MSG_NORMAL) then
-                  if (p >= MSG_PRIORITY_THRESH) then
-                        allocate(character(w) :: title)
-                        title = s1
-                        write(fmt, '("(1X,A",I0,",A)")') w
-                        write(STDOUNIT, fmt) title, adjustl(s2)
-                        deallocate(title)
-                        flush(STDOUNIT)
-                  end if
-            end if
+
+            call msg(lfield(s1, w) // adjustl(s2), priority=p)
       end subroutine smsg 
 
 
