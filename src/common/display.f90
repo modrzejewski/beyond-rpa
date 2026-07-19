@@ -368,4 +368,46 @@ contains
                   end if
             end if
       end subroutine dotted_separator
+
+
+      subroutine framed(text, padding, priority)
+            character(len=*), intent(in)  :: text
+            integer, optional, intent(in) :: padding
+            integer, optional, intent(in) :: priority
+
+            integer :: p, pad, int_width, text_len, total_pad, l_pad, r_pad
+            character(:), allocatable :: hline, out_line
+
+            if (present(priority)) then
+                  p = priority
+            else
+                  p = MSG_NORMAL
+            end if
+
+            if (present(padding)) then
+                  pad = padding
+            else
+                  pad = 10
+            end if
+
+            if (this_image() == 1 .or. p > MSG_NORMAL) then
+                  if (p >= MSG_PRIORITY_THRESH) then
+                        text_len = len_trim(text)
+                        int_width = text_len + pad * 2
+                        
+                        hline = repeat("─", int_width)
+                        
+                        write(STDOUNIT, "(1X,A)") "┌" // hline // "┐"
+                        
+                        total_pad = int_width - text_len
+                        l_pad = total_pad / 2
+                        r_pad = total_pad - l_pad
+                        out_line = "│" // repeat(" ", l_pad) // trim(text) // repeat(" ", r_pad) // "│"
+                        
+                        write(STDOUNIT, "(1X,A)") out_line
+                        write(STDOUNIT, "(1X,A)") "└" // hline // "┘"
+                        flush(STDOUNIT)
+                  end if
+            end if
+      end subroutine framed
 end module display
