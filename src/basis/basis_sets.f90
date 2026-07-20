@@ -10,7 +10,7 @@ module basis_sets
    use io
    use string
    use Auto2e
-   use grid
+   use grid_definitions, only: GRID_AOTHRESH
    use real_linalg
    use basis_definitions
 

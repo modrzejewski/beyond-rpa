@@ -9,19 +9,6 @@ module grid
       implicit none
       save
       !
-      ! Threshold for single orbital values contributing to electronic
-      ! density at each numerical grid point. Too large value of 
-      ! GRID_AOTHRESH can be disastrous when large number of diffuse
-      ! functions is present.
-      !
-      real(F64), parameter :: GRID_AOTHRESH = 1.0E-12_F64
-      !
-      ! Threshold for electronic density. XC contribution
-      ! to the Kohn-Sham matrix is skipped if density at
-      ! a given point in space is below this threshold.
-      !
-      real(F64), parameter :: GRID_RHOTHRESH = 1.0E-12_F64
-      !
       ! ***************************************************************
       !                RADIAL GRID GLOBAL VARIABLES
       ! ***************************************************************

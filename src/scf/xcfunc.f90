@@ -5,6 +5,7 @@ module xcfunc
       use math_constants
       use arithmetic
       use grid
+      use grid_definitions, only: GRID_RHOTHRESH
       use basis
       use br89
       use threads
