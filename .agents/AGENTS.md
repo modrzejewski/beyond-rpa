@@ -13,4 +13,4 @@ This file provides instructions for AI agents interacting with this repository.
 
 ## Formatting, Code Style, Documentation, and Naming
 
-* Please refer to [FORMATTING.md](FORMATTING.md) for detailed rules on coding style, naming conventions, and documentation.
+* Please refer to [DOCUMENTATION.md](DOCUMENTATION.md) for detailed rules on formatting and documentation, and [CODING_STYLE.md](CODING_STYLE.md) for rules on actual coding style and naming conventions.
