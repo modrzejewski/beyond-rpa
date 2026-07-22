@@ -46,38 +46,95 @@ module sys_definitions
       integer, parameter :: SYS_GHOST_ATOMS = 3
 
       type TSystem
+            !
+            ! Molecular or atomic system properties and configuration.
+            ! Atomic centers are divided into real atoms and ghosts. One can 
+            ! switch between different subsystems (e.g., dimers belonging to a 
+            ! trimer ABC) using sys_Init
+            ! ---
+            !
+            ! Cartesian xyz coordinates of atoms. The first dimension corresponds 
+            ! to the x, y, z components and the second to the atom index
+            !
             real(F64), dimension(:, :), allocatable :: AtomCoords
             !
-            ! Nuclear charges (correspond to physical nuclei,
-            ! not affected by pseudopotentials)
+            ! Nuclear charges (not affected by pseudopotentials)
             !
             integer, dimension(:), allocatable :: ZNumbers
             !
-            ! Effective nuclear charges applied when
-            ! a pseudopotential is present
+            ! Effective nuclear charges applied when a pseudopotential 
+            ! is present. Unallocated if ECPs are not used
             !
             integer, dimension(:), allocatable :: ZNumbersECP
+            !
+            ! True if effective core potentials are used
+            !
             logical :: ECPCharges = .false.
             !
             ! Additional point charges used to generate an electrostatic
-            ! field for the molecule. Can be used, e.g., to remove energy
-            ! level degeneracy.
+            ! field for the molecule
             !
             integer :: NPointCharges = 0
             real(F64), dimension(:), allocatable :: PointCharges
             real(F64), dimension(:, :), allocatable :: PointChargeCoords
             !
+            ! Spin multiplicity of the system (1 for singlet, 2 for doublet, etc.). This 
+            ! variable is updated to the active subsystem's multiplicity when sys_Init is called
+            !
             integer :: Mult = 1
             integer :: Charge = 0
             integer :: NElectrons
+            !
+            ! Number of atomic centers (real atoms + ghosts if present)
+            !
             integer :: NAtoms = 0
+            !
+            ! Start and end indices for up to two contiguous segments of real atoms.
+            ! A second segment allows for non-contiguous ranges (e.g., dimer AC
+            ! from trimer ABC). Contiguous systems disable the second segment by
+            ! setting its start index greater than its end index. Iteration is
+            ! performed by an outer loop over segments and an inner loop over indices
+            !
             integer, dimension(2, 2) :: RealAtoms
+            !
+            ! Number of atoms in each basic monomer fragment. The array has four 
+            ! components because the code supports many-body complexes up to 
+            ! tetramers. Indices 1-4 correspond to monomers A, B, C, and D
+            !
             integer, dimension(4) :: SubsystemAtoms = [0, 0, 0, 0]
+            !
+            ! Molecular charge of each basic monomer fragment, using the same 
+            ! indexing convention as SubsystemAtoms (1-4 for monomers A-D)
+            !
             integer, dimension(4) :: SubsystemCharges = [0, 0, 0, 0]
+            !
+            ! Spin multiplicities for various subsystem combinations. The value
+            ! for the active subsystem is selected by indexing this array with
+            ! the SubsystemKind constant (e.g., SYS_TOTAL, SYS_MONO_A, SYS_DIMER_AB),
+            ! which maps directly to its storage layout
+            !
             integer, dimension(15) :: SubsystemMult = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            !
+            ! Type of the overall composite system (SYS_MOLECULE, SYS_DIMER,
+            ! SYS_TRIMER, or SYS_TETRAMER). SYS_MOLECULE corresponds to a single 
+            ! system without any consideration of subsystems
+            !
             integer :: SystemKind = SYS_NONE
+            !
+            ! The specific subsystem currently active (e.g., SYS_MONO_A, SYS_DIMER_AB) 
+            ! selected by sys_Init
+            !
             integer :: SubsystemKind = SYS_NONE
+            !
+            ! Matrix of sorted interatomic distances, used to accelerate the 
+            ! evaluation of Becke integration weights by screening distant atoms
+            !
             real(F64), dimension(:, :), allocatable :: SortedDistances
+            !
+            ! Original atomic indices corresponding to the sorted interatomic distances.
+            ! For example, SortedDistancesIdx(m, j) yields the global atom index of the 
+            ! m-th closest atom to center j, which can be used to access AtomCoords
+            !
             integer, dimension(:, :), allocatable :: SortedDistancesIdx
       end type TSystem
 
