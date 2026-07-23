@@ -22,10 +22,6 @@ program driver
       use drv_dft_rpa
       use drv_dft_disp
       use drv_mp2
-      !@CC
-      use drv_cc_prop
-      use drv_cc_ground
-      !@END CC
       
       implicit none
 
@@ -221,32 +217,6 @@ program driver
                   call unpack_systemdep_params(par)
                   call task_mp2_sp(geom_a)
             end do
-            !@CC
-      case (JOB_CCSD_PROP)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_properties(geom_a, THEORY_CCSD)
-            end do
-      case (JOB_CC3_PROP)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_properties(geom_a, THEORY_CC3)
-            end do
-      case (JOB_CCSD_DENSITY)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_density(geom_a, THEORY_CCSD, MBPT_ORDER)
-            end do
-      case (JOB_CC3_DENSITY)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_density(geom_a, THEORY_CC3, MBPT_ORDER)
-            end do
-            !@END CC
       end select
       
       stop 0

@@ -1,3 +1,22 @@
+!
+! This module is not linked to the main driver. To re-enable, add the
+! following to driver.f90:
+!
+!       use drv_cc_ground
+!
+!       case (JOB_CCSD_DENSITY)
+!             do k = 1, njob_main
+!                   call dequeue_job(geom_a, par, k, GEOM_MONOMER)
+!                   call unpack_systemdep_params(par)
+!                   call task_cc_density(geom_a, THEORY_CCSD, MBPT_ORDER)
+!             end do
+!       case (JOB_CC3_DENSITY)
+!             do k = 1, njob_main
+!                   call dequeue_job(geom_a, par, k, GEOM_MONOMER)
+!                   call unpack_systemdep_params(par)
+!                   call task_cc_density(geom_a, THEORY_CC3, MBPT_ORDER)
+!             end do
+!
 module drv_cc_ground
 use cc_gparams
       use math_constants
