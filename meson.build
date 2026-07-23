@@ -2,12 +2,16 @@ project('beyond-rpa', 'fortran', version : '1.0', default_options : ['warning_le
 
 subdir('src')
 
+# Compiler command string constructed solely for launcher metadata
+# logging in bin/run
 fc = meson.get_compiler('fortran')
 compiler_cmd = fc.cmd_array()[0]
 foreach arg : get_option('fortran_args')
   compiler_cmd += ' ' + arg
 endforeach
 
+# Linker flags (including MKL, BLAS, and LAPACK dependencies) are configured
+# per profile in .meson/profiles/*.ini
 a_exe = executable('a', sources)
 
 python = import('python').find_installation('python3')
