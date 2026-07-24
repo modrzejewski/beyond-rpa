@@ -762,24 +762,7 @@ contains
                               ! 
                               rs6 = 0.88971_F64
                               s18 = 0.00000_F64
-                        case (XCF_XC_M05) !("m05")
-                              rs6=1.373_F64
-                              s18=0.595_F64
-                        case (XCF_XC_M052X) !("m052x")
-                              rs6=1.417_F64
-                              s18=0.000_F64
-                        case (XCF_XC_M06L) !("m06l")
-                              rs6=1.581_F64
-                              s18=0.000_F64
-                        case (XCF_XC_M06) !("m06")
-                              rs6=1.325_F64
-                              s18=0.000_F64
-                        case (XCF_XC_M062X) !("m062x")
-                              rs6=1.619_F64
-                              s18=0.000_F64
-                        case (XCF_XC_M06HF) !("m06hf")
-                              rs6=1.446_F64
-                              s18=0.000_F64
+
                               ! case ("dftb")
                               !       rs6=1.699
                               !       s18=1.504

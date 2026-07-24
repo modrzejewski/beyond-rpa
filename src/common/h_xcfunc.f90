@@ -29,21 +29,13 @@ module h_xcfunc
       integer, parameter :: XCF_XC_B1LYP    = 115
       integer, parameter :: &
             XCF_XC_BR89B94HYB               = 116
-      integer, parameter :: XCF_X_M06L      = 119
+
       integer, parameter :: XCF_X_BR89      = 120
       integer, parameter :: XCF_X_TAU_HCTH  = 121
-      integer, parameter :: XCF_XC_M05      = 122
-      integer, parameter :: XCF_XC_M052X    = 123
-      integer, parameter :: XCF_XC_M06      = 124
-      integer, parameter :: XCF_XC_M062X    = 125
-      integer, parameter :: XCF_XC_M06L     = 126
-      integer, parameter :: XCF_XC_M06HF    = 127
+
       integer, parameter :: XCF_XC_HJS_PBE  = 129
       integer, parameter :: XCF_XC_LRCWPBEH = 130
-      integer, parameter :: XCF_XC_M11      = 131
-      integer, parameter :: XCF_XC_M11L     = 132
-      integer, parameter :: XCF_XC_M08HX    = 133
-      integer, parameter :: XCF_XC_M08SO    = 134
+
       integer, parameter :: XCF_X_HJS_PBE      = 138
       integer, parameter :: XCF_C_PBE          = 139
       integer, parameter :: XCF_X_HJS_PBESOL = 141
@@ -803,24 +795,7 @@ contains
             case (XCF_XC_BR89B94HYB)
                   x = "Becke-Roussel 89 [Phys. Rev. A 39, 3761 (1989)]"
                   c = "Becke 94 [Int. J. Quantum Chem. Symp. 28, 625 (1994)]"
-            case (XCF_XC_M05)
-                  x = "M05 [J. Chem. Phys. 123, 161103 (2005)]"
-                  c = x
-            case (XCF_XC_M052X)
-                  x = "M05-2X [J. Chem. Phys. 123, 161103 (2005)]"
-                  c = x
-            case (XCF_XC_M06)
-                  x = "M06 [Theor. Chem. Acc. 120, 215 (2008)]"
-                  c = x
-            case (XCF_XC_M062X)
-                  x = "M06-2X [Theor. Chem. Acc. 120, 215 (2008)]"
-                  c = x                  
-            case (XCF_XC_M06HF)
-                  x = "M06-HF [J. Phys. Chem. A 110, 13126 (2006)]"
-                  c = x
-            case (XCF_XC_M06L)
-                  x = "M06-L [J. Chem. Phys. 125, 194101 (2006)]"
-                  c = x
+
             case (XCF_XC_PW86PBE)
                   x = "Perdew-Wang 1986 [Phys. Rev. B 33, 8800(R) (1986); doi: 10.1103/PhysRevB.33.8800]"
                   c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
@@ -863,18 +838,7 @@ contains
             case (XCF_XC_LRCWPBEH)
                   x = "Henderson-Janesko-Scuseria wPBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
                   c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
-            case (XCF_XC_M11)
-                  x = "M11 [J. Phys. Chem. Lett. 2, 2810 (2011)]"
-                  c = x
-            case (XCF_XC_M11L)
-                  x = "M11L [J. Phys. Chem. Lett. 3, 117 (2012)]"
-                  c = x
-            case (XCF_XC_M08HX)
-                  x = "M08HX [J. Chem. Theory Comput. 4, 1849 (2008)]"
-                  c = x
-            case (XCF_XC_M08SO)
-                  x = "M08HX [J. Chem. Theory Comput. 4, 1849 (2008)]"
-                  c = x
+
             case default
                   x = "user-defined"
                   c = "user-defined"
@@ -960,18 +924,7 @@ contains
                   xcid = XCF_XC_HCTH_407
             case ("BR89B94HYB", "RKS-XC-BR89B94HYB")
                   xcid = XCF_XC_BR89B94HYB
-            case ("M05")
-                  xcid = XCF_XC_M05
-            case ("M05-2X", "M052X")
-                  xcid = XCF_XC_M052X
-            case ("M06")
-                  xcid = XCF_XC_M06
-            case ("M06-2X", "M062X")
-                  xcid = XCF_XC_M062X
-            case ("M06-L", "M06L")
-                  xcid = XCF_XC_M06L
-            case ("M06-HF", "M06HF")
-                  xcid = XCF_XC_M06HF
+
             case ("MCS")
                   xcid = XCF_XC_MCS
             case ("MCSH")
@@ -995,14 +948,7 @@ contains
                   ! exchange are different.
                   !
                   xcid = XCF_XC_LRCWPBEH
-            case ("M11")
-                  xcid = XCF_XC_M11
-            case ("M11-L", "M11L")
-                  xcid = XCF_XC_M11L
-            case ("M08-HX", "M08HX")
-                  xcid = XCF_XC_M08HX
-            case ("M08-SO", "M08SO")
-                  xcid = XCF_XC_M08SO
+
             case ("B88X")
                   xcid = XCF_X_B88
             case ("EC-B88X")
@@ -1086,9 +1032,7 @@ contains
             case (XCF_XC_HJS_PBE, XCF_XC_LRCWPBEH)
                   ix = XCF_X_HJS_PBE
                   ic = XCF_C_PBE
-            case (XCF_XC_M06HF)
-                  ix = XCF_HF
-                  ic = XCF_XC_M06HF
+
             case default
                   ix = XCF_XC_NONE
                   ic = XCF_XC_NONE

@@ -11,7 +11,7 @@ module xcfunc
       use threads
       use gga
       use mgga
-      use mfm
+
       use lcexch
       use rsbr89
       use auxint
@@ -456,35 +456,6 @@ contains
                         tauvec(:, k), epsvec(:, k), vrhovec(:, k), &
                         vsigmavec(:, k), vlaplvec(:, k), vtauvec(:, k), npt)
 
-            case (XCF_XC_M05)
-                  call m05(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
-
-            case (XCF_XC_M052X)
-                  call m052x(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
-
-            case (XCF_XC_M11)
-                  call m11(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
-
-            case (XCF_XC_M11L)
-                  call m11l(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
-
-            case (XCF_XC_M08HX)
-                  call m08hx(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
-
-            case (XCF_XC_M08SO)
-                  call m08so(rhovec(:, k), sigmavec(:, k), tauvec(:, k), &
-                        epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), &
-                        vlaplvec(:, k), vtauvec(:, k), npt)
 
             case (XCF_XC_MCS)
                   call mcs_xc(epsvec(:, k), vrhovec(:, k), vsigmavec(:, k), vtauvec(:, k), rhovec(:, k), &
@@ -621,55 +592,6 @@ contains
                         uvrhovec(:, :, k), uvsigmavec(:, :, k), uvlaplvec(:, :, k), &
                         uvtauvec(:, :, k), npt)
 
-            case (XCF_XC_M05)
-                  call um05(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M052X)
-                  call um052x(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M06)
-                  call um06(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M062X)
-                  call um062x(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M06L)
-                  call um06l(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M06HF)
-                  call um06hf(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M11)
-                  call um11(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M11L)
-                  call um11l(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M08HX)
-                  call um08hx(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
-
-            case (XCF_XC_M08SO)
-                  call um08so(urhovec(:, :, k), usigmavec(:, :, k), utauvec(:, :, k), &
-                        epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), &
-                        uvlaplvec(:, :, k), uvtauvec(:, :, k), npt)
 
             case (XCF_XC_MCS)
                   call u_mcs_xc(epsvec(:, k), uvrhovec(:, :, k), uvsigmavec(:, :, k), uvtauvec(:, :, k), &
