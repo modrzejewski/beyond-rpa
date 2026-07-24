@@ -5,8 +5,13 @@ project(
   default_options : [
     'warning_level=3',
     'buildtype=plain',
+    'backend=ninja',
   ]
 )
+
+if meson.backend() != 'ninja'
+  error('This project only supports the Ninja backend.')
+endif
 
 subdir('src')
 
