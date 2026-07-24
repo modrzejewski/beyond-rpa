@@ -78,8 +78,14 @@ contains
             call data_free()
          end if
       end do
-      if (RPAParams%TensorHypercontraction) deallocate(Rkpq)
-      if (SCFParams%ERI_Algorithm==SCF_ERI_THC .and. RPAParams%TensorHypercontraction) then
+      if (RPAParams%Algorithm == RPA_ALGO_JCTC2025) deallocate(Rkpq)
+      !
+      ! Switch to the coarse THC grid because numerical tests
+      ! indicate that the post-SCF steps are less sensitive
+      ! to grid point density
+      !
+      if (SCFParams%ERI_Algorithm == SCF_ERI_THC .and. &
+          RPAParams%Algorithm == RPA_ALGO_JCTC2025) then
          call thc_ReduceGrid(THCGrid)
       end if
       call rpa_PostSCF(SCFOutput, SCFParams, AOBasis, RPAParams, &

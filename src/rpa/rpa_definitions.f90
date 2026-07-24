@@ -385,11 +385,6 @@ module rpa_definitions
       !
       logical :: ComputeCholeskyBasis = .false.
       !
-      ! Correction for non-constant density along
-      ! the adiabatic connection
-      !
-      logical :: CoupledClusters = .true.
-      !
       ! Number of points of the Gauss-Legendre quadrature
       ! used for the adiabatic connection integral on the (0,1)
       ! interval

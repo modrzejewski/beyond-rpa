@@ -36,7 +36,7 @@ contains
             PostSCF_Active = present(RPAParams)
             PostSCF_THC = .false.
             if (PostSCF_Active) then
-                  PostSCF_THC = RPAParams%TensorHypercontraction
+                  PostSCF_THC = (RPAParams%Algorithm == RPA_ALGO_JCTC2025)
             end if
 
             RequiresTHC = (SCFParams%ERI_ALGORITHM == SCF_ERI_THC) .or. PostSCF_THC

@@ -3248,21 +3248,7 @@ contains
        case ("MAXNAOMULT")
          read(val, *) m
          RPAParams%MaxNAOMult = m
-       case ("RPA+MBPT3", "MBPT3", "RPA+MBPT-3")
-         RPAParams%TensorHypercontraction = .true.
-         RPAParams%CoupledClusters = .true.
-         RPAParams%TheoryLevel = RPA_THEORY_2G
-       case ("RPT2")
-         RPAParams%TensorHypercontraction = .false.
-         RPAParams%CoupledClusters = .true.
-         RPAParams%T1Approx = RPA_T1_MEAN_FIELD
-         RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
-         RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
-         RPAParams%Ec1RDMApprox = RPA_Ec1RDM_LINEAR
-         RPAParams%DensityApprox = RPA_RHO_T1_LINEAR
-         RPAParams%TheoryLevel = RPA_THEORY_RPT2
-       case ("TENSORHYPERCONTRACTION", "THC", "TENSOR-HYPERCONTRACTION")
-         RPAParams%TensorHypercontraction = .true.
+
        case ("THC_QRTHRESH", "THCQRTHRESH")
          read(val, *) m
          RPAParams%THC_QRThresh = m
@@ -3392,8 +3378,7 @@ contains
             call msg("Invalid value of CutoffThreshPNO", MSG_ERROR)
             error stop
          end if
-       case ("ADIABATIC-CONNECTION", "ADIABATICCONNECTION", "ADIABATIC_CONNECTION", "COUPLEDCLUSTERS", "COUPLED-CLUSTERS")
-         RPAParams%CoupledClusters = .true.
+
        case ("ACQUADPOINTS")
          read(val, *) i
          RPAParams%ACQuadPoints = i
@@ -3422,8 +3407,6 @@ contains
             error stop
          end select
        case ("CCD-CORRECTIONS", "CCDCORRECTIONS", "THEORY-LEVEL", "THEORYLEVEL")
-         RPAParams%TensorHypercontraction = .true.
-         RPAParams%CoupledClusters = .true.
          select case (uppercase(val))
             !
             ! Code paths using Kohn-Sham orbitals
@@ -3431,8 +3414,6 @@ contains
           case ("RPA+RSE")
             RPAParams%TheoryLevel = RPA_THEORY_RSE
           case ("RPT2")
-            RPAParams%TensorHypercontraction = .false.
-            RPAParams%CoupledClusters = .true.
             RPAParams%T1Approx = RPA_T1_MEAN_FIELD
             RPAParams%MeanField = RPA_MEAN_FIELD_HF_TYPE
             RPAParams%ExchangeApprox = RPA_EXCHANGE_SOSEX
