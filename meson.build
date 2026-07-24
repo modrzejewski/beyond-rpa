@@ -1,4 +1,12 @@
-project('beyond-rpa', 'fortran', version : '1.0', default_options : ['warning_level=3'])
+project(
+  'beyond-rpa',
+  'fortran',
+  version : '1.0',
+  default_options : [
+    'warning_level=3',
+    'buildtype=plain',
+  ]
+)
 
 subdir('src')
 
