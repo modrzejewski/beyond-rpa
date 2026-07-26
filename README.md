@@ -1,24 +1,15 @@
 # Overview
-`beyond-rpa` performs electronic single-point energy calculations using the random-phase
-approximation (RPA) methods with higher-order corrections expressed via simplified
-coupled-cluster amplitudes. While `beyond-rpa` can
-be applied to any system, the algorithms and numerical thresholds have been
-hand-tuned for a numerically-stable calculation of 100s or 1000s of small
-energy terms in the many-body expansion of the crystal lattice energy:
-* two-body noncovalent interaction energies,
-* nonadditive energies of molecular trimers,
-* nonadditive energies of molecular tetramers.
+The `beyond-rpa` program provides a robust implementation of the RPA+ph electronic-structure method, an efficient extension of the traditional random-phase approximation of the electron-correlation energy using the coupled-cluster formalism. It is intended as a low-level companion method which enables fragment-based multi-level calculations of the CCSD(T) energies of condensed-phase systems [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md)]. The primary use cases for RPA+ph to date have been multi-level CCSD(T) computations of molecular crystal lattice energies [[Syty2025](docs/02_literature.md)].
 
-You can use `beyond-rpa` like any other electronic structure software, 
-but the simplest way to carry out automated fragment-based lattice energy
-calculations is to use it in combination with the `mbe-automation`
-companion program available
-at [github](https://github.com/modrzejewski/mbe-automation).
+The program is designed for high numerical robustness with its default settings. In particular, no numerical precision settings need to be adjusted to evaluate the long-distance and many-body terms, which are usually problematic due to numerical noise. The RPA+ph method provided here is a good match for the LNO-CCSD(T) approximation available in the [MRCC](https://www.mrcc.hu) program.
+
+The simplest way to use `beyond-rpa` for automated lattice energy evaluations for molecular crystals is via the [`mbe-automation`](https://github.com/modrzejewski/mbe-automation) software, which handles the whole workflow from initial crystal structure in a CIF file up to generation of molecular clusters for the correlated wave-function calculation.
 
 # Documentation
 
 * [Setup](docs/00_setup.md)
 * [Usage and Examples](docs/01_usage.md)
+* [Literature](docs/02_literature.md)
 
 # Authors
 * Marcin Modrzejewski (main author)
@@ -54,15 +45,6 @@ When this software or its derivatives are used in scientific publications, pleas
   doi = {10.1021/acs.jctc.3c00496}
 }
 ```
-
-# Literature
-You can also use `beyond-rpa` to replicate the numerical results from the following publications:
-1. Syty, K., Czekało, G., Pham, K.N., Modrzejewski, M., J. Chem. Theory Computat 21, 5533 (2025); [doi: 10.1021/acs.jctc.5c00428](https://doi.org/10.1021/acs.jctc.5c00428)
-2. Cieśliński, D., Tucholska, A., Modrzejewski, M., J. Chem. Theory Comput. 19, 6619 (2023); [doi: 10.1021/acs.jctc.3c00496](https://doi.org/10.1021/acs.jctc.3c00496)
-3. Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 160, 224101 (2024); [doi: 10.1063/5.0207090](https://doi.org/10.1063/5.0207090)
-4. Pham, K.N., Modrzejewski, M., Klimeš, J., J. Chem. Phys. 158, 144119 (2023); [doi: 10.1063/5.0142348](https://doi.org/10.1063/5.0142348)
-5. Modrzejewski, M., Yourdkhani, S., Śmiga, Sz., Klimeš, J., J. Chem. Theory Comput. 17, 804 (2021); [doi: 10.1021/acs.jctc.0c00966](https://doi.org/10.1021/acs.jctc.0c00966)
-6. Modrzejewski, M., Yourdkhani, S., Klimeš, J., J. Chem. Theory Comput. 16, 427 (2020); [doi: 10.1021/acs.jctc.9b00979](https://doi.org/10.1021/acs.jctc.9b00979)
 
 # License
 This program is freely available for use, modification, and integration into other software under the MIT License. For full licensing details, please refer to the `LICENSE` file.
