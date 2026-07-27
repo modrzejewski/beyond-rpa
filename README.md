@@ -1,7 +1,7 @@
 # Overview
-The `beyond-rpa` program implements the RPA+ph electronic-structure method, which extends the random-phase approximation of the electron-correlation energy using the coupled-cluster formalism. RPA+ph serves as a low-level companion method for multi-level calculations of CCSD(T) energies in condensed-phase systems [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md)].
+The `beyond-rpa` program implements the RPA+ph electronic-structure method, a coupled-cluster based extension of the random-phase approximation designed for an improved description of van der Waals interactions in molecular clusters. RPA+ph serves as a low-level companion method for multi-level calculations of CCSD(T) energies in condensed-phase systems [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md)].
 
-The algorithms in `beyond-rpa` are numerically stable by design. They evaluate noise-sensitive long-distance and many-body terms without requiring adjustments to precision settings.
+The algorithms in `beyond-rpa` are numerically stable by design. They evaluate long-distance two-body and many-body interactions, which are usually prone to numerical noise, without requiring adjustments to precision settings.
 
 While `beyond-rpa` operates as a standalone program, a complete multi-level coupled-cluster energy calculation requires three software components:
 * **High-level method:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
