@@ -5,7 +5,7 @@ The algorithms in `beyond-rpa` are numerically stable by design. They evaluate l
 
 While `beyond-rpa` operates as a standalone program, a complete multi-level coupled-cluster energy calculation requires three software components:
 * **High-level method:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
-* **Low-level method:** `beyond-rpa` handles the long-distance or many-body components.
+* **Low-level method:** `beyond-rpa` handles the long-distance or many-body components, as well as extrapolation with the system size.
 * **Workflow coordination software:** For molecular crystals, we recommend [`mbe-automation`](https://github.com/modrzejewski/mbe-automation). This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
 
 # Documentation
