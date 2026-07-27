@@ -3,10 +3,10 @@ The `beyond-rpa` program implements the RPA+ph electronic-structure method, a co
 
 The algorithms used in `beyond-rpa` are the result of a series of works on the numerical stability of RPA-derived approximations in the many-body expansion of the crystal lattice energy [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md), [Pham2024](docs/02_literature.md), [Pham2023](docs/02_literature.md), [Modrzejewski2021](docs/02_literature.md), [Modrzejewski2020](docs/02_literature.md)]. With high probability, no threshold adjustment is needed to evaluate long-distance two-body and many-body interactions, which are usually prone to numerical noise.
 
-While `beyond-rpa` operates as a standalone program, a complete multi-level coupled-cluster energy calculation requires three software components:
-* **High-level method:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
+While `beyond-rpa` operates as a standalone program, it is a part of the software suite needed for multi-level coupled-cluster energy evaluation. The other components are:
+* **The high-level CCSD(T) approximation:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
 * **Low-level method:** `beyond-rpa` handles the long-distance or many-body components, as well as extrapolation with the system size.
-* **Workflow coordination software:** For molecular crystals, we recommend [`mbe-automation`](https://github.com/modrzejewski/mbe-automation). This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
+* **Workflow coordination library:** For molecular crystals, we recommend [`mbe-automation`](https://github.com/modrzejewski/mbe-automation). This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
 
 # Documentation
 
