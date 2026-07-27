@@ -1,9 +1,12 @@
 # Overview
 The `beyond-rpa` program implements the RPA+ph electronic-structure method, which extends the random-phase approximation of the electron-correlation energy using the coupled-cluster formalism. RPA+ph serves as a low-level companion method for multi-level calculations of CCSD(T) energies in condensed-phase systems [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md)].
 
-The algorithms in `beyond-rpa` are numerically stable by design. They evaluate noise-sensitive long-distance and many-body terms without requiring adjustments to precision settings. This RPA+ph implementation pairs well with the LNO-CCSD(T) approximation available in the [MRCC](https://www.mrcc.hu) program.
+The algorithms in `beyond-rpa` are numerically stable by design. They evaluate noise-sensitive long-distance and many-body terms without requiring adjustments to precision settings.
 
-`beyond-rpa` operates as a standalone program. For molecular crystal thermodynamics, we recommend the [`mbe-automation`](https://github.com/modrzejewski/mbe-automation) workflow automation program. This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
+While `beyond-rpa` operates as a standalone program, a complete multi-level coupled-cluster energy calculation requires three software components:
+* **High-level method:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
+* **Low-level method:** `beyond-rpa` handles the long-distance or many-body components.
+* **Workflow coordination software:** For molecular crystals, we recommend [`mbe-automation`](https://github.com/modrzejewski/mbe-automation). This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
 
 # Documentation
 
