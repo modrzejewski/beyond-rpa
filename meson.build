@@ -34,7 +34,7 @@ bin_dir = meson.project_source_root() / 'bin'
 launcher_cmd = meson.get_external_property('launcher', '')
 intel_caf_config = meson.get_external_property('intel_coarray_config', '')
 
-custom_target('post_build_tasks',
+post_build_target = custom_target('post_build_tasks',
   input : a_exe,
   output : 'post_build.done',
   command : [
@@ -43,4 +43,16 @@ custom_target('post_build_tasks',
     '@OUTPUT@',
   ],
   build_by_default : true,
+)
+
+test('basis',
+  python,
+  args: [
+    '-m', 'pytest',
+    '-v', '-s',
+    meson.project_source_root() / 'tests' / 'basis' / 'test_basis.py'
+  ],
+  depends: post_build_target,
+  timeout: 600,
+  workdir: meson.project_source_root()
 )
