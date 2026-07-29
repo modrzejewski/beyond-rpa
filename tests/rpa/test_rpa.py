@@ -1,0 +1,159 @@
+"""
+RPA Test Suite for beyond-rpa.
+
+This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
+By default, it only runs tests with "default" accuracy to save time.
+
+To run the full test suite (including expensive tests at "tight" and "ludicrous" accuracy levels):
+- Pytest Mode: Set the environment variable `BEYOND_RPA_FULL=1` (e.g. `BEYOND_RPA_FULL=1 pytest tests/rpa/test_rpa.py`)
+- Standalone Mode: Run with the `--full` argument (e.g. `python tests/rpa/test_rpa.py --full`)
+"""
+
+import os
+import re
+import sys
+import argparse
+import subprocess
+from pathlib import Path
+import pytest
+
+BIN_PATH = Path(__file__).parent.parent.parent / "bin" / "run"
+
+KEYS_TO_CHECK = [
+    "Eint(direct ring)",
+    "Eint(SOSEX)",
+    "Eint(3rd order ph)",
+    "Eint(total)",
+    "EintNadd(direct ring)",
+    "EintNadd(SOSEX)",
+    "EintNadd(3rd order ph)",
+    "EintNadd(total)",
+]
+
+def get_input_files():
+    inputs_dir = Path(__file__).parent / "inputs"
+    return sorted(inputs_dir.glob("*.inp"))
+
+def is_full_run():
+    # Standalone mode flag
+    if "--full" in sys.argv:
+        return True
+    # Pytest mode environment variable
+    if os.environ.get("BEYOND_RPA_FULL") == "1":
+        return True
+    return False
+
+def extract_energies(text: str) -> dict:
+    energies = {}
+    for key in KEYS_TO_CHECK:
+        # Match lines starting with the key to avoid matching table headers
+        pattern = r"^\s*" + re.escape(key) + r"\s+([-+]?\d*\.\d+[Ee][-+]?\d+|[-+]?\d*\.\d+)"
+        match = re.search(pattern, text, re.MULTILINE)
+        if match:
+            energies[key] = float(match.group(1))
+    return energies
+
+def get_tolerance(filepath: Path) -> float:
+    name = filepath.name
+    if "accuracy_tight" in name or "accuracy_ludicrous" in name:
+        return 5.0e-5
+    return 5.0e-4  # Default tolerance
+
+@pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.name)
+def test_rpa_energy(filepath: Path, record_property):
+    if not is_full_run() and "accuracy_default" not in filepath.name:
+        pytest.skip("Skipping non-default accuracy test. Run with --full (standalone) or BEYOND_RPA_FULL=1 (pytest).")
+        
+    print(f"\nTesting {filepath.name} ... ", end="", flush=True)
+    
+    try:
+        ref_txt_path = filepath.with_suffix(".txt")
+        if not ref_txt_path.exists():
+            pytest.skip(f"Reference file {ref_txt_path.name} not found.")
+            
+        with open(ref_txt_path, "r") as f:
+            ref_energies = extract_energies(f.read())
+            
+        result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
+        assert result.returncode == 0, f"beyond-rpa failed:\n{result.stderr}"
+        
+        calc_energies = extract_energies(result.stdout)
+        tolerance = get_tolerance(filepath)
+        
+        # Check all available keys
+        for key, ref_val in ref_energies.items():
+            if key in calc_energies:
+                calc_val = calc_energies[key]
+                dev = abs(calc_val - ref_val)
+                
+                # CI/CD Property recording per value
+                safe_key = key.replace(" ", "_").replace("(", "_").replace(")", "")
+                record_property(f"reference_{safe_key}", ref_val)
+                record_property(f"calculated_{safe_key}", calc_val)
+                record_property(f"deviation_{safe_key}", dev)
+                
+                assert calc_val == pytest.approx(ref_val, abs=tolerance), f"{key} deviation ({dev:.2e}) exceeds {tolerance}"
+            else:
+                pytest.fail(f"{key} found in reference but missing in calculated output.")
+                
+        print("PASSED")
+    except Exception:
+        print("FAILED")
+        raise
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run RPA tests.")
+    parser.add_argument("--full", action="store_true", help="Run full test suite (including tight/ludicrous)")
+    args = parser.parse_args()
+
+    print("\n" + "."*125)
+    print(" RPA TEST RESULTS SUMMARY ".center(125, "."))
+    print("."*125)
+    print(f"{'Test Title':<45} | {'Property':<25} | {'Ref (kcal/mol)':<15} | {'Calc (kcal/mol)':<15} | {'Deviation':<12} | {'Status'}")
+    print("." * 125)
+    
+    all_files = get_input_files()
+    if not args.full:
+        all_files = [f for f in all_files if "accuracy_default" in f.name]
+        
+    for filepath in all_files:
+        ref_txt_path = filepath.with_suffix(".txt")
+        if not ref_txt_path.exists():
+            print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+            continue
+            
+        with open(ref_txt_path, "r") as f:
+            ref_energies = extract_energies(f.read())
+            
+        tolerance = get_tolerance(filepath)
+        
+        try:
+            result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+                continue
+                
+            calc_energies = extract_energies(result.stdout)
+            
+            for key, ref_val in ref_energies.items():
+                calc_val = calc_energies.get(key)
+                if calc_val is not None:
+                    dev = abs(calc_val - ref_val)
+                    status = "PASSED" if dev <= tolerance else "FAILED"
+                    dev_str = f"{dev:.2e}"
+                    calc_str = f"{calc_val:.6f}"
+                else:
+                    dev_str = "N/A"
+                    calc_str = "N/A"
+                    status = "FAILED"
+                    
+                ref_str = f"{ref_val:.6f}"
+                
+                # Only print the filename for the first property to keep the table clean
+                display_name = filepath.name if key == list(ref_energies.keys())[0] else ""
+                print(f"{display_name:<45} | {key:<25} | {ref_str:<15} | {calc_str:<15} | {dev_str:<12} | {status}")
+                
+        except Exception as e:
+            print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+    
+    print("."*125 + "\n")
