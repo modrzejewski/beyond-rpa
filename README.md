@@ -10,7 +10,8 @@ It is likely that you will use `beyond-rpa` as part of a software suite for mult
 # Documentation
 
 * [Setup](docs/00_setup.md)
-* [Usage and Examples](docs/01_usage.md)
+* [Input](docs/01_input_structure.md)
+* [Examples](docs/02_examples.md)
 * [Literature](docs/02_literature.md)
 
 # Authors
