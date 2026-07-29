@@ -30,6 +30,9 @@ KEYS_TO_CHECK = [
     "EintNadd(total)",
 ]
 
+TOLERANCE_DEFAULT = 5.0e-4
+TOLERANCE_HIGH_ACCURACY = 5.0e-5
+
 def get_input_files():
     inputs_dir = Path(__file__).parent / "inputs"
     return sorted(inputs_dir.glob("*.inp"))
@@ -56,8 +59,8 @@ def extract_energies(text: str) -> dict:
 def get_tolerance(filepath: Path) -> float:
     name = filepath.name
     if "accuracy_tight" in name or "accuracy_ludicrous" in name:
-        return 5.0e-5
-    return 5.0e-4  # Default tolerance
+        return TOLERANCE_HIGH_ACCURACY
+    return TOLERANCE_DEFAULT
 
 @pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.name)
 def test_rpa_energy(filepath: Path, record_property):
@@ -106,9 +109,10 @@ if __name__ == "__main__":
     parser.add_argument("--full", action="store_true", help="Run full test suite (including tight/ludicrous)")
     args = parser.parse_args()
 
+    print("\n" + f"Tolerance for deviations in the interaction energy (default accuracy): {TOLERANCE_DEFAULT:.1e} kcal/mol")
+    print(f"Tolerance for deviations in the interaction energy (high accuracy): {TOLERANCE_HIGH_ACCURACY:.1e} kcal/mol")
+    
     print("\n" + "."*125)
-    print(" RPA TEST RESULTS SUMMARY ".center(125, "."))
-    print("."*125)
     print(f"{'Test Title':<45} | {'Property':<25} | {'Ref (kcal/mol)':<15} | {'Calc (kcal/mol)':<15} | {'Deviation':<12} | {'Status'}")
     print("." * 125)
     
@@ -120,6 +124,7 @@ if __name__ == "__main__":
         ref_txt_path = filepath.with_suffix(".txt")
         if not ref_txt_path.exists():
             print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+            print("." * 125)
             continue
             
         with open(ref_txt_path, "r") as f:
@@ -131,6 +136,7 @@ if __name__ == "__main__":
             result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+                print("." * 125)
                 continue
                 
             calc_energies = extract_energies(result.stdout)
@@ -155,5 +161,7 @@ if __name__ == "__main__":
                 
         except Exception as e:
             print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
-    
-    print("."*125 + "\n")
+            
+        print("." * 125)
+        
+    print("\n")
