@@ -1,3 +1,13 @@
+"""
+Basis Set Test Suite for beyond-rpa.
+
+This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
+
+To run the test suite:
+- Pytest Mode: `pytest tests/basis/test_basis.py`
+- Standalone Mode: `python tests/basis/test_basis.py`
+"""
+
 import re
 import subprocess
 from pathlib import Path

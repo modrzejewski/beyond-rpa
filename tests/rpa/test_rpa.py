@@ -12,6 +12,7 @@ To run the full test suite (including expensive tests at "tight" and "ludicrous"
 import os
 import re
 import sys
+import time
 import argparse
 import subprocess
 from pathlib import Path
@@ -112,19 +113,23 @@ if __name__ == "__main__":
     print("\n" + f"Tolerance for deviations in the interaction energy (default accuracy): {TOLERANCE_DEFAULT:.1e} kcal/mol")
     print(f"Tolerance for deviations in the interaction energy (high accuracy): {TOLERANCE_HIGH_ACCURACY:.1e} kcal/mol")
     
-    print("\n" + "."*125)
-    print(f"{'Test Title':<45} | {'Property':<25} | {'Ref (kcal/mol)':<15} | {'Calc (kcal/mol)':<15} | {'Deviation':<12} | {'Status'}")
-    print("." * 125)
+    print("\n" + "."*85)
+    print(f"{'Property':<25} | {'Ref (kcal/mol)':<15} | {'Calc (kcal/mol)':<15} | {'Deviation':<12} | {'Status'}")
+    print("." * 85)
     
     all_files = get_input_files()
     if not args.full:
         all_files = [f for f in all_files if "accuracy_default" in f.name]
         
     for filepath in all_files:
+        print(f"Running {filepath.name}... ", end="", flush=True)
+        start_time = time.time()
+        
         ref_txt_path = filepath.with_suffix(".txt")
         if not ref_txt_path.exists():
-            print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
-            print("." * 125)
+            print("FAILED")
+            print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | NO REF FILE")
+            print("-" * 85)
             continue
             
         with open(ref_txt_path, "r") as f:
@@ -135,10 +140,14 @@ if __name__ == "__main__":
         try:
             result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
             if result.returncode != 0:
-                print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
-                print("." * 125)
+                elapsed = time.time() - start_time
+                print(f"FAILED ({elapsed:.2f}s)")
+                print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | CRASHED")
+                print("-" * 85)
                 continue
                 
+            elapsed = time.time() - start_time
+            print(f"done ({elapsed:.2f}s)")
             calc_energies = extract_energies(result.stdout)
             
             for key, ref_val in ref_energies.items():
@@ -154,14 +163,13 @@ if __name__ == "__main__":
                     status = "FAILED"
                     
                 ref_str = f"{ref_val:.6f}"
-                
-                # Only print the filename for the first property to keep the table clean
-                display_name = filepath.name if key == list(ref_energies.keys())[0] else ""
-                print(f"{display_name:<45} | {key:<25} | {ref_str:<15} | {calc_str:<15} | {dev_str:<12} | {status}")
+                print(f"{key:<25} | {ref_str:<15} | {calc_str:<15} | {dev_str:<12} | {status}")
                 
         except Exception as e:
-            print(f"{filepath.name:<45} | {'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | FAILED")
+            elapsed = time.time() - start_time
+            print(f"FAILED ({elapsed:.2f}s)")
+            print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | ERROR")
             
-        print("." * 125)
+        print("-" * 85)
         
     print("\n")
