@@ -14,14 +14,14 @@ While `beyond-rpa` operates as a standalone program to evaluate long-distance or
 * [Literature](docs/02_literature.md)
 
 # Authors
-* Marcin Modrzejewski [ORCID: 0000-0001-9979-8355](https://orcid.org/0000-0001-9979-8355) (main author)
+* [Marcin Modrzejewski](https://orcid.org/0000-0001-9979-8355) (main author)
 
 with contributions from:
-* Dominik Cieśliński [ORCID: 0000-0002-0858-363X](https://orcid.org/0000-0002-0858-363X) (direct-ring amplitudes)
-* Aleksandra Tucholska [ORCID: 0000-0003-2691-5463](https://orcid.org/0000-0003-2691-5463) (coupled-cluster 2-RDM)
-* Grzegorz Czekało [ORCID: 0009-0005-4337-8024](https://orcid.org/0009-0005-4337-8024) (reference code for RPA+ph+pp/hh)
-* Krystyna Syty [ORCID: 0009-0006-3417-1205](https://orcid.org/0009-0006-3417-1205) (decomposition of amplitudes)
-* Khanh Ngoc Pham [ORCID: 0000-0003-1249-8259](https://orcid.org/0000-0003-1249-8259) (finding bugs)
+* [Dominik Cieśliński](https://orcid.org/0000-0002-0858-363X) (direct-ring amplitudes)
+* [Aleksandra Tucholska](https://orcid.org/0000-0003-2691-5463) (coupled-cluster 2-RDM)
+* [Grzegorz Czekało](https://orcid.org/0009-0005-4337-8024) (reference code for RPA+ph+pp/hh)
+* [Krystyna Syty](https://orcid.org/0009-0006-3417-1205) (decomposition of amplitudes)
+* [Khanh Ngoc Pham](https://orcid.org/0000-0003-1249-8259) (finding bugs)
    
 # Citation
 When this software or its derivatives are used in scientific publications, please cite the following works:
