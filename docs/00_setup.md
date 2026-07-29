@@ -18,4 +18,9 @@ The project uses the Meson build system. The compiler flags and dependencies are
    cd build
    meson compile -j 4
    ```
-   *Note: Using a parallel build (e.g., `-j 4`) is highly recommended. It significantly speeds up the stage where we build a large number of individually optimized integral subroutines.*
+   Using a parallel build (e.g., `-j 4`) is highly recommended. It significantly speeds up the stage where we build a large number of individually optimized integral subroutines.
+
+4. Run the test suite:
+   ```bash
+   meson test
+   ```

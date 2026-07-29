@@ -34,6 +34,15 @@ KEYS_TO_CHECK = [
 TOLERANCE_DEFAULT = 5.0e-4
 TOLERANCE_HIGH_ACCURACY = 5.0e-5
 
+def get_physical_cores() -> int:
+    """Returns the number of available physical CPU cores to use for tests."""
+    try:
+        cores = len(os.sched_getaffinity(0))
+    except AttributeError:
+        cores = os.cpu_count() or 1
+        
+    return min(cores, 4)
+
 def get_input_files():
     inputs_dir = Path(__file__).parent / "inputs"
     return sorted(inputs_dir.glob("*.inp"))
@@ -78,7 +87,8 @@ def test_rpa_energy(filepath: Path, record_property):
         with open(ref_txt_path, "r") as f:
             ref_energies = extract_energies(f.read())
             
-        result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
+        ncores = get_physical_cores()
+        result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
         assert result.returncode == 0, f"beyond-rpa failed:\n{result.stderr}"
         
         calc_energies = extract_energies(result.stdout)
@@ -114,7 +124,7 @@ if __name__ == "__main__":
     print(f"Tolerance for deviations in the interaction energy (high accuracy): {TOLERANCE_HIGH_ACCURACY:.1e} kcal/mol")
     
     print("\n" + "."*85)
-    print(f"{'Property':<25} | {'Ref (kcal/mol)':<15} | {'Calc (kcal/mol)':<15} | {'Deviation':<12} | {'Status'}")
+    print(f"{'Property':<25} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | {'Status'}")
     print("." * 85)
     
     all_files = get_input_files()
@@ -128,7 +138,7 @@ if __name__ == "__main__":
         ref_txt_path = filepath.with_suffix(".txt")
         if not ref_txt_path.exists():
             print("FAILED")
-            print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | NO REF FILE")
+            print(f"{'N/A':<25} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | NO REF FILE")
             print("-" * 85)
             continue
             
@@ -138,11 +148,12 @@ if __name__ == "__main__":
         tolerance = get_tolerance(filepath)
         
         try:
-            result = subprocess.run([str(BIN_PATH), str(filepath)], capture_output=True, text=True)
+            ncores = get_physical_cores()
+            result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
             if result.returncode != 0:
                 elapsed = time.time() - start_time
                 print(f"FAILED ({elapsed:.2f}s)")
-                print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | CRASHED")
+                print(f"{'N/A':<25} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | CRASHED")
                 print("-" * 85)
                 continue
                 
@@ -163,12 +174,12 @@ if __name__ == "__main__":
                     status = "FAILED"
                     
                 ref_str = f"{ref_val:.6f}"
-                print(f"{key:<25} | {ref_str:<15} | {calc_str:<15} | {dev_str:<12} | {status}")
+                print(f"{key:<25} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
                 
         except Exception as e:
             elapsed = time.time() - start_time
             print(f"FAILED ({elapsed:.2f}s)")
-            print(f"{'N/A':<25} | {'N/A':<15} | {'N/A':<15} | {'N/A':<12} | ERROR")
+            print(f"{'N/A':<25} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | ERROR")
             
         print("-" * 85)
         
