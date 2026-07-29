@@ -45,14 +45,20 @@ post_build_target = custom_target('post_build_tasks',
   build_by_default : true,
 )
 
-test('basis',
-  python,
-  args: [
-    '-m', 'pytest',
-    '-v', '-s',
-    meson.project_source_root() / 'tests' / 'basis' / 'test_basis.py'
-  ],
-  depends: post_build_target,
-  timeout: 600,
-  workdir: meson.project_source_root()
-)
+pytest = find_program('pytest', required: false)
+
+if pytest.found()
+  test('basis',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=basis_report.xml',
+      meson.project_source_root() / 'tests' / 'basis' / 'test_basis.py'
+    ],
+    depends: post_build_target,
+    timeout: 600,
+    workdir: meson.project_source_root()
+  )
+else
+  message('pytest not found. Install pytest in your environment or run scripts in tests/ manually.')
+endif
