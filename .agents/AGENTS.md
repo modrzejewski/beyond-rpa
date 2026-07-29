@@ -11,6 +11,6 @@ This file provides instructions for AI agents interacting with this repository.
 * Before implementing changes, understand the overall program structure and the typical user workflows.
 * **Language Style:** Use short, direct language adhering to the standards of technical writing. Minimize the number of words. Avoid non-essential adjectives and adverbs.
 
-## Formatting, Code Style, Documentation, and Naming
+## Formatting, Code Style, Documentation, Testing, and Naming
 
-* Please refer to [DOCUMENTATION.md](DOCUMENTATION.md) for detailed rules on formatting and documentation, and [CODING_STYLE.md](CODING_STYLE.md) for rules on actual coding style and naming conventions.
+* Please refer to [DOCUMENTATION.md](DOCUMENTATION.md) for detailed rules on formatting and documentation, [CODING_STYLE.md](CODING_STYLE.md) for rules on actual coding style and naming conventions, and [TESTING.md](TESTING.md) for rules on writing tests.
