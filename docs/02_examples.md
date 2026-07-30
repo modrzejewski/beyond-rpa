@@ -1,17 +1,5 @@
 # Examples
 
-## Running `beyond-rpa`
-
-Execute the launcher script
-```bash
-./beyond-rpa/bin/run -nt 16 example.inp 
-```
-where
-* `-nt 16` specifies the number of concurrent threads used by the program. To get the best efficiency, the number of threads should be equal to the number of physical cores available for your calculations. For example, if you reserved a single node with shared memory and 2 CPUs, each having 18 physical cores, then the optimal setting is `-nt 36`.
-* `example.inp` is the input text file which contains the definition of the physical system and the requested level of theory. Example inputs are given below.
-
-## Example Inputs
-
 ### 1. Noncovalent interaction energy of a water dimer
 ```text
 basis aug-cc-pVDZ
