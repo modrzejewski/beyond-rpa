@@ -1188,7 +1188,7 @@ contains
             cycle lines
           case ("XYZ")
             if (JOBTYPE == JOB_REAL_UKS_RPA .or. JOBTYPE == JOB_REAL_UKS_SP &
-               .or. JOBTYPE == JOB_REAL_UKS_INT) then
+               .or. JOBTYPE == JOB_REAL_UKS_INT .or. JOBTYPE == JOB_UNKNOWN) then
                XYZDefined = .true.
                current_block = block_XYZ
                cycle lines

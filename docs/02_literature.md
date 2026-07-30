@@ -1,6 +1,5 @@
 # Literature
 
-You can use `beyond-rpa` to replicate the numerical results from the following publications:
 
 | Title | Reference |
 |:------|:----------|
