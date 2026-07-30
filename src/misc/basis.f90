@@ -610,14 +610,8 @@ contains
             else
                   call dmsg("CHARGE", CHARGE, fmt="F20.3")
             end if
-            call smsg("BASIS SET", BASIS_SET_NAME)
-            if (SPHERBASIS) then
-                  call smsg("SOLID HARMONICS BASIS", "ENABLED")
-            else
-                  call smsg("SOLID HARMONICS BASIS", "DISABLED")
-            end if
-            call imsg("NUMBER OF CARTESIAN GAUSSIAN ORBITALS", NORB)
             
+
             if (POINT_GROUP == C2v) then
                   call smsg("MOLECULE POINT GROUP", "C2v")
             else if (POINT_GROUP == D2h) then

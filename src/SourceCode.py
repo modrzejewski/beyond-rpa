@@ -69,7 +69,7 @@ FileList += [("DFT", ["linear-algebra/blas5.f90",
 FileList += [("DFT", ["linear-algebra/blas_olenkifer.f90"])]
 
 FileList += [("DFT", ["integrals/chebinterp.f90",
-                      "integrals/spherh.f90",
+                      "basis/spherh.f90",
                       "integrals/hermite.f90",
                       "integrals/hermite_automatic.f90",
                       "integrals/ericonst.f90",
@@ -412,8 +412,9 @@ FileList += [("DFT", ["integrals/Auto2e/src/auto2e_eri_dddd.f90",
 "integrals/Auto2e/src/auto2e_eri_ssss.f90"])]
 FileList += [("DFT", ["integrals/Auto2e/src/auto2e.f90"])]
 FileList += [("DFT", ["integrals/OverlapIntegrals.f90"])]
-FileList += [("DFT", ["integrals/sphergto.f90"])]
-FileList += [("DFT", ["integrals/basis_sets.f90"])]
+FileList += [("DFT", ["basis/sphergto.f90"])]
+FileList += [("DFT", ["basis/basis_definitions.f90"])]
+FileList += [("DFT", ["basis/basis_sets.f90"])]
 FileList += [("DFT", ["integrals/ECP/PseudopotentialData.f90"])]
 
 FileList += [("DFT", ["integrals/Cholesky/ParallelCholesky.f90",
@@ -470,16 +471,7 @@ FileList += [("DFT", ["xc-models/modrzej2016_xc_energy.f90",
                       "xc-models/pw86_xc_energy.f90",
                       "xc-models/mvs_xc_energy.f90"])]
 
-FileList += [("DFT", ["mfm/lsdpw92.f90",
-                 "mfm/vs98exch.f90"])]
-FileList += [("DFT", ["mfm/vs98corr.f90"])]
-FileList += [("DFT", ["mfm/m05corr.f90",
-                 "mfm/m05exch.f90",
-                 "mfm/m06corr.f90",
-                 "mfm/m06exch.f90",
-                 "mfm/m08m11corr.f90",
-                 "mfm/m08m11exch.f90"])]
-FileList += [("DFT", ["mfm/mfm.f90"])]
+
 
 FileList += [("DFT", ["misc/orbextension.f90",
                  "misc/gridfunc.f90",
@@ -884,7 +876,7 @@ FileList += [("CC", ["ccsd/ccsd.f90"])]
 FileList += [("DFT", ["misc/mp2.f90"])]
 FileList += [("DFT", ["driver/initialize.f90"])]
 FileList += [("CC", ["driver/drv_wm_intermediates_init.f90"])]
-
+FileList += [("DFT", ["driver/drv_eri.f90"])]
 FileList += [("DFT", ["driver/drv_dft.f90",
                       "driver/drv_mp2.f90",
                       "driver/drv_dft_rpa.f90"])]

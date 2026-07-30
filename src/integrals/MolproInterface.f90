@@ -298,7 +298,7 @@ contains
             
             call msg("Testing Molpro interface", underline=.true.)
             call blankline()
-            call msg("Spherical AO basis loaded from " // AOBasis%FilePath)
+            call msg("Spherical AO basis loaded")
             call msg("Overlap matrix in spherical AO basis with Molpro ordering of shells and angular functions")
             call geprn(S_mao)
             call blankline()

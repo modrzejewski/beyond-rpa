@@ -3,6 +3,7 @@ module KohnSham
       use math_constants
       use arithmetic
       use grid
+      use grid_definitions, only: GRID_RHOTHRESH
       use basis_sets
       use auxint
       use h_xcfunc

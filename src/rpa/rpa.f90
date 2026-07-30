@@ -1863,7 +1863,7 @@ contains
             !
             ! Call the main subroutine which integrates the RPA correlation energy over the frequency grid
             !
-            if (RPAParams%CoupledClusters) then
+            if (RPAParams%Algorithm == RPA_ALGO_JCTC2023) then
                   call rpa_CC_Energy_1(Energy, OccActCoeffs, VirtActCoeffs, Ei, Ea, ShellCenters, &
                         AtomCoords, LmaxGTO, ShellLoc, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, &
                         Exponents, NormFactors, NAO, NShells, NAtoms, NOccAct, NVirt, NSpins, SpherAO, AOBasis, &
@@ -1923,7 +1923,7 @@ contains
                         
                         time_W, time_WRG, time_GRWRG, time_LogDet, time_Density, time_Cholesky)
             else
-                  if (RPAParams%MOAlgorithm) then                  
+                  if (RPAParams%Algorithm == RPA_ALGO_JCTC2020_MO) then                  
                         call rpa_FreqIntegral_MO(Energy, OccActCoeffs, VirtActCoeffs, Ei, Ea, ShellCenters, &
                               AtomCoords, LmaxGTO, ShellLoc, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, &
                               Exponents, NormFactors, NAO, NShells, NAtoms, NOccAct, NVirt, NSpins, SpherAO, &
@@ -1967,7 +1967,7 @@ contains
                               CholeskyBasis%SubsetBounds, &                              
                               
                               time_W, time_WRG, time_GRWRG, time_LogDet, time_Density, time_Cholesky)
-                  else
+                  else if (RPAParams%Algorithm == RPA_ALGO_JCTC2020_AO) then
                         call rpa_FreqIntegral_AO(EcRPA, OccActCoeffs, VirtActCoeffs, Ei, Ea, ShellCenters, &
                               AtomCoords, LmaxGTO, ShellLoc, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, &
                               Exponents, NormFactors, NAO, NShells, NAtoms, NOccAct, NVirt, NSpins, SpherAO, &
@@ -2013,6 +2013,9 @@ contains
                               time_W, time_WRG, time_GRWRG, time_LogDet, time_Density, time_Cholesky)
 
                         Energy(RPA_ENERGY_CORR) = EcRPA
+                  else
+                        call msg("Invalid algorithm selected for JCTC2020 codepath", MSG_ERROR)
+                        error stop
                   end if
             end if
             !
@@ -2024,12 +2027,12 @@ contains
             RPABasis%ComputeRWRBasis = .false.
             call msg("Total time for RPA correlation: " // str(clock_readwall(timer), d=1) // " seconds")
             call msg("Detailed timings in seconds")
-            if (RPAParams%MOAlgorithm) then
+            if (RPAParams%Algorithm == RPA_ALGO_JCTC2020_MO) then
                   call msg("Cholesky        " // str(time_Cholesky,d=1))
                   call msg("C*RG            " // str(time_WRG,d=1))
                   call msg("GRC*D*CRG       " // str(time_GRWRG,d=1))
                   call msg("Det(Log(GRWRG)) " // str(time_LogDet,d=1))
-            else
+            else if (RPAParams%Algorithm == RPA_ALGO_JCTC2020_AO) then
                   call msg("Cholesky        " // str(time_Cholesky,d=1))
                   call msg("W               " // str(time_W,d=1))
                   call msg("W*RG            " // str(time_WRG,d=1))

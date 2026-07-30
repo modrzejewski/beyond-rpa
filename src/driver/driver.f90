@@ -8,6 +8,7 @@ program driver
       use initialize
       use display
       use periodic
+      use basis_definitions
       use parser
       use report
       use gridfunc
@@ -21,10 +22,6 @@ program driver
       use drv_dft_rpa
       use drv_dft_disp
       use drv_mp2
-      !@CC
-      use drv_cc_prop
-      use drv_cc_ground
-      !@END CC
       
       implicit none
 
@@ -33,6 +30,7 @@ program driver
       type(TRPAParams) :: RPAParams
       type(TChol2Params) :: Chol2Params
       type(TTHCParams) :: THCParams
+      type(TBasisAssignment) :: BasisAssign
       type(tmolecule) :: geom_a, geom_b, geom_ab
       type(tsystemdep_params) :: par
       integer, parameter :: max_ncells = 10
@@ -46,14 +44,15 @@ program driver
       !
       call img_setup()
       call ReadCommandLine()
-      call read_inputfile(System, SCFParams, RPAParams, Chol2Params, THCParams, INPUTFILE)
+      call read_inputfile(System, SCFParams, RPAParams, &
+            Chol2Params, THCParams, BasisAssign, INPUTFILE)
       call sys_Init(System, SYS_TOTAL)
       ! ---------------------------------------------------------
       ! Compute spherically-averaged densities of isolated atoms
       ! if the Hirshfeld population analysis is requested
       ! ---------------------------------------------------------
       if (SCFParams%Hirsh .and. System%NAtoms>1) then
-            call task_dft_IsolatedHirshfeldAtoms_UKS(SCFParams, System)
+            call task_dft_IsolatedHirshfeldAtoms_UKS(SCFParams, System, BasisAssign)
       else
             allocate(SCFParams%AUXIn(0, 0))
             allocate(SCFParams%HirshVolumes(0))
@@ -86,10 +85,10 @@ program driver
             end do
 
       case (JOB_REAL_UKS_RPA)
-            call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams)
+            call task_uks_rpa(System, SCFParams, RPAParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_REAL_UKS_SP)
-            call task_dft_UKS(System, SCFParams)
+            call task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_RTTDDFT_POLAR)
             if (DOREPORT .and. IMG_ISMASTER) then
@@ -109,7 +108,7 @@ program driver
             end do
 
       case (JOB_REAL_UKS_INT)
-            call task_dft_UKS(System, SCFParams)
+            call task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
             
       case (JOB_DFT_INT)
             if (DOREPORT .and. IMG_ISMASTER) then
@@ -218,32 +217,6 @@ program driver
                   call unpack_systemdep_params(par)
                   call task_mp2_sp(geom_a)
             end do
-            !@CC
-      case (JOB_CCSD_PROP)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_properties(geom_a, THEORY_CCSD)
-            end do
-      case (JOB_CC3_PROP)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_properties(geom_a, THEORY_CC3)
-            end do
-      case (JOB_CCSD_DENSITY)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_density(geom_a, THEORY_CCSD, MBPT_ORDER)
-            end do
-      case (JOB_CC3_DENSITY)
-            do k = 1, njob_main
-                  call dequeue_job(geom_a, par, k, GEOM_MONOMER)
-                  call unpack_systemdep_params(par)
-                  call task_cc_density(geom_a, THEORY_CC3, MBPT_ORDER)
-            end do
-            !@END CC
       end select
       
       stop 0

@@ -1,3 +1,22 @@
+!
+! This module is not linked to the main driver. To re-enable, add the
+! following to driver.f90:
+!
+!       use drv_cc_prop
+!
+!       case (JOB_CCSD_PROP)
+!             do k = 1, njob_main
+!                   call dequeue_job(geom_a, par, k, GEOM_MONOMER)
+!                   call unpack_systemdep_params(par)
+!                   call task_cc_properties(geom_a, THEORY_CCSD)
+!             end do
+!       case (JOB_CC3_PROP)
+!             do k = 1, njob_main
+!                   call dequeue_job(geom_a, par, k, GEOM_MONOMER)
+!                   call unpack_systemdep_params(par)
+!                   call task_cc_properties(geom_a, THEORY_CC3)
+!             end do
+!
 module drv_cc_prop
       use symmetry
       use math_constants

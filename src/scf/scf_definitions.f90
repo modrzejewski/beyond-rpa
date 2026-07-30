@@ -175,9 +175,6 @@ module scf_definitions
             ! -----------------------------------------------------
             !              BASIS SET PARAMETERS
             ! -----------------------------------------------------
-            character(:), allocatable :: AOBasisPath
-            character(:), allocatable :: AOBasisName
-            logical :: SpherAO = .true.
             character(:), allocatable :: F12BasisPath
             character(:), allocatable :: F12BasisName
             character(:), allocatable :: AtomicGuessDir

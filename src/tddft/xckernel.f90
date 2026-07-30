@@ -1,6 +1,6 @@
 module xckernel
       use gparam
-      use grid
+      use grid_definitions, only: GRID_RHOTHRESH
 
       implicit none
 
