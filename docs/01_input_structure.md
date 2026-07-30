@@ -45,6 +45,50 @@ The basis set name corresponds to the filenames available in the `basis-sets/` d
 | `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | Ahlrichs' def2 basis sets |
 | `def2-svpd`, `def2-tzvpd`, `def2-tzvppd`, `def2-qzvpd`, `def2-qzvppd` | augmented Ahlrichs' def2 basis sets |
 
+### Advanced Basis Set Assignment
+
+By default, a global basis set can be defined with the `basis` keyword. Alternatively, you can define different basis sets for specific elements or individual atoms using the `basis_assignment` block.
+
+Inside the `basis_assignment` block, you can use:
+* **Element symbols:** To assign a basis set to all atoms of a specific element.
+* **Atom indices:** To assign a basis set to a specific atom (1-indexed based on the order in the `xyz` block).
+* **Asterisk (`*`):** To assign a fallback/global basis set.
+
+**Prioritization Rules**
+When evaluating which basis set applies to a particular atom, the program resolves assignments in the following order of priority:
+1. **Atom-specific rules** (highest priority)
+2. **Element-specific rules**
+3. **Global fallback (`*`)** (lowest priority)
+
+**Example 1: By Element**
+```text
+basis_assignment
+ O cc-pVDZ
+ H cc-pVTZ
+end
+```
+In this example, all oxygen (O) atoms are assigned the `cc-pVDZ` basis set, while all hydrogen (H) atoms are assigned the `cc-pVTZ` basis set.
+
+**Example 2: By Atom Index**
+```text
+basis_assignment
+ 1 cc-pVDZ
+ 2 cc-pVTZ
+ 3 cc-pVDZ
+end
+```
+Here, basis sets are assigned based on the order in which the atoms are listed in the `xyz` geometry block. The first and third atoms receive the `cc-pVDZ` basis set, while the second atom receives the `cc-pVTZ` basis set.
+
+**Example 3: Mixed Assignment with a Fallback (`*`)**
+```text
+basis_assignment
+ 1 cc-pVDZ
+ O aug-cc-pVDZ
+ * cc-pVTZ
+end
+```
+This example highlights the prioritization rules. The first atom (regardless of its element) is forced to use `cc-pVDZ` (priority 1). Any other oxygen atoms use `aug-cc-pVDZ` (priority 2). Every other atom in the system defaults to the `cc-pVTZ` basis set via the `*` fallback (priority 3).
+
 ## Mean-field hamiltonian
 
 This section is configured within the `scf` block using the `xcfunc` keyword followed by the `{xc_model}`.
