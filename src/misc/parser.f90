@@ -1173,7 +1173,7 @@ contains
             current_block = block_PointCharges
             cycle lines
           case ("RPA")
-            if (JOBTYPE /= JOB_REAL_UKS_RPA) then
+            if (JOBTYPE /= JOB_REAL_UKS_RPA .and. JOBTYPE /= JOB_UNKNOWN) then
                call msg("Cannot define RPA parameters for non-RPA job types", MSG_ERROR)
                error stop
             end if
@@ -1504,13 +1504,20 @@ contains
       ! Check for errors in user's input
       !
       if (JOBTYPE .eq. JOB_UNKNOWN) then
-         call msg("PARSER ERROR: NO JOB TYPE SPECIFIED", &
-            priority=MSG_ERROR)
-         error stop
+         if (RPADefined) then
+            JOBTYPE = JOB_REAL_UKS_RPA
+         else
+            JOBTYPE = JOB_REAL_UKS_SP
+         end if
       end if
 
       if (JOBTYPE == JOB_REAL_UKS_RPA .and. .not. RPADefined) then
          call msg("RPA parameters not defined", MSG_ERROR)
+         error stop
+      end if
+
+      if (JOBTYPE /= JOB_REAL_UKS_RPA .and. RPADefined) then
+         call msg("Cannot define RPA parameters for non-RPA job types", MSG_ERROR)
          error stop
       end if
 

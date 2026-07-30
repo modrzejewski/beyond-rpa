@@ -14,7 +14,6 @@ where
 
 ### 1. Noncovalent interaction energy of a water dimer
 ```text
-jobtype uks rpa
 basis aug-cc-pVDZ
 scf
  xcfunc HF
@@ -38,7 +37,6 @@ end
 
 ### 2. Nonadditive 3-body interaction energy of a formaldehyde trimer
 ```text
-jobtype uks rpa
 basis aug-cc-pVDZ
 scf
  xcfunc HF

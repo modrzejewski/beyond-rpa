@@ -1,36 +1,54 @@
 # Input
 
-This chapter documents the structure of the input file and lists the possible values for various configuration keys.
+## General Input Structure
 
-## `jobtype {JOBTYPE}`
+A complete input file consists of global settings (like the basis set) and specific blocks defining the geometry (`xyz`), self-consistent field options (`scf`), and beyond-mean-field methods (`rpa`).
 
-| Value | Description |
-|---|---|
-| `uks rpa` | Unrestricted Kohn-Sham RPA calculation |
-| `uks sp` | Unrestricted Kohn-Sham single point |
+Below is a mockup illustrating the structure:
 
-## `basis {basis_set_params}`
+```text
+basis {basis_set_params}
+
+scf
+  xcfunc {xc_model}
+end
+
+rpa
+  TheoryLevel {rpa_method}
+end
+
+xyz
+  {number_of_atoms_per_fragment}
+  {atom_symbol} {x} {y} {z}
+  ...
+end
+```
+
+## Basis set
 
 The basis set name corresponds to the filenames available in the `basis-sets/` directory (case-insensitive). All basis set parameters are downloaded from the EMSL basis set exchange website.
 
 | Keys | Description |
 |---|---|
-| `cc-pvdz`, `cc-pvtz`, `cc-pvqz`, `cc-pv5z`, `cc-pvddz`, `cc-pvtdz`, `cc-pvqdz`, `cc-pv5dz`, `cc-pcvtz`, `cc-pcvqz`, `cc-pwcvqz`, `cc-pwcv5z`, `cc-pvdz-pp`, `cc-pvtz-pp` | Dunning's correlation-consistent polarized valence basis sets |
-| `aug-cc-pvdz`, `aug-cc-pvtz`, `aug-cc-pvqz`, `aug-cc-pv5z`, `aug-cc-pvddz`, `aug-cc-pvtdz`, `aug-cc-pvqdz`, `aug-cc-pv5dz`, `aug-cc-pcvtz`, `aug-cc-pcvqz`, `aug-cc-pwcvqz`, `aug-cc-pwcv5z`, `aug-cc-pvdz-pp`, `aug-cc-pvtz-pp`, `d-aug-cc-pvdz`, `d-aug-cc-pvtz`, `d-aug-cc-pvqz`, `d-aug-cc-pv5z` | augmented Dunning's correlation-consistent polarized valence basis sets |
-| `def2-sv_p`, `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | Ahlrichs' def2 basis sets |
+| `cc-pvdz`, `cc-pvtz`, `cc-pvqz`, `cc-pv5z` | Dunning's correlation-consistent polarized valence basis sets |
+| `aug-cc-pvdz`, `aug-cc-pvtz`, `aug-cc-pvqz`, `aug-cc-pv5z` | augmented Dunning's correlation-consistent polarized valence basis sets |
+| `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | Ahlrichs' def2 basis sets |
 | `def2-svpd`, `def2-tzvpd`, `def2-tzvppd`, `def2-qzvpd`, `def2-qzvppd` | augmented Ahlrichs' def2 basis sets |
 
-## `scf xcfunc {xc_model}`
+## Mean-field hamiltonian
+
+This section is configured within the `scf` block using the `xcfunc` keyword followed by the `{xc_model}`.
 
 | Value | Description |
 |---|---|
 | `HF` | Hartree-Fock |
-| `PBE` | Perdew-Burke-Ernzerhof |
-| `PBE0` | Perdew-Burke-Ernzerhof hybrid |
-| `TPSS` | Tao-Perdew-Staroverov-Scuseria |
-| `SCAN` | Strongly Constrained and Appropriately Normed |
+| `PBE`, `PBE0` | Perdew-Burke-Ernzerhof (pure and hybrid) |
+| `TPSS`, `TPSSh` | Tao-Perdew-Staroverov-Scuseria (pure and hybrid) |
+| `SCAN` | Strongly constrained and appropriately normed exchange-correlation functional |
 
-## `rpa TheoryLevel {rpa_method}`
+## Post-SCF correlation
+
+This section is configured within the `rpa` block using the `TheoryLevel` keyword followed by the `{rpa_method}`.
 
 | Value | Description |
 |---|---|
@@ -41,19 +59,21 @@ The following methods are implemented primarily for testing purposes and are sig
 
 | Value | Description |
 |---|---|
-| `RPA` | Standard RPA |
-| `RPA+RSE` | RPA with single excitations |
-| `rPT2` | Renormalized second-order perturbation theory |
-| `RPA+2g` | RPA with second-order exchange |
+| `RPA` | Direct-ring random-phase approximation |
+| `RPA+RSE` | RPA with single excitations [[Modrzejewski2020](02_literature.md), [Modrzejewski2021](02_literature.md)] |
+| `rPT2` | Renormalized second-order perturbation theory [[Ren2013](02_literature.md)] |
+| `RPA+2g` | RPA with singles corrections, SOSEX, and additional higher order term referred as 2g [[Cieśliński2023](02_literature.md)] |
 
-## Geometry specification
+## Geometry
 
-The `xyz` block defines the geometry of the system. Depending on the system, the number of atoms is specified as a space-separated list of integers:
+The `xyz` block defines the geometry of the system. The string that specifies the number of atoms in the molecular subsystems controls how the calculation is performed. Subsystems (e.g., monomers A and B) are specified together with the total system (e.g., dimer AB) because their calculation reuses intermediates from the total system.
 
-- **Single molecule:** One integer (e.g., `3`)
-- **Dimer:** Two integers (e.g., `3 3`)
-- **Trimer:** Three integers (e.g., `4 4 4`)
-- **Tetramer:** Four integers (e.g., `3 3 3 3`)
+| Molecular complex | Number of atoms | Calculated property |
+|---|---|---|
+| Single molecule | One integer (e.g., `3`) | single-point energy |
+| Dimer | Two integers (e.g., `3 3`) | noncovalent dimer interaction energy |
+| Trimer | Three integers (e.g., `4 4 4`) | nonadditive three-body interaction energy |
+| Tetramer | Four integers (e.g., `3 3 3 3`) | nonadditive four-body interaction energy |
 
 Example for a dimer:
 ```text
