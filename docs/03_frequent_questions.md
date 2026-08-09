@@ -40,7 +40,7 @@ compensate for these limitations by including the ph beyond-RPA corrections and 
 
 ## 7. Why are corrections other than SOSEX needed?
 The SOSEX correction to noncovalent interaction energies in
-post-Hartree-Fock RPA is almost negligible. By contrast, the third-order
+post-Hartree-Fock RPA is almost negligible. The third-order
 particle-hole corrections are large and reduce the underbinding present in RPA(HF) [[Syty2025](04_literature.md)].
 
 ## 8. What's the role of periodic Hartree-Fock embedding?
