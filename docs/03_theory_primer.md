@@ -1,4 +1,4 @@
-# Frequent Questions
+# Theory Primer
 
 ## 1. What physical quantities can be computed with `beyond-rpa`?
 The `beyond-rpa` program is a part of a software suite required to compute the
@@ -15,9 +15,9 @@ This approach yields significant savings, especially for nonadditive three-body 
 
 ## 3. What developments were required to make the multi-level scheme feasible?
 The approach required three recent methodological advances: (1) 
-local coupled-cluster methods with high accuracy for noncovalent interactions (LNO-CCSD(T));
+local coupled-cluster methods with high accuracy for noncovalent interactions (LNO-CCSD(T) [[Nagy2024](04_literature.md)]);
 (2) low-level coupled-cluster method which handles long-range and
-many-body interactions (RPA+ph); 
+many-body interactions (RPA+ph [[Syty2025](04_literature.md), [Cieśliński2023](04_literature.md)]); 
 and (3) efficient periodic Hartree-Fock
 implementations.
 
@@ -41,7 +41,7 @@ compensate for these limitations by including the ph beyond-RPA corrections and 
 ## 7. Why are corrections other than SOSEX needed?
 The SOSEX correction to noncovalent interaction energies in
 post-Hartree-Fock RPA is almost negligible. The third-order
-particle-hole corrections are large and reduce the underbinding present in RPA(HF) [[Syty2025](04_literature.md)].
+particle-hole corrections are large and reduce the underbinding present in RPA(HF) [[Syty2025](04_literature.md), [Cieśliński2023](04_literature.md)].
 
 ## 8. What's the role of periodic Hartree-Fock embedding?
 The correlation energy is smooth and decays rapidly with intermolecular distance, but the mean-field component 
@@ -50,8 +50,10 @@ expansion [see the supporting information in [Syty2025](04_literature.md)].
 
 ## 9. Why use Hartree-Fock instead of Kohn-Sham orbitals?
 Density-functional theory approximations introduce qualitative errors when
-describing many-body noncovalent interactions. Hartree-Fock theory is free from
-these errors [[Pham2024](04_literature.md)].
+describing many-body noncovalent interactions, which then propagate to the
+post-SCF RPA [[Modrzejewski2020](04_literature.md),
+[Modrzejewski2021](04_literature.md)]. Hartree-Fock theory is free from
+these artifacts [[Pham2024](04_literature.md)].
 
 ## 10. What are the future directions?
 A complete description of the thermodynamics of organic molecular crystals.
