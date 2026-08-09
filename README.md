@@ -1,9 +1,30 @@
 # Overview
-The `beyond-rpa` program implements the RPA+ph electronic-structure method, a coupled-cluster based extension of the random-phase approximation designed for an improved description of van der Waals interactions in molecular clusters. RPA+ph serves as a low-level companion method for multi-level calculations of CCSD(T) energies in condensed-phase systems [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md)].
+The `beyond-rpa` program implements the RPA+ph electronic-structure method, a
+coupled-cluster based extension of the random-phase approximation designed for
+an improved description of van der Waals interactions in molecular clusters.
+RPA+ph serves as a low-level companion method for multi-level calculations of
+CCSD(T) energies in condensed-phase systems
+[[Syty2025](docs/04_literature.md),
+[Cieśliński2023](docs/04_literature.md)].
 
-The algorithms used in `beyond-rpa` are the result of a series of works on the numerical stability of RPA-derived approximations in the many-body expansion of the crystal lattice energy [[Syty2025](docs/02_literature.md), [Cieśliński2023](docs/02_literature.md), [Pham2025](docs/02_literature.md), [Pham2024](docs/02_literature.md), [Pham2023](docs/02_literature.md), [Modrzejewski2021](docs/02_literature.md), [Modrzejewski2020](docs/02_literature.md)]. With high probability, no threshold adjustment is needed to evaluate long-distance two-body and many-body interactions, which are usually prone to numerical noise.
+The algorithms used in `beyond-rpa` are the result of a series of works on the
+numerical stability of RPA-derived approximations in the many-body expansion of
+the crystal lattice energy
+[[Syty2025](docs/04_literature.md),
+[Cieśliński2023](docs/04_literature.md),
+[Pham2025](docs/04_literature.md),
+[Pham2024](docs/04_literature.md),
+[Pham2023](docs/04_literature.md),
+[Modrzejewski2021](docs/04_literature.md),
+[Modrzejewski2020](docs/04_literature.md)].
+With high probability, no threshold adjustment is needed to evaluate
+long-distance two-body and many-body interactions, which are usually prone to
+numerical noise.
 
-It is likely that you will use `beyond-rpa` as part of a software suite for multi-level coupled-cluster energy calculations. In this context, you will need the following additional components:
+It is likely that you will use `beyond-rpa` as part of a software suite for
+multi-level coupled-cluster energy calculations
+[[Syty2025](docs/04_literature.md)].
+In this context, you will need the following additional components:
 * **The high-level CCSD(T) approximation:** We recommend the LNO-CCSD(T) approximation implemented in the [MRCC](https://www.mrcc.hu) program.
 * **Periodic mean-field embedding:** We recommend the HF implementation in VASP. We believe that PySCF will be fine too as soon as some of the improvements from the developers version make its way to main.
 * **Workflow coordination library:** For molecular crystals, we recommend [`mbe-automation`](https://github.com/modrzejewski/mbe-automation). This tool manages the entire workflow: reading the initial crystal structure from a CIF file, generating molecular clusters for the correlated wave-function calculation, and evaluating the final free energy using thermal contributions from machine-learning interatomic potentials.
@@ -13,7 +34,8 @@ It is likely that you will use `beyond-rpa` as part of a software suite for mult
 * [Setup](docs/00_setup.md)
 * [Input](docs/01_input_structure.md)
 * [Examples](docs/02_examples.md)
-* [Literature](docs/02_literature.md)
+* [Frequent Questions](docs/03_frequent_questions.md)
+* [Literature](docs/04_literature.md)
 
 # Authors
 * [Marcin Modrzejewski](https://orcid.org/0000-0001-9979-8355) (main author)
