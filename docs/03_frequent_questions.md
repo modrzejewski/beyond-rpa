@@ -47,7 +47,7 @@ particle-hole corrections are large and reduce the underbinding present in RPA(H
 ## 8. What's the role of periodic Hartree-Fock embedding?
 The correlation energy is smooth and decays rapidly with intermolecular distance, but the mean-field component 
 keeps fluctuating even at very large distances, beyond any realistic cutoff that can be applied in the explicit many-body
-expansion. 
+expansion [see the supporting information in [Syty2025](04_literature.md)]. 
 
 ## 9. Why use Hartree-Fock instead of Kohn-Sham orbitals?
 Density-functional theory approximations introduce qualitative errors when
