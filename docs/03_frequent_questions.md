@@ -1,14 +1,58 @@
 # Frequent Questions
 
-| Question | Answer |
-| :--- | :--- |
-| **What physical quantities can be computed with beyond-rpa?** | The `beyond-rpa` program computes lattice energies of organic molecular solids using a multi-level coupled-cluster approach. The objective is to generate calibration data points for simpler approximations. |
-| **What is the multi-level scheme?** | Given an accuracy target, the lattice energy of a molecular crystal is partitioned into components computed at varying levels of theory. For example, nonadditive interactions require smaller basis sets and lower-order coupled-cluster approximations than pairwise interactions. The multi-level scheme exploits these observations to optimize total computational cost. |
-| **Why hasn't the multi-level approach been more popular?** | The approach required three recent methodological advances: (1) highly accurate local coupled-cluster methods for noncovalent interactions (e.g., LNO-CCSD(T)); (2) a numerically robust low-level coupled-cluster method for long-range and many-body interactions (e.g., RPA+ph); and (3) efficient periodic Hartree-Fock implementations. |
-| **What is the random-phase approximation?** | RPA is the simplest coupled-cluster approximation. Despite severe simplifications to the $T$ operator, the energy model captures many-body dispersion, a key physical interaction in noncovalent systems. Nonadditive interactions are implicitly included up to arbitrary order $n>2$. |
-| **Why is the random-phase approximation efficient?** | Efficiency stems from restricting the base RPA variant to a single tensor contraction topology: the direct-ring contraction. The contraction between tensors, such as wave-function amplitudes and two-electron integrals, reduces to matrix-matrix multiplication. This maps directly to compute-bound BLAS Level 3 routines, allowing highly optimized execution on modern hardware. |
-| **What are the limitations of RPA?** | Base RPA violates the Pauli exclusion principle and lacks triple excitations. RPA+ph eliminates the unphysical terms up to third order. However, these limitations are compensated in the multi-level method. |
-| **Why are corrections other than SOSEX needed?** | The SOSEX correction minimally impacts noncovalent interaction energies in post-Hartree-Fock models. In contrast, third-order particle-hole (ph) corrections are large and systematically improve accuracy. |
-| **Why is a periodic boundary condition (PBC) calculation required for embedding?** | Correlation energy decays rapidly and smoothly with intermolecular distance. Conversely, mean-field energy fluctuates and converges slowly, particularly in polar systems, and dominates high-order many-body interactions. Therefore, the many-body expansion (MBE) is applied exclusively to correlated wave-function terms, which are embedded within a periodic Hartree-Fock background. |
-| **Why use Hartree-Fock instead of Kohn-Sham approximations as the mean-field model?** | Density functional theory approximations introduce qualitative errors when describing many-body noncovalent interactions. Hartree-Fock theory is free from these errors. |
-| **What are the future directions?** | A complete description of the thermodynamics of organic molecular crystals. |
+## 1. What physical quantities can be computed with `beyond-rpa`?
+The `beyond-rpa` program is a part of a software suite required to compute the
+lattice energy of an organic molecular crystal in the multi-level
+coupled-cluster approximation using the many-body expansion technique
+[[Syty2025](04_literature.md)].
+When converged with cutoffs and basis set size, the resulting lattice energies
+can serve as calibration points for simpler models of
+crystal thermodynamics, such as DFT and machine-learning interatomic potentials.
+
+## 2. What is the multi-level scheme?
+The multi-level scheme optimizes the cost by matching physical interactions to appropriate computational approximations.
+This brings savings especially in the case of nonadditive three-body interactions whose number scales steeply with the cutoff distance, but which require smaller basis sets and lower-order
+coupled-cluster approximations than pairwise interactions.
+
+## 3. What developments were required to make the multi-level scheme feasible?
+The approach required three recent methodological advances: (1) 
+local coupled-cluster methods with high accuracy for noncovalent interactions (LNO-CCSD(T));
+(2) low-level coupled-cluster method which handles long-range and
+many-body interactions (RPA+ph); 
+and (3) efficient periodic Hartree-Fock
+implementations.
+
+## 4. What is the random-phase approximation?
+RPA is the simplest coupled-cluster approximation. Despite severe
+simplifications to the $T$ operator, the energy model captures many-body
+dispersion, a key physical interaction in noncovalent systems. Nonadditive
+interactions are implicitly included up to arbitrary order $n>2$.
+
+## 5. Why is the random-phase approximation efficient?
+Direct RPA contains only the direct-ring contributions, where
+the contractions between tensors, such as wave-function amplitudes and two-electron integrals, reduce
+to matrix-matrix multiplications. Thus, the heaviest step
+reduces to compute-bound BLAS Level
+3 routines perfectly optimized on modern hardware.
+
+## 6. What are the limitations of RPA?
+Direct RPA violates the Pauli exclusion principle and lacks triple excitations. However, in the multi-level scheme we
+compensate for these limitations by including the ph beyond-RPA corrections and using RPA only as a low-level admixture to CCSD(T).
+
+## 7. Why are corrections other than SOSEX needed?
+The SOSEX correction to noncovalent interaction energies in
+post-Hartree-Fock RPA is almost negligible. By contrast, the third-order
+particle-hole corrections are large and reduce the underbinding present in RPA(HF).
+
+## 8. What's the role of periodic Hartree-Fock embedding?
+The correlation energy is smooth and decays rapidly with intermolecular distance, but the mean-field component 
+keeps fluctuating even at very large distances, beyond any realistic cutoff that can be applied in the explicit many-body
+expansion. 
+
+## 9. Why use Hartree-Fock instead of Kohn-Sham orbitals?
+Density-functional theory approximations introduce qualitative errors when
+describing many-body noncovalent interactions. Hartree-Fock theory is free from
+these errors.
+
+## 10. What are the future directions?
+A complete description of the thermodynamics of organic molecular crystals.

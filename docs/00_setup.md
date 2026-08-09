@@ -24,3 +24,9 @@ The project uses the Meson build system. The compiler flags and dependencies are
    ```bash
    meson test
    ```
+   
+   To run tests individually, you can navigate to the test directory and run pytest. For example:
+   ```bash
+   cd tests/basis
+   pytest test_basis.py
+   ```
