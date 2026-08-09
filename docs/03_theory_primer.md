@@ -36,7 +36,7 @@ reduces to compute-bound BLAS Level
 
 ## 6. What are the limitations of RPA?
 Direct RPA violates the Pauli exclusion principle and lacks triple excitations. However, in the multi-level scheme we
-compensate for these limitations by including the ph beyond-RPA corrections and using RPA only as a low-level admixture to CCSD(T).
+compensate for these limitations by including the ph beyond-RPA corrections and using RPA only as a low-level background for CCSD(T).
 
 ## 7. Why are corrections other than SOSEX needed?
 The SOSEX correction to noncovalent interaction energies in
