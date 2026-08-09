@@ -106,7 +106,7 @@ This section is configured within the `rpa` block using the `TheoryLevel` keywor
 
 | Value | Description |
 |---|---|
-| `RPA+ph` | Random-phase approximation with the ph correction [[Syty2025](02_literature.md)] |
+| `RPA+ph` | Random-phase approximation with the ph correction [[Syty2025](04_literature.md)] |
 
 #### Additional RPA-based methods
 The following methods are implemented primarily for testing purposes and are significantly less efficient than `RPA+ph`.
@@ -114,9 +114,9 @@ The following methods are implemented primarily for testing purposes and are sig
 | Value | Description |
 |---|---|
 | `RPA` | Direct-ring random-phase approximation |
-| `RPA+RSE` | RPA with single excitations [[Modrzejewski2020](02_literature.md), [Modrzejewski2021](02_literature.md)] |
-| `rPT2` | Renormalized second-order perturbation theory [[Ren2013](02_literature.md)] |
-| `RPA+2g` | RPA with singles corrections, SOSEX, and additional higher order term referred as 2g [[Cieśliński2023](02_literature.md)] |
+| `RPA+RSE` | RPA with single excitations [[Modrzejewski2020](04_literature.md), [Modrzejewski2021](04_literature.md)] |
+| `rPT2` | Renormalized second-order perturbation theory [[Ren2013](04_literature.md)] |
+| `RPA+2g` | RPA with singles corrections, SOSEX, and additional higher order term referred as 2g [[Cieśliński2023](04_literature.md)] |
 
 ## Geometry
 
