@@ -31,10 +31,10 @@ In this context, you will need the following additional components:
 
 # Documentation
 
-* [Setup](docs/00_setup.md)
-* [Input](docs/01_input_structure.md)
-* [Examples](docs/02_examples.md)
-* [Theory Primer](docs/03_theory_primer.md)
+* [Theory Primer](docs/00_theory_primer.md)
+* [Setup](docs/01_setup.md)
+* [Input](docs/02_input_structure.md)
+* [Examples](docs/03_examples.md)
 * [Literature](docs/04_literature.md)
 
 # Authors
