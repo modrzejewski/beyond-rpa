@@ -72,7 +72,7 @@ contains
 
          Rule = BasisAssign%get_atom_rule(a, Z)
          PathToParams = Rule%PathToParams
-         
+
          if (Rule%GuessAvailable) then
             PathToGuessDir = Rule%PathToGuessDir
             PathToGuess = PathToGuessDir // trim(lowercase(elname_short(Z))) // ".txt"
@@ -314,7 +314,7 @@ contains
       call basis_NormalizeCntrCoeffs(NormFactorsCart, CntrCoeffs, &
          Exponents, NPrimitives, ShellMomentum)
       select case(Order)
-      case(SHELL_ORDER_BY_RADIUS)
+       case(SHELL_ORDER_BY_RADIUS)
          !
          ! Compute the radii (R2MAX) beyond which the absolute values of atomic orbitals
          ! fall below some small value, e.g., eps~10**(-12). The shells within each atom
@@ -347,7 +347,7 @@ contains
             W(1:n) = -R2Max(p0:p1)
             call dsort(W(1:n), S(p0:p1), n)
          end do
-      case(SHELL_ORDER_BY_MOMENTUM)
+       case(SHELL_ORDER_BY_MOMENTUM)
          !
          ! Sort shells within each atom according to increasing angular momentum.
          ! This will disable the computation of orbitals spatial extent (R2Max)
@@ -372,14 +372,14 @@ contains
                end do
             end do
          end do
-      case(SHELL_ORDER_FIXED)
+       case(SHELL_ORDER_FIXED)
          allocate(R2Max(NShellParamsTotal))
          R2Max = huge(ONE)
          allocate(S(NShellParamsTotal))
          do p = 1, NShellParamsTotal
             S(p) = p
          end do
-      case default
+       case default
          call msg("basis_Init: Invalid ShellOrder value.", MSG_ERROR)
          error stop
       end select
