@@ -532,7 +532,7 @@ contains
       !                   NormFactorsCart => CNTRNORM, &
       !                   SpherAO => SPHERBASIS &
       !                   )
-      !                   call basis_NewAOBasis(AOBasis, AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
+      !                   call basis_Init_2(AOBasis, AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
       !                         NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, SpherAO)
       !             end  associate
       !             call scf_driver_SpinUnres(scfa, SCFParams, AOBasis)
