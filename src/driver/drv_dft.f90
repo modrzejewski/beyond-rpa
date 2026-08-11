@@ -56,7 +56,7 @@ contains
       !
       call data_load_2(System)
       call init_modules()
-      call basis_NewAOBasis(AOBasis, System, BasisAssign=BasisAssign)
+      call basis_Init(AOBasis, System, BasisAssign=BasisAssign)
 
       allocate(AtomElementMap(System%NAtoms))
       call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
@@ -118,7 +118,7 @@ contains
 
             call data_load_2(HirshAtom)
             call init_modules()
-            call basis_NewAOBasis(HirshAOBasis, HirshAtom, BasisAssign=HirshBasisAssign)
+            call basis_Init(HirshAOBasis, HirshAtom, BasisAssign=HirshBasisAssign)
             call scf_driver_SpinUnres(HirshSCFOutput, HirshSCFParams, HirshAOBasis, HirshAtom)
             !
             ! Generate spherically-averaged atomic densities (summed over spins)
@@ -276,7 +276,7 @@ contains
             SpherAO => SPHERBASIS, &
             R2MaxArray => R2MAX &
             )
-            call basis_NewAOBasis_2(AOBasis, AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
+            call basis_Init_2(AOBasis, AtomCoords, ShellCenters, ShellParamsIdx, ShellMomentum, &
                NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, R2MaxArray, SpherAO)
          end  associate
          ! ------------------------------------------------------------------
@@ -502,7 +502,7 @@ contains
       call sys_Init(System, SYS_TOTAL)
       call data_load_2(System)
       call init_modules()
-      call basis_NewAOBasis(AOBasis, System, BasisAssign=BasisAssign)
+      call basis_Init(AOBasis, System, BasisAssign=BasisAssign)
 
       call drv_eri_run(Rkpq, Chol2Vecs, THCGrid, &
          AOBasis, System, SCFParams, Chol2Params, THCParams)
