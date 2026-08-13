@@ -71,6 +71,18 @@ if pytest.found()
     timeout: 600,
     workdir: meson.project_source_root()
   )
+
+  test('rpt2',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=rpt2_report.xml',
+      meson.project_source_root() / 'tests' / 'rpa' / 'test_rpt2.py'
+    ],
+    depends: post_build_target,
+    timeout: 900,
+    workdir: meson.project_source_root()
+  )
 else
   message('pytest not found. Install pytest in your environment or run scripts in tests/ manually.')
 endif

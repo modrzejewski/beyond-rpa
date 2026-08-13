@@ -75,7 +75,7 @@ def get_tolerance(filepath: Path) -> float:
         return TOLERANCE_HIGH_ACCURACY
     return TOLERANCE_DEFAULT
 
-@pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.name)
+@pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.stem)
 def test_rpa_energy(filepath: Path, record_property):
     if not is_full_run() and "accuracy_default" not in filepath.name:
         pytest.skip("Skipping non-default accuracy test. Run with --full (standalone) or BEYOND_RPA_FULL=1 (pytest).")
