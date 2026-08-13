@@ -11,7 +11,7 @@ scf
 end
 
 rpa
- accuracy default
+ accuracy ludicrous
  TheoryLevel RPA+ph
 end
 
