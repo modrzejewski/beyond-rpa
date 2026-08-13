@@ -20,7 +20,7 @@ import pytest
 
 BIN_PATH = Path(__file__).parent.parent.parent / "bin" / "run"
 
-KEYS_TO_CHECK = [
+REF_KEYS = [
     "Eint(direct ring)",
     "Eint(SOSEX)",
     "Eint(3rd order ph)",
@@ -30,6 +30,19 @@ KEYS_TO_CHECK = [
     "EintNadd(3rd order ph)",
     "EintNadd(total)",
 ]
+
+CALC_KEYS = [
+    "Eint(direct ring)",
+    "Eint(SOSEX)",
+    "Eint(3rd order ph)",
+    "Eint(total)",
+    "EintNadd(direct ring)",
+    "EintNadd(SOSEX)",
+    "EintNadd(3rd order ph)",
+    "EintNadd(total)",
+]
+
+KEY_MAP = dict(zip(REF_KEYS, CALC_KEYS))
 
 #
 # Tolerances for energy components in kcal/mol
@@ -59,9 +72,24 @@ def is_full_run():
         return True
     return False
 
-def extract_energies(text: str) -> dict:
+def extract_ref_energies(filepath: Path) -> dict:
     energies = {}
-    for key in KEYS_TO_CHECK:
+    with open(filepath, 'r') as f:
+        for line in f:
+            if not line.startswith('!'):
+                if line.strip():
+                    break
+                continue
+            for ref_key in REF_KEYS:
+                pattern = r"!\s*" + re.escape(ref_key) + r"\s*=\s*([-+]?\d*\.\d+[Ee][-+]?\d+|[-+]?\d*\.\d+)"
+                match = re.search(pattern, line)
+                if match:
+                    energies[ref_key] = float(match.group(1))
+    return energies
+
+def extract_calc_energies(text: str) -> dict:
+    energies = {}
+    for key in CALC_KEYS:
         # Match lines starting with the key to avoid matching table headers
         pattern = r"^\s*" + re.escape(key) + r"\s+([-+]?\d*\.\d+[Ee][-+]?\d+|[-+]?\d*\.\d+)"
         match = re.search(pattern, text, re.MULTILINE)
@@ -83,35 +111,33 @@ def test_rpa_energy(filepath: Path, record_property):
     print(f"\nTesting {filepath.name} ... ", end="", flush=True)
     
     try:
-        ref_txt_path = filepath.with_suffix(".txt")
-        if not ref_txt_path.exists():
-            pytest.skip(f"Reference file {ref_txt_path.name} not found.")
-            
-        with open(ref_txt_path, "r") as f:
-            ref_energies = extract_energies(f.read())
+        ref_energies = extract_ref_energies(filepath)
+        if not ref_energies:
+            pytest.skip(f"No reference energies found in {filepath.name}.")
             
         ncores = get_physical_cores()
         result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
         assert result.returncode == 0, f"beyond-rpa failed:\n{result.stderr}"
         
-        calc_energies = extract_energies(result.stdout)
+        calc_energies = extract_calc_energies(result.stdout)
         tolerance = get_tolerance(filepath)
         
         # Check all available keys
-        for key, ref_val in ref_energies.items():
-            if key in calc_energies:
-                calc_val = calc_energies[key]
+        for ref_key, ref_val in ref_energies.items():
+            calc_key = KEY_MAP[ref_key]
+            if calc_key in calc_energies:
+                calc_val = calc_energies[calc_key]
                 dev = abs(calc_val - ref_val)
                 
                 # CI/CD Property recording per value
-                safe_key = key.replace(" ", "_").replace("(", "_").replace(")", "")
+                safe_key = calc_key.replace(" ", "_").replace("(", "_").replace(")", "")
                 record_property(f"reference_{safe_key}", ref_val)
                 record_property(f"calculated_{safe_key}", calc_val)
                 record_property(f"deviation_{safe_key}", dev)
                 
-                assert calc_val == pytest.approx(ref_val, abs=tolerance), f"{key} deviation ({dev:.2e}) exceeds {tolerance}"
+                assert calc_val == pytest.approx(ref_val, abs=tolerance), f"{calc_key} deviation ({dev:.2e}) exceeds {tolerance}"
             else:
-                pytest.fail(f"{key} found in reference but missing in calculated output.")
+                pytest.fail(f"{calc_key} mapped from {ref_key} found in reference but missing in calculated output.")
                 
         print("PASSED")
     except Exception:
@@ -138,15 +164,12 @@ if __name__ == "__main__":
         print(f"Running {filepath.name}... ", end="", flush=True)
         start_time = time.time()
         
-        ref_txt_path = filepath.with_suffix(".txt")
-        if not ref_txt_path.exists():
+        ref_energies = extract_ref_energies(filepath)
+        if not ref_energies:
             print("FAILED")
-            print(f"{'N/A':<25} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | NO REF FILE")
+            print(f"{'N/A':<25} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | NO REF ENERGIES")
             print("-" * 85)
             continue
-            
-        with open(ref_txt_path, "r") as f:
-            ref_energies = extract_energies(f.read())
             
         tolerance = get_tolerance(filepath)
         
@@ -162,10 +185,11 @@ if __name__ == "__main__":
                 
             elapsed = time.time() - start_time
             print(f"done ({elapsed:.2f}s)")
-            calc_energies = extract_energies(result.stdout)
+            calc_energies = extract_calc_energies(result.stdout)
             
-            for key, ref_val in ref_energies.items():
-                calc_val = calc_energies.get(key)
+            for ref_key, ref_val in ref_energies.items():
+                calc_key = KEY_MAP[ref_key]
+                calc_val = calc_energies.get(calc_key)
                 if calc_val is not None:
                     dev = abs(calc_val - ref_val)
                     status = "PASSED" if dev <= tolerance else "FAILED"
@@ -177,7 +201,7 @@ if __name__ == "__main__":
                     status = "FAILED"
                     
                 ref_str = f"{ref_val:.6f}"
-                print(f"{key:<25} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
+                print(f"{calc_key:<25} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
                 
         except Exception as e:
             elapsed = time.time() - start_time
