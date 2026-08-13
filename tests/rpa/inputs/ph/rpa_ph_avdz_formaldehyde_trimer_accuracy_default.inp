@@ -1,8 +1,8 @@
 ! Reference values computed with version from 2025 with accuracy set to default:
-! EintNadd(direct ring) = 0.04778365
-! EintNadd(SOSEX) = -0.01750242
-! EintNadd(3rd order ph) = 0.03224818
-! EintNadd(total) = -0.1724293
+! EintNadd(direct ring) = 4.778365E-002
+! EintNadd(SOSEX) = -1.750242E-002
+! EintNadd(3rd order ph) = 3.224818E-002
+! EintNadd(total) = -1.724293E-001
 
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -30,5 +30,3 @@ C   2.169454   0.154280  11.741163
 H   2.970226  -0.523067  12.072239
 H   1.470340   0.502963  12.512302
 end
-
-

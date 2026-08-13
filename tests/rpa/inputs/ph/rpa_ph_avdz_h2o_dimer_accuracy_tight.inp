@@ -1,8 +1,8 @@
-! Reference values computed with version from 2025 with accuracy set to tight:
-! Eint(direct ring) = -0.3119996
-! Eint(SOSEX) = -0.3886425
-! Eint(3rd order ph) = 0.1880269
-! Eint(total) = -4.208553
+! Reference values computed with version from 2025 with accuracy set to ludicrous:
+! Eint(direct ring) = -3.121621E-001
+! Eint(SOSEX) = -3.886155E-001
+! Eint(3rd order ph) = 1.879770E-001
+! Eint(total) = -4.208740E+000
 
 jobtype uks rpa
 basis aug-cc-pVDZ
@@ -24,4 +24,3 @@ O     -1.396226    -0.004990     0.106766
 H     -1.789372    -0.742283    -0.371009
 H     -1.777037     0.777638    -0.304264
 end
-
