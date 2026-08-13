@@ -1,5 +1,5 @@
 """
-RPA Test Suite for beyond-rpa.
+RPA+ph Test Suite for beyond-rpa.
 
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
 By default, it only runs tests with "default" accuracy to save time.
@@ -31,6 +31,9 @@ KEYS_TO_CHECK = [
     "EintNadd(total)",
 ]
 
+#
+# Tolerances for energy components in kcal/mol
+#
 TOLERANCE_DEFAULT = 5.0e-4
 TOLERANCE_HIGH_ACCURACY = 5.0e-5
 
@@ -44,7 +47,7 @@ def get_physical_cores() -> int:
     return min(cores, 4)
 
 def get_input_files():
-    inputs_dir = Path(__file__).parent / "inputs"
+    inputs_dir = Path(__file__).parent / "inputs" / "ph"
     return sorted(inputs_dir.glob("*.inp"))
 
 def is_full_run():

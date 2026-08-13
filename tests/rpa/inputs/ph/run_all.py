@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 
 SCRIPT_DIRECTORY = Path(__file__).parent
-EXECUTABLE_PATH = SCRIPT_DIRECTORY.parent.parent.parent / "bin" / "run"
+EXECUTABLE_PATH = SCRIPT_DIRECTORY.parent.parent.parent.parent / "bin" / "run"
 
 def run_calculations():
     """Execute calculations for all input files."""
