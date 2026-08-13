@@ -257,7 +257,10 @@ module rpa_definitions
    integer, parameter :: MP3_ENERGY_L            = 65
    integer, parameter :: MP3_ENERGY_TOTAL        = 66
 
-   integer, parameter :: RPA_THEORY_NONE        = 0
+   integer, parameter :: RPA_ACCURACY_DEFAULT   = 1
+   integer, parameter :: RPA_ACCURACY_TIGHT     = 2
+   integer, parameter :: RPA_ACCURACY_LUDICROUS = 3
+
    integer, parameter :: RPA_THEORY_RSE         = 1  ! RPA(KS) + singles correction
    integer, parameter :: RPA_THEORY_RPT2        = 2  ! RPA(KS) + SOSEX + singles correction (Ren et al.)
    integer, parameter :: RPA_THEORY_2G          = 3  ! RPA(KS) + 1b (SOSEX) + 2g
@@ -265,13 +268,14 @@ module rpa_definitions
    integer, parameter :: RPA_THEORY_PH          = 5  ! RPA(HF) + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
    integer, parameter :: RPA_THEORY_PH_PP_HH    = 6  ! RPA(HF) + ph + pp/hh third-order corrections
 
-   integer, parameter :: RPA_ALGO_UNDEFINED   = 0
    integer, parameter :: RPA_ALGO_JCTC2020_AO = 1
    integer, parameter :: RPA_ALGO_JCTC2020_MO = 2
    integer, parameter :: RPA_ALGO_JCTC2023    = 3
    integer, parameter :: RPA_ALGO_JCTC2025    = 4
 
    type TRPAParams
+      logical :: Initialized = .false.
+      integer :: Accuracy = RPA_ACCURACY_DEFAULT
       !
       ! The most important RPA energy threshold. Controls
       ! the size of the random vector basis G. The random vectors
@@ -463,14 +467,14 @@ module rpa_definitions
       !
       real(F64) :: THC_QRThresh = 1.0E-3_F64
       integer   :: THC_BlockDim = 500
-      integer :: TheoryLevel = RPA_THEORY_NONE
+      integer :: TheoryLevel = RPA_THEORY_DIRECT_RING
       !
       ! Code path selected to compute the properties at
       ! the selected TheoryLevel. It should be assigned after
       ! all other parameters are set by calling
-      ! the postprocess() subroutine.
+      ! the rpa_SyncWorkflowParams subroutine.
       !
-      integer :: Algorithm = RPA_ALGO_UNDEFINED
+      integer :: Algorithm = RPA_ALGO_JCTC2025
       !
       ! Use numerical integration to evaluate Ec1RDMQuad.
       ! If false, the integrand is evaluated only at Lambda=1
@@ -560,7 +564,6 @@ module rpa_definitions
    contains
       procedure :: select_algorithm
       procedure :: select_orbitals
-      procedure :: postprocess
    end type TRPAParams
 
    type TRPAGrids
@@ -638,21 +641,17 @@ contains
          return
       end if
 
-      if (this%TheoryLevel /= RPA_THEORY_NONE) then
-         select case (this%TheoryLevel)
-          case (RPA_THEORY_PH, RPA_THEORY_PH_PP_HH, RPA_THEORY_DIRECT_RING)
-            this%Algorithm = RPA_ALGO_JCTC2025
-          case (RPA_THEORY_2G, RPA_THEORY_RPT2)
-            this%Algorithm = RPA_ALGO_JCTC2023
-          case (RPA_THEORY_RSE)
-            this%Algorithm = RPA_ALGO_JCTC2020_MO
-          case default
-            call msg("Unsupported TheoryLevel provided", priority=MSG_ERROR)
-            error stop
-         end select
-      else
-         this%Algorithm = RPA_ALGO_UNDEFINED
-      end if
+      select case (this%TheoryLevel)
+       case (RPA_THEORY_PH, RPA_THEORY_PH_PP_HH, RPA_THEORY_DIRECT_RING)
+         this%Algorithm = RPA_ALGO_JCTC2025
+       case (RPA_THEORY_2G, RPA_THEORY_RPT2)
+         this%Algorithm = RPA_ALGO_JCTC2023
+       case (RPA_THEORY_RSE)
+         this%Algorithm = RPA_ALGO_JCTC2020_MO
+       case default
+         call msg("Unsupported TheoryLevel provided", priority=MSG_ERROR)
+         error stop
+      end select
    end subroutine select_algorithm
 
    subroutine select_orbitals(this)
@@ -674,14 +673,29 @@ contains
       end select
    end subroutine select_orbitals
 
-   subroutine postprocess(this)
-      class(TRPAParams), intent(inout) :: this
+   subroutine rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params)
+      !
+      ! Synchronize accuracy thresholds across the entire SCF and post-SCF
+      ! workflow in accordance with the selected accuracy baseline level
+      !
+      type(TRPAParams), intent(inout) :: RPAParams
+      type(TSCFParams), intent(inout) :: SCFParams
+      type(TChol2Params), intent(inout) :: Chol2Params
 
-      if (this%TheoryLevel /= RPA_THEORY_NONE) then
-         call this%select_algorithm()
-         call this%select_orbitals()
+      if (RPAParams%Initialized) then
+         call RPAParams%select_algorithm()
+         call RPAParams%select_orbitals()
+         
+         select case (RPAParams%Accuracy)
+          case (RPA_ACCURACY_DEFAULT)
+            call rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+          case (RPA_ACCURACY_TIGHT)
+            call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+          case (RPA_ACCURACY_LUDICROUS)
+            call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+         end select
       end if
-   end subroutine postprocess
+   end subroutine rpa_SyncWorkflowParams
 
    subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
       type(TRPAParams), intent(inout)   :: RPAParams
@@ -695,7 +709,17 @@ contains
       RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
       RPAParams%CutoffThreshVabij = 1.0E-5_F64
       RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
-      SCFParams%ERI_Algorithm = SCF_ERI_THC
+      
+      select case (RPAParams%Algorithm)
+       case (RPA_ALGO_JCTC2025)
+         SCFParams%ERI_Algorithm = SCF_ERI_THC
+       case (RPA_ALGO_JCTC2020_AO, RPA_ALGO_JCTC2020_MO, RPA_ALGO_JCTC2023)
+         SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+       case default
+         call msg("rpa_Params_Default: unrecognized RPA algorithm", MSG_ERROR)
+         error stop
+      end select
+
       SCFParams%THC_QRThresh = 1.0E-4_F64
       RPAParams%THC_QRThresh = 1.0E-3_F64
       !
@@ -711,7 +735,9 @@ contains
       ! energy and the orbitals that go to
       ! the correlation energy.
       !
-      SCFParams%LinDepThresh = 1.0E-5_F64
+      if (SCFParams%ERI_Algorithm == SCF_ERI_THC) then
+         SCFParams%LinDepThresh = 1.0E-5_F64
+      end if
       SCFParams%ConvThreshRho = 1.0E-6_F64
       Chol2Params%CholeskyTauThresh = 1.0E-5_F64
    end subroutine rpa_Params_Default
@@ -729,10 +755,23 @@ contains
       RPAParams%LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
       RPAParams%CutoffThreshVabij = RPAParams%CutoffThreshPNO
       RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
-      SCFParams%ERI_Algorithm = SCF_ERI_THC
+      
+      select case (RPAParams%Algorithm)
+       case (RPA_ALGO_JCTC2025)
+         SCFParams%ERI_Algorithm = SCF_ERI_THC
+       case (RPA_ALGO_JCTC2020_AO, RPA_ALGO_JCTC2020_MO, RPA_ALGO_JCTC2023)
+         SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+       case default
+         call msg("rpa_Params_Tight: unrecognized RPA algorithm", MSG_ERROR)
+         error stop
+      end select
+
       SCFParams%THC_QRThresh = 1.0E-4_F64
       RPAParams%THC_QRThresh = 1.0E-3_F64
-      SCFParams%LinDepThresh = 1.0E-5_F64
+      
+      if (SCFParams%ERI_Algorithm == SCF_ERI_THC) then
+         SCFParams%LinDepThresh = 1.0E-5_F64
+      end if
       SCFParams%ConvThreshRho = 1.0E-6_F64
       Chol2Params%CholeskyTauThresh = 1.0E-6_F64
    end subroutine rpa_Params_Tight

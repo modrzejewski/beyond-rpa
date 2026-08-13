@@ -66,14 +66,8 @@ contains
       type(TRPAOutput), dimension(:), allocatable :: RPAOutput
       integer, parameter :: MaxMacroIters = 6
 
-      if (RPAParams%TheoryLevel == RPA_THEORY_NONE) then
-         call msg("RPA TheoryLevel is undefined. Cannot run post-SCF calculations.", &
-            MSG_ERROR)
-         error stop
-      end if
-      if (RPAParams%Algorithm == RPA_ALGO_UNDEFINED) then
-         call msg("RPA Algorithm is undefined. Cannot run post-SCF calculations.", &
-            MSG_ERROR)
+      if (.not. RPAParams%Initialized) then
+         call msg("RPA parameters are not initialized. Cannot run post-SCF calculations.", MSG_ERROR)
          error stop
       end if
 
