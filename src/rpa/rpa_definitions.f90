@@ -260,6 +260,7 @@ module rpa_definitions
    integer, parameter :: RPA_ACCURACY_DEFAULT   = 1
    integer, parameter :: RPA_ACCURACY_TIGHT     = 2
    integer, parameter :: RPA_ACCURACY_LUDICROUS = 3
+   integer, parameter :: RPA_ACCURACY_CUSTOM    = 4
 
    integer, parameter :: RPA_THEORY_RSE         = 1  ! RPA(KS) + singles correction
    integer, parameter :: RPA_THEORY_RPT2        = 2  ! RPA(KS) + SOSEX + singles correction (Ren et al.)
@@ -693,6 +694,13 @@ contains
             call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
           case (RPA_ACCURACY_LUDICROUS)
             call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+          case (RPA_ACCURACY_CUSTOM)
+            !
+            ! Undocumented feature for developers to provide
+            ! a tool for perturbation of default settings.
+            ! Do not overwrite predefined parameter profiles.
+            !
+            continue
          end select
       end if
    end subroutine rpa_SyncWorkflowParams

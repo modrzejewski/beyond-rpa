@@ -3235,6 +3235,8 @@ contains
             RPAParams%Accuracy = RPA_ACCURACY_TIGHT
           case ("LUDICROUS")
             RPAParams%Accuracy = RPA_ACCURACY_LUDICROUS
+          case ("CUSTOM")
+            RPAParams%Accuracy = RPA_ACCURACY_CUSTOM
           case default
             call msg("Invalid RPA accuracy level", MSG_ERROR)
             error stop
