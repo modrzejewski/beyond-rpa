@@ -47,8 +47,8 @@ KEY_MAP = dict(zip(REF_KEYS, CALC_KEYS))
 #
 # Tolerances for energy components in kcal/mol
 #
-TOLERANCE_DEFAULT = 5.0e-4
-TOLERANCE_HIGH_ACCURACY = 5.0e-5
+TOLERANCE_DEFAULT = 1.0e-4
+TOLERANCE_HIGH_ACCURACY = 3.0e-5
 
 def get_physical_cores() -> int:
     """Returns the number of available physical CPU cores to use for tests."""
