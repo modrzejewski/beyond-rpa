@@ -13,3 +13,9 @@ When running in `pytest` mode, you must use the `record_property` fixture within
 
 ## 3. Pathlib Standard
 Always utilize modern `pathlib.Path` objects for file I/O and path manipulation. Avoid legacy `os.path` and `glob` module constructs.
+
+## 4. Test Categorization (Fast vs Slow)
+Computationally expensive tests (e.g., those using large basis sets like `avqz` or testing large molecular complexes like trimers) must be categorized as "slow" and skipped by default to ensure the standard test suite remains snappy.
+- **Pytest Mode**: Slow tests must be skipped dynamically (e.g., via `pytest.skip`) unless an explicit environment variable is provided (e.g., `BEYOND_RPA_FULL=1`).
+- **Standalone Mode**: The standalone script must require an explicit flag (e.g., `--full` via `argparse`) to execute the slow tests.
+- **Implementation**: The categorization logic must be codified in an `is_fast_test()` function that evaluates the test's `.inp` filename or metadata.
