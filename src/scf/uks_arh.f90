@@ -844,7 +844,7 @@ module uks_arh
 
              integer :: N, Rank, l, l0, l1
              real(F64) :: AbsThresh
-             real(F64), parameter :: RelThresh = 1.0E-8_F64
+             real(F64), parameter :: RelThresh = 1.0E-5_F64
              real(F64), dimension(:, :), allocatable :: Ukl, Qkl, QklT
              real(F64), dimension(:), allocatable :: Wl
 
