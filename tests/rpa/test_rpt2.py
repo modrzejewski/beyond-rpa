@@ -13,6 +13,11 @@ import subprocess
 from pathlib import Path
 import pytest
 
+TESTS_DIR = Path(__file__).parent.parent
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
+import utils
+
 BIN_PATH = Path(__file__).parent.parent.parent / "bin" / "run"
 
 # Keys frozen in the .inp comments
@@ -37,15 +42,6 @@ KEY_MAP = dict(zip(REF_KEYS, CALC_KEYS))
 # Tolerance for energy components in kcal/mol
 #
 TOLERANCE = 5.0e-4
-
-def get_physical_cores() -> int:
-    """Returns the number of available physical CPU cores to use for tests."""
-    try:
-        cores = len(os.sched_getaffinity(0))
-    except AttributeError:
-        cores = os.cpu_count() or 1
-        
-    return cores
 
 def is_fast_test(filepath: Path) -> bool:
     name = filepath.name
@@ -100,7 +96,7 @@ def test_rpt2_energy(filepath: Path, record_property):
         if not ref_energies:
             pytest.skip(f"No reference energies found in {filepath.name}.")
             
-        ncores = get_physical_cores()
+        ncores = utils.get_thread_count()
         result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
         assert result.returncode == 0, f"beyond-rpa failed:\n{result.stderr}"
         
@@ -132,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
     args = parser.parse_args()
     
-    nthreads = args.nthreads if args.nthreads is not None else get_physical_cores()
+    nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
 
     print(f"\nNumber of threads: {nthreads}")
     print(f"Tolerance for deviations in the interaction energy: {TOLERANCE:.1e} kcal/mol")
