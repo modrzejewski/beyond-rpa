@@ -57,7 +57,7 @@ def get_physical_cores() -> int:
     except AttributeError:
         cores = os.cpu_count() or 1
         
-    return min(cores, 4)
+    return cores
 
 def get_input_files():
     inputs_dir = Path(__file__).parent / "inputs" / "ph"
@@ -147,8 +147,12 @@ def test_rpa_energy(filepath: Path, record_property):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RPA tests.")
     parser.add_argument("--full", action="store_true", help="Run full test suite (including tight/ludicrous)")
+    parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
     args = parser.parse_args()
 
+    nthreads = args.nthreads if args.nthreads is not None else get_physical_cores()
+
+    print(f"\nNumber of threads: {nthreads}")
     print("\n" + f"Tolerance for deviations in the interaction energy (default accuracy): {TOLERANCE_DEFAULT:.1e} kcal/mol")
     print(f"Tolerance for deviations in the interaction energy (high accuracy): {TOLERANCE_HIGH_ACCURACY:.1e} kcal/mol")
     
@@ -174,8 +178,7 @@ if __name__ == "__main__":
         tolerance = get_tolerance(filepath)
         
         try:
-            ncores = get_physical_cores()
-            result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
+            result = subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
             if result.returncode != 0:
                 elapsed = time.time() - start_time
                 print(f"FAILED ({elapsed:.2f}s)")

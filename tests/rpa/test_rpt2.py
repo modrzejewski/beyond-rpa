@@ -45,7 +45,7 @@ def get_physical_cores() -> int:
     except AttributeError:
         cores = os.cpu_count() or 1
         
-    return min(cores, 4)
+    return cores
 
 def is_fast_test(filepath: Path) -> bool:
     name = filepath.name
@@ -129,9 +129,13 @@ def test_rpt2_energy(filepath: Path, record_property):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run rPT2 tests.")
     parser.add_argument("--full", action="store_true", help="Run the full test suite (including slow avqz and trimer tests)")
+    parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
     args = parser.parse_args()
+    
+    nthreads = args.nthreads if args.nthreads is not None else get_physical_cores()
 
-    print("\n" + f"Tolerance for deviations in the interaction energy: {TOLERANCE:.1e} kcal/mol")
+    print(f"\nNumber of threads: {nthreads}")
+    print(f"Tolerance for deviations in the interaction energy: {TOLERANCE:.1e} kcal/mol")
     
     print("\n" + "."*85)
     print(f"{'Property':<25} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | {'Status'}")
@@ -153,8 +157,7 @@ if __name__ == "__main__":
             continue
             
         try:
-            ncores = get_physical_cores()
-            result = subprocess.run([str(BIN_PATH), "-nt", str(ncores), str(filepath)], capture_output=True, text=True)
+            result = subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
             if result.returncode != 0:
                 elapsed = time.time() - start_time
                 print(f"FAILED ({elapsed:.2f}s)")
