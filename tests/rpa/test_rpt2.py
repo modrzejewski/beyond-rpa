@@ -43,22 +43,11 @@ KEY_MAP = dict(zip(REF_KEYS, CALC_KEYS))
 #
 TOLERANCE = 5.0e-4
 
-def is_fast_test(filepath: Path) -> bool:
-    name = filepath.name
-    if "avqz" in name or "trimer" in name:
-        return False
-    return True
 
 def get_input_files():
     inputs_dir = Path(__file__).parent / "inputs" / "rpt2"
     return sorted(inputs_dir.glob("*.inp"))
 
-def is_full_run():
-    if "--full" in sys.argv:
-        return True
-    if os.environ.get("BEYOND_RPA_FULL") == "1":
-        return True
-    return False
 
 def extract_ref_energies(filepath: Path) -> dict:
     energies = {}
@@ -86,9 +75,6 @@ def extract_calc_energies(text: str) -> dict:
 
 @pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.stem)
 def test_rpt2_energy(filepath: Path, record_property):
-    if not is_fast_test(filepath) and not is_full_run():
-        pytest.skip("Skipping slow test. Run manually with --full or set BEYOND_RPA_FULL=1")
-        
     print(f"\nTesting {filepath.name} ... ", end="", flush=True)
     
     try:
@@ -139,7 +125,7 @@ if __name__ == "__main__":
     
     all_files = get_input_files()
     if not args.full:
-        all_files = [f for f in all_files if is_fast_test(f)]
+        all_files = [f for f in all_files if utils.is_fast(f)]
         
     for filepath in all_files:
         print(f"Running {filepath.name}... ", end="", flush=True)

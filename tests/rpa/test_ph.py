@@ -2,11 +2,11 @@
 RPA+ph Test Suite for beyond-rpa.
 
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
-By default, it only runs tests with "default" accuracy to save time.
+By default, it only runs fast tests.
 
 To run the full test suite (including expensive tests at "tight" and "ludicrous" accuracy levels):
-- Pytest Mode: Set the environment variable `BEYOND_RPA_FULL=1` (e.g. `BEYOND_RPA_FULL=1 pytest tests/rpa/test_rpa.py`)
-- Standalone Mode: Run with the `--full` argument (e.g. `python tests/rpa/test_rpa.py --full`)
+- Pytest Mode: Use `--full` flag (e.g. `pytest tests/rpa/test_ph.py --full`)
+- Standalone Mode: Run with the `--full` argument (e.g. `python tests/rpa/test_ph.py --full`)
 """
 
 import os
@@ -59,14 +59,6 @@ def get_input_files():
     inputs_dir = Path(__file__).parent / "inputs" / "ph"
     return sorted(inputs_dir.glob("*.inp"))
 
-def is_full_run():
-    # Standalone mode flag
-    if "--full" in sys.argv:
-        return True
-    # Pytest mode environment variable
-    if os.environ.get("BEYOND_RPA_FULL") == "1":
-        return True
-    return False
 
 def extract_ref_energies(filepath: Path) -> dict:
     energies = {}
@@ -101,9 +93,6 @@ def get_tolerance(filepath: Path) -> float:
 
 @pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.stem)
 def test_rpa_energy(filepath: Path, record_property):
-    if not is_full_run() and "accuracy_default" not in filepath.name:
-        pytest.skip("Skipping non-default accuracy test. Run with --full (standalone) or BEYOND_RPA_FULL=1 (pytest).")
-        
     print(f"\nTesting {filepath.name} ... ", end="", flush=True)
     
     try:
@@ -158,7 +147,7 @@ if __name__ == "__main__":
     
     all_files = get_input_files()
     if not args.full:
-        all_files = [f for f in all_files if "accuracy_default" in f.name]
+        all_files = [f for f in all_files if utils.is_fast(f)]
         
     for filepath in all_files:
         print(f"Running {filepath.name}... ", end="", flush=True)

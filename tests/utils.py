@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 def get_thread_count() -> int:
     """
@@ -21,3 +22,16 @@ def get_thread_count() -> int:
         cores = os.cpu_count() or 1
         
     return cores
+
+def is_fast(filepath: Path) -> bool:
+    """
+    Determine if a test is considered 'fast' (default behavior).
+    Fast tests are dimers with avtz or avdz basis, and default accuracy.
+    """
+    name = filepath.name
+    is_dimer = "dimer" in name
+    is_fast_basis = "avtz" in name or "avdz" in name
+    # If the filename contains accuracy information, require it to be default
+    is_fast_acc = "accuracy_default" in name if "accuracy" in name else True 
+    
+    return is_dimer and is_fast_basis and is_fast_acc
