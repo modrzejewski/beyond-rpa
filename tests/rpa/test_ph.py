@@ -133,6 +133,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RPA tests.")
     parser.add_argument("--full", action="store_true", help="Run full test suite (including tight/ludicrous)")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
+    
+    # System Size
+    parser.add_argument("--dimer", "--dimers", dest="dimer", action="store_true", help="Include dimer systems")
+    parser.add_argument("--trimer", "--trimers", dest="trimer", action="store_true", help="Include trimer systems")
+
+    # Basis Sets
+    parser.add_argument("--avdz", action="store_true", help="Include aug-cc-pVDZ basis")
+    parser.add_argument("--avtz", action="store_true", help="Include aug-cc-pVTZ basis")
+    parser.add_argument("--avqz", action="store_true", help="Include aug-cc-pVQZ basis")
+
+    # Accuracy
+    parser.add_argument("--accuracy_default", action="store_true", help="Include default accuracy")
+    parser.add_argument("--accuracy_tight", action="store_true", help="Include tight accuracy")
+    parser.add_argument("--accuracy_ludicrous", action="store_true", help="Include ludicrous accuracy")
+    
     args = parser.parse_args()
 
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
@@ -146,8 +161,7 @@ if __name__ == "__main__":
     print("." * 85)
     
     all_files = get_input_files()
-    if not args.full:
-        all_files = [f for f in all_files if utils.is_fast(f)]
+    all_files = utils.filter_test_files(all_files, args)
         
     for filepath in all_files:
         print(f"Running {filepath.name}... ", end="", flush=True)
