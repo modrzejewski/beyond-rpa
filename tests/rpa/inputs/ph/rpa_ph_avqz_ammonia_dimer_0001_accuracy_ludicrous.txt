@@ -1,0 +1,1062 @@
+% Job started at Fri Aug 14 20:24:45 UTC 2026
+% User                     modrzejewski
+% Node name                e1787
+% Executable               /mnt/storage_6/project_data/pl0415-02/beyond-rpa/bin/a
+% Launcher                 
+% Compiler command         ifort -qopenmp -O3 -xHost -no-prec-div -i8 -qmkl -coarray -warn all -I./obj/
+% Source compiled at       Fri Aug 14 12:03:57 UTC 2026
+% Process ID               12873
+% Job identifier           20260814202445_12873
+% Stack size (main thread) unlimited
+% Stack size (other)       65536 kB
+MPI startup(): Warning: I_MPI_PMI_LIBRARY will be ignored since the hydra process manager was found
+ ----------------------------------------------------------------------------
+ LOADED INPUT FILE
+ /mnt/storage_6/project_data/pl0415-02/beyond-rpa/tests/rpa/inputs/ph new/rpa_ph_avqz_ammonia_dimer_0001_accuracy_ludicrous.inp
+ ----------------------------------------------------------------------------
+ > jobtype uks rpa                                                                 
+ > basis aug-cc-pVQZ                                                               
+ > scf                                                                             
+ > xcfunc HF                                                                       
+ > end                                                                             
+ > rpa                                                                             
+ > accuracy ludicrous                                                              
+ > TheoryLevel RPA+ph                                                              
+ > end                                                                             
+ > xyz                                                                             
+ > 4 4                                                                             
+ > N 1.08099635 1.08099635 1.08099635                                              
+ > H 1.89264145 1.37035655 0.59462495                                              
+ > H 1.37035655 0.59462495 1.89264145                                              
+ > H 0.59462495 1.89264145 1.37035655                                              
+ > N 3.64624635 1.48425365 -1.0809963499999995                                     
+ > H 4.45789145 1.19489345 -0.59462495                                             
+ > H 3.93560655 1.97062505 -1.8926414499999997                                     
+ > H 3.15987495 0.67260855 -1.3703565499999995                                     
+ > end                                                                             
+ ----------------------------------------------------------------------------
+                                 SCF for H6N2                                
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         8
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=4.2E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=2.4E-017
+ Trace of exact Coulomb matrix: 1.2E+003
+ Trace of discarded integrals: 1.0E-015
+ Discarded 714 out of 7750 shell pairs
+ (8814 out of 95266 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (86452,86452)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 6540
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (86452,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.8E-001    8.4E+002       117         21   7.5E-001    
+ 2    5.9E-002    1.1E+003       501         24   1.3E+000    
+ 3    7.4E-003    1.3E+003       1096        33   2.7E+000    
+ 4    2.0E-003    1.2E+003       1490        41   1.5E+000    
+ 5    2.1E-004    1.3E+003       1717        51   7.1E-001    
+ 6    5.0E-005    1.4E+003       2169        62   1.3E+000    
+ 7    1.0E-005    1.3E+003       2510        79   8.9E-001    
+ 8    1.6E-006    8.7E+002       2940        93   6.6E-001    
+ 9    7.2E-007    4.8E+002       3190        97   2.3E-001    
+ 10   3.6E-007    2.8E+002       3377        99   1.2E-001    
+ 11   2.0E-007    1.6E+002       3463        100  5.7E-002    
+ 12   1.1E-007    8.9E+001       3526        100  3.9E-002    
+ 13   1.0E-007    2.2E+001       3537        100  1.6E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 3537 pivots
+ Largest residual Dpq: 1.0E-007
+ NCholesky/NAO = 8.1E+000
+ Step 1 of Cholesky decomposition completed in 1.0E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     1.4E+000
+ Subtract prev contribs II (Rk)          6.5E+000
+ Two-electron integrals                  2.2E+000
+ Reallocation                            2.2E-001
+
+ Step 2 of Cholesky decomposition completed in 1.9E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    1.1E-001
+ V=L*L**T                      2.8E-002
+ L**(-1)                       5.1E-002
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.9E+000 seconds
+
+ ----------------------------------------------------------------------------
+ Tensor hypercontraction
+ ----------------------------------------------------------------------------
+ Initial Becke grid: SG-1 29952 points
+ Discarded 5880 points with Becke weight <= 0.0E+000
+ Discarded 3074 points with Max|PhiP(r)|**2 <= 1.0E-011
+ Final grid: 20998
+ Average 2624 points per atom
+
+ Pivoted Cholesky decomposition with on-the-fly generation of matrix S
+ ---------------------------------------------------------------------
+ QR relative pivot threshold Eps=1.0E-004
+ Block dimension: 500 Cholesky vectors per macro iteration
+ Starting from Becke grid composed of 20998 points
+ Cholesky absolute pivot threshold Eps**2=1.0E-008
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    5.2E-001    1.5E+002       500         2    1.1E+000    
+ 2    1.5E-001    2.2E+002       1000        5    1.4E+000    
+ 3    3.3E-002    3.0E+002       1500        7    1.6E+000    
+ 4    6.3E-003    3.6E+002       2000        10   1.8E+000    
+ 5    1.2E-003    4.3E+002       2500        12   2.0E+000    
+ 6    2.8E-004    4.8E+002       3000        14   2.7E+000    
+ 7    6.8E-005    5.4E+002       3500        17   2.4E+000    
+ 8    1.8E-005    5.9E+002       4000        19   2.4E+000    
+ 9    4.7E-006    6.4E+002       4500        22   2.7E+000    
+ 10   1.4E-006    6.8E+002       5000        24   2.6E+000    
+ 11   4.1E-007    7.2E+002       5500        28   2.9E+000    
+ 12   1.3E-007    7.4E+002       6000        35   2.8E+000    
+ 13   4.1E-008    7.2E+002       6500        60   2.7E+000    
+ 14   1.3E-008    4.8E+002       7000        97   2.0E+000    
+ 15   1.0E-008    4.0E+001       7135        100  3.8E-002    
+ ----------------------------------------------------------------------------
+ Rank-revealing decomposition converged with 7135 pivots
+ Average 891 points per atom
+ NGridTHC/NAO=1.6E+001
+ Total time 3.1E+001 seconds
+
+ Detailed timings
+ ----------------
+ Orbital values Xgp                 6.0E-001
+ Overlap matrix S + Cholesky vecs   3.0E+001
+ Reallocation                       2.0E-001
+
+ THC grid completed in 3.1E+001 seconds
+ Least squares fitting of Z: LDL**T linear system solver
+ thc_Z will use precomputed full set of Cholesky vectors
+ THC least squares completed in 4.3E+000 seconds
+
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               8
+ shell parameter sets                         34
+ spherical AOs                                436
+ max angular momentum                         4
+ parameter set                                aug-cc-pVQZ
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: superposition of atomic densities
+ Starting self-consistent field iterations (spin-restricted singlet)
+ Alpha+beta electrons: 20
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         48
+ Allocated 5.7E-002 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 436 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 436 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 2.0E-005
+ Max number of macroiters: 128
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          101.6893279282                                        0    3.8E+000 
+ 1          -88.4064587947           4.8E+04                      0    3.4E+000 
+ 2         -110.9288492395 -2.3E+01  3.6E+00  1.5E+00  3.3E+00    1    5.6E+000 
+ 3         -112.1371399969 -1.2E+00  7.1E-01  3.2E-01  2.8E-01    2    4.3E+000 
+ 4         -112.4327864206 -3.0E-01  1.4E-01  1.2E-01  0.0E+00    3    5.6E+000 
+ 5         -112.4499111789 -1.7E-02  4.3E-02  1.7E-02  0.0E+00    4    5.6E+000 
+ 6         -112.4507026083 -7.9E-04  7.3E-03  5.1E-03  0.0E+00    5    5.6E+000 
+ 7         -112.4507560889 -5.3E-05  2.0E-03  1.1E-03  0.0E+00    6    5.6E+000 
+ 8         -112.4507591675 -3.1E-06  7.2E-04  1.8E-04  0.0E+00    7    5.5E+000 
+ 9         -112.4507592331 -6.6E-08  8.8E-05  2.9E-05  0.0E+00    8    5.6E+000 
+ 10        -112.4507592362 -3.1E-09  1.6E-05  7.4E-06  0.0E+00    8    5.6E+000 
+ 11        -112.4507592363 -1.2E-10  5.5E-06  9.1E-07  0.0E+00    8    5.6E+000 
+ 12        -112.4507592363 -8.6E-12  1.2E-06  2.9E-07  0.0E+00    8    5.6E+000 
+ 13        -112.4507592363 -2.0E-12  2.7E-07  8.9E-08  0.0E+00    8    2.7E+000 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -112.450759236346   
+ ------------------------------------------------------------------------------
+ Ehomo [eV]                              -11.183787893995    
+ Elumo [eV]                              0.653249734239      
+
+ dipole moment (Debye)
+        x              y              z       
+      2.005E+000     7.520E-002    -2.188E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -3.678E+000    -3.693E+000    -3.269E+000
+ y                  -3.693E+000     8.762E-001    -1.581E-001
+ z                  -3.269E+000    -1.581E-001     2.802E+000
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     6.9E+001
+ * solver (setting up eqns)   2.6E-001
+ * solver (energy estimate)   3.9E-003
+ * solver (orthogonalization) 1.1E-002
+ * solver (rotation matrix X) 1.1E-002
+ * solver (exponential of X)  9.4E-002
+ * solver (total)             3.9E-001
+ * total SCF                  7.0E+001
+ ----------------------------------------------------------------------------
+                  SCF for Monomer A: H3N + ghost centers H3N                 
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         8
+ CHARGE                                  0
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               8
+ shell parameter sets                         34
+ spherical AOs                                436
+ max angular momentum                         4
+ parameter set                                aug-cc-pVQZ
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: superposition of atomic densities
+ Starting self-consistent field iterations (spin-restricted singlet)
+ Alpha+beta electrons: 10
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         48
+ Allocated 5.7E-002 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 436 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 436 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 2.0E-005
+ Max number of macroiters: 128
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           48.4443138739                                        0    1.6E+000 
+ 1          -43.9445214061           2.8E+04                      0    4.2E+000 
+ 2          -55.1709060463 -1.1E+01  3.3E+00  1.4E+00  3.2E+00    1    1.6E+000 
+ 3          -55.9767864521 -8.1E-01  6.3E-01  3.2E-01  3.0E-01    2    1.6E+000 
+ 4          -56.2209582813 -2.4E-01  1.6E-01  1.0E-01  0.0E+00    3    1.6E+000 
+ 5          -56.2240612246 -3.1E-03  5.5E-02  1.5E-02  0.0E+00    4    1.6E+000 
+ 6          -56.2242877396 -2.3E-04  8.0E-03  3.0E-03  0.0E+00    5    1.5E+000 
+ 7          -56.2242948724 -7.1E-06  8.3E-04  3.4E-04  0.0E+00    6    1.6E+000 
+ 8          -56.2242953214 -4.5E-07  2.1E-04  9.2E-05  0.0E+00    7    1.5E+000 
+ 9          -56.2242953337 -1.2E-08  8.0E-05  3.2E-05  0.0E+00    8    1.5E+000 
+ 10         -56.2242953339 -1.7E-10  5.6E-06  2.7E-06  0.0E+00    8    1.5E+000 
+ 11         -56.2242953339 -6.7E-12  1.5E-06  4.0E-07  0.0E+00    8    1.5E+000 
+ 12         -56.2242953339 -6.4E-13  4.6E-07  1.3E-07  0.0E+00    8    1.5E+000 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -56.224295333881    
+ ------------------------------------------------------------------------------
+ Ehomo [eV]                              -11.628122161033    
+ Elumo [eV]                              0.573634899678      
+
+ dipole moment (Debye)
+        x              y              z       
+      9.013E-001     9.012E-001     9.012E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -7.315E-001    -1.536E+000    -1.537E+000
+ y                  -1.536E+000     1.463E+000    -1.536E+000
+ z                  -1.537E+000    -1.536E+000    -7.316E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     2.2E+001
+ * solver (setting up eqns)   2.2E-001
+ * solver (energy estimate)   6.6E-004
+ * solver (orthogonalization) 9.3E-003
+ * solver (rotation matrix X) 3.2E-003
+ * solver (exponential of X)  7.8E-002
+ * solver (total)             3.2E-001
+ * total SCF                  2.3E+001
+ ----------------------------------------------------------------------------
+                  SCF for Monomer B: H3N + ghost centers H3N                 
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         8
+ CHARGE                                  0
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               8
+ shell parameter sets                         34
+ spherical AOs                                436
+ max angular momentum                         4
+ parameter set                                aug-cc-pVQZ
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: superposition of atomic densities
+ Starting self-consistent field iterations (spin-restricted singlet)
+ Alpha+beta electrons: 10
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         48
+ Allocated 5.7E-002 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 436 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 436 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 2.0E-005
+ Max number of macroiters: 128
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           43.2096652183                                        0    1.6E+000 
+ 1          -42.7555933807           4.8E+04                      0    1.5E+000 
+ 2          -55.2705909389 -1.3E+01  3.8E+00  1.5E+00  3.4E+00    1    1.6E+000 
+ 3          -55.8988579401 -6.3E-01  7.2E-01  2.6E-01  1.3E-01    2    1.6E+000 
+ 4          -56.1979293614 -3.0E-01  1.6E-01  9.2E-02  0.0E+00    3    1.6E+000 
+ 5          -56.2223479907 -2.4E-02  1.5E-01  3.7E-02  0.0E+00    4    1.6E+000 
+ 6          -56.2241847287 -1.8E-03  3.3E-02  8.0E-03  0.0E+00    5    1.6E+000 
+ 7          -56.2242951062 -1.1E-04  4.7E-03  1.5E-03  0.0E+00    6    1.6E+000 
+ 8          -56.2243002492 -5.1E-06  1.1E-03  3.7E-04  0.0E+00    7    1.6E+000 
+ 9          -56.2243002958 -4.7E-08  1.8E-04  4.0E-05  0.0E+00    8    1.6E+000 
+ 10         -56.2243002975 -1.6E-09  3.3E-05  4.6E-06  0.0E+00    8    1.6E+000 
+ 11         -56.2243002976 -1.2E-10  4.2E-06  2.1E-06  0.0E+00    8    1.6E+000 
+ 12         -56.2243002976 -5.3E-12  9.6E-07  3.3E-07  0.0E+00    8    1.6E+000 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -56.224300297585    
+ ------------------------------------------------------------------------------
+ Ehomo [eV]                              -11.628171659768    
+ Elumo [eV]                              0.638302332590      
+
+ dipole moment (Debye)
+        x              y              z       
+      9.013E-001    -9.013E-001    -9.013E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -9.387E-001     1.537E+000     1.538E+000
+ y                   1.537E+000     1.877E+000    -1.537E+000
+ z                   1.538E+000    -1.537E+000    -9.380E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     2.0E+001
+ * solver (setting up eqns)   1.7E-001
+ * solver (energy estimate)   6.7E-004
+ * solver (orthogonalization) 8.5E-003
+ * solver (rotation matrix X) 2.4E-003
+ * solver (exponential of X)  7.9E-002
+ * solver (total)             2.7E-001
+ * total SCF                  2.0E+001
+
+ HF energy and orbitals will be recomputed using accurate integrals
+ Corrected mean-field energy components:
+ 1. HF energy (EtotHF)
+ 2. linear density correction (1-RDM linear)
+ 3. quadratic density correction (1-RDM quadratic)
+ Terms (2) and (3) will be nonzero due to approximate Coulomb integrals
+ Total mean-field energy: (1) + (2) + (3)
+ Refined Coulomb integrals will be generated with exact Auto2e code
+ Linear-dependence threshold for the eigenvalues of S:
+ SCF            1.0E-006       
+ refinement     1.0E-006       
+ Fock matrices will be built for 3 systems in a single integral pass
+ Gathered 3 1-RDMs in a single array
+ Fock matrix calculation
+ Fock matrices completed for all systems
+                            HF refinement for H6N2                           
+
+ dipole moment (Debye)
+        x              y              z       
+      2.005E+000     7.520E-002    -2.188E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -3.678E+000    -3.693E+000    -3.269E+000
+ y                  -3.693E+000     8.762E-001    -1.581E-001
+ z                  -3.269E+000    -1.581E-001     2.802E+000
+
+ Single-point energies (a.u.)
+ Hartree-Fock                                      -1.124507593E+002   
+ linear correction                                 -3.785373237E-014   
+ quadratic correction                              2.779671036E-017    
+ total mean field                                  -1.124507593E+002   
+             HF refinement for Monomer A: H3N + ghost centers H3N            
+
+ dipole moment (Debye)
+        x              y              z       
+      9.013E-001     9.012E-001     9.012E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -7.315E-001    -1.536E+000    -1.537E+000
+ y                  -1.536E+000     1.463E+000    -1.536E+000
+ z                  -1.537E+000    -1.536E+000    -7.316E-001
+
+ Single-point energies (a.u.)
+ Hartree-Fock                                      -5.622429534E+001   
+ linear correction                                 4.214099241E-015    
+ quadratic correction                              -3.483567298E-015   
+ total mean field                                  -5.622429534E+001   
+             HF refinement for Monomer B: H3N + ghost centers H3N            
+
+ dipole moment (Debye)
+        x              y              z       
+      9.013E-001    -9.013E-001    -9.013E-001
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -9.387E-001     1.537E+000     1.538E+000
+ y                   1.537E+000     1.877E+000    -1.537E+000
+ z                   1.538E+000    -1.537E+000    -9.380E-001
+
+ Single-point energies (a.u.)
+ Hartree-Fock                                      -5.622430031E+001   
+ linear correction                                 -1.795015186E-014   
+ quadratic correction                              -1.832015306E-014   
+ total mean field                                  -5.622430031E+001   
+ Mean-field calculation completed in 8.0E+000 seconds
+ ----------------------------------------------------------------------------
+                                 RPA for H6N2                                
+ ----------------------------------------------------------------------------
+
+ Using spin-restricted closed-shell Kohn-Sham reference
+
+ Orbital basis for the RPA+MBPT3 calculation
+ -------------------------------------------
+ Atomic orbitals: 436 spherical
+ Threshold for inert core orbitals (a.u.): -3.000E+000
+ Occupied orbitals: 10
+ Discarded 2 core orbitals
+ Active occupied orbitals: 8
+ Virtual orbitals: 426
+
+ Optimizing quadrature for the imaginary frequency grid
+ Target 1: RMSD(Pi/(2*dai)-Int(0,Inf)1/(dai**2+u**2)du) < 1.000E-006
+ Target 2: MaxRelError(Pi/(2*dai)-Int(0,Inf)1/(dai**2+u**2)du) < 1.000E-003
+ Max dai for subsystems is capped at max dai for the full complex
+ MinNFreqs: 8
+ MaxNFreqs: 64
+ Quadrature type: transformed Gauss-Legendre (GL)
+ Transformation of the GL quadrature onto the interval (0, Inf):
+ x(k) = Alpha * (ONE + xGL(k)) / (ONE - xGL(k))
+ w(k) = Alpha * TWO * wGL(k) / (ONE - xGL(k))**2
+ -------------------------------------------------------
+ NFreqs    Alpha          RMSD           MaxRelError    
+ -------------------------------------------------------
+ 8         3.115E+000     4.878E-005     3.297E-003     
+ 9         2.251E+000     9.348E-006     2.425E-003     
+ 10        2.701E+000     5.789E-006     1.664E-003     
+ 11        3.205E+000     3.426E-006     1.300E-004     
+ 12        2.474E+000     4.652E-007     1.333E-004     
+
+ Optimization completed: transformed Gauss-Legendre, 12 points
+
+ Optimizing quadratures for the Laplace transform of f(dai)=dai/(dai**2+u**2)
+ daiMin: 4.350E-001
+ daiMax: 3.795E+001
+ Target 1: RMSD(dai/(dai**2+u**2)-Int(0,Inf)cos(u*t)exp(-dai*t)dt) < 1.000E-006
+ Target 2: MaxRelError(dai/(dai**2+u**2)-Int(0,Inf)cos(u*t)exp(-dai*t)dt) < 1.000E-003
+ Max dai for subsystems is capped at max dai for the full complex
+ ----------------------------------------------------------------------
+ #    Freq           NPoints   MaxRelError    RMSD           QuadType  
+ ----------------------------------------------------------------------
+ 1    2.302E-002     9         2.291E-005     8.842E-007     1
+ 2    1.246E-001     12        3.517E-007     1.453E-007     1
+ 3    3.217E-001     17        8.521E-007     2.509E-007     1
+ 4    6.433E-001     29        1.192E-004     6.410E-007     2
+ 5    1.144E+000     25        3.800E-004     9.249E-007     2
+ 6    1.923E+000     25        8.915E-005     2.246E-007     2
+ 7    3.183E+000     21        6.070E-005     6.815E-007     2
+ 8    5.354E+000     21        1.171E-004     5.229E-007     2
+ 9    9.517E+000     21        2.059E-004     4.079E-007     2
+ 10   1.903E+001     21        2.933E-004     2.860E-007     2
+ 11   4.914E+001     21        4.203E-004     1.401E-007     2
+ 12   2.659E+002     25        8.453E-004     4.838E-009     2
+
+ 1. MiniMax-optimized quadrature of Hackbush et al.
+    J. Chem. Phys. 129, 044112 (2008); doi: 10.1063/1.2958921
+ 2. Robust double-exponential quadrature of Ooura and Mori
+    J. Comp. and Appl. Math. 112, 229 (1999); doi: 10.1016/S0377-0427(99)00223-X
+
+ Quadratures found for all frequencies
+ Average number of quadrature points per frequency: 21
+ Computing G for the effective dielectric matrix GRWRG
+ Target error: Tr(Pi(exact)-Pi(eff)) < 1.0E-005
+ Columns of G will be eigenvectors of RWR
+ --------------------------------------------
+ NVecsPiU/NCholesky  Tr(Pi(exact)-Pi(eff))   
+ --------------------------------------------
+       5.0E-002            1.7977E+000       
+       1.0E-001            3.7436E-001       
+       1.5E-001            4.8858E-002       
+       2.0E-001            3.3383E-003       
+       2.5E-001            2.9092E-004       
+       3.0E-001            4.2994E-005       
+       3.5E-001            6.8016E-006       
+       4.0E-001            1.0870E-006       
+       4.5E-001            2.1584E-007       
+       5.0E-001            4.9648E-008       
+
+ Dimension of the effective dielectric matrix: 1204
+ NVecsPiU/NCholesky = 3.4E-001
+ NVecsPiU/NAO = 2.8E+000
+ Tr(Pi(exact)) = 2.1E+001
+ Tr(Pi(exact)-Pi(eff)) = 9.9E-006
+
+
+ -------------------------------------------------------
+ #    Freq      Weight    E(Freq)             
+ -------------------------------------------------------
+ 1    2.3E-002  5.9E-002  -2.487496E+000      
+ 2    1.2E-001  1.5E-001  -2.449551E+000      
+ 3    3.2E-001  2.5E-001  -2.255654E+000      
+ 4    6.4E-001  4.0E-001  -1.796940E+000      
+ 5    1.1E+000  6.2E-001  -1.174133E+000      
+ 6    1.9E+000  9.7E-001  -6.233006E-001      
+ 7    3.2E+000  1.6E+000  -2.694465E-001      
+ 8    5.4E+000  2.9E+000  -9.206677E-002      
+ 9    9.5E+000  5.9E+000  -2.220843E-002      
+ 10   1.9E+001  1.5E+001  -2.741431E-003      
+ 11   4.9E+001  5.8E+001  -8.991381E-005      
+ 12   2.7E+002  6.9E+002  -1.191880E-007      
+
+ RPA correlation energy (a.u.): -6.37021845E-001
+ Direct-ring T2 amplitudes
+ cutoff for linear dependencies     1.0E-010
+ cutoff for eigenvalues             -1.0E+000
+ randomized eigendecomposition      3612 guess vectors
+ Removing small eigenvalues of T2
+ remove mu if Abs(a(mu)) <= T2CutoffThresh = 1.000E-006
+ Removed 31% of eigenvectors
+ Full set of eigenvecs:    1844
+ Reduced set of eigenvecs: 1280
+ NVecsT2/(NOcc+NVirt)     2.9E+000
+
+ ----------------------------------------------------------------------------
+                   Particle-Hole Corrections to Direct RPA                   
+ ----------------------------------------------------------------------------
+
+ Energy terms: EcSOSEX, Ec2b, Ec2c, Ec2d, Ec2g, Ec2h, Ec2i, Ec2j
+ Definitions: Table 2 of Ref. 1
+
+ 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
+    J. Chem. Theory Comput. 19, 6619 (2023);
+    doi: 10.1021/acs.jctc.3c00496
+
+ SVD of T(ab;ij)        randomized
+ Subspace dimension     500
+ Oversampling           50
+ Subspace iterations    2
+ Switchover to full SVD 284 vectors
+
+ Localized occupied orbitals: Boys
+ Convergence threshold: Max(ij)|dF/dKij| < 1.0E-005
+ Max number of iters: 300
+ Localization converged in 23 iterations
+ Objective function (initial Cholesky localization): 2.3E+001
+ Objective function (minimum):                       1.6E+001
+ RandomizedSVD will use conventional full-rank SVD
+
+ Pair-natural orbitals cutoff 1.0E-007
+ AverageNVirtPNO              339
+ Max NVirtPNO                 411
+ Pairs with zero NVirtPNO     0 out of 36
+ NVirt                        426
+ AverageNVirtPNO/NVirt        8.0E-001
+ Vabij integrals cutoff       0.0E+000
+
+  10% completed (3.7E-001 s)
+  20% completed (3.1E-001 s)
+  30% completed (2.8E-001 s)
+  40% completed (3.2E-001 s)
+  50% completed (2.9E-001 s)
+  60% completed (3.7E-001 s)
+  70% completed (3.3E-001 s)
+  80% completed (2.7E-001 s)
+  90% completed (3.6E-001 s)
+ 100% completed (3.2E-001 s)
+
+ Calculation of particle-hole corrections completed
+ Skipped 0/36 blocks of Vabij integrals
+ Timings in seconds:
+ Total time           4.8E+000
+ Orbital localization 4.3E-002
+ Schwarz inequality   2.9E-002
+ SVD                  1.5E+000
+ SOSEX                6.0E-001
+ Gabij, Gaibj         1.4E+000
+ Tr(VGabij)           1.8E-001
+ Tr(VGaibj)           1.8E-001
+ ZXX                  3.2E-001
+ ZYX                  3.1E-001
+ Energy terms         3.2E+000
+
+
+ Total time                                        9.1E+000
+ RPA                                               4.0E-001
+ T2 amplitudes                                     4.0E+000
+ beyond-RPA corrections                            4.8E+000
+
+ Single-Point Energies (a.u.)
+ ----------------------------
+ mean field                                  -1.12450759E+002
+ 1-RDM linear                                -3.78537324E-014
+ 1-RDM quadratic                              2.77967104E-017
+ direct ring                                 -6.37021845E-001
+ cumulant 1b/SOSEX                            2.42362680E-001
+ cumulant 2g/MBPT3                           -2.23543753E-001
+ total energy                                -1.13068962E+002
+
+ ----------------------------------------------------------------------------
+                  RPA for Monomer A: H3N + ghost centers H3N                 
+ ----------------------------------------------------------------------------
+
+ Using spin-restricted closed-shell Kohn-Sham reference
+
+ Orbital basis for the RPA+MBPT3 calculation
+ -------------------------------------------
+ Atomic orbitals: 436 spherical
+ Threshold for inert core orbitals (a.u.): -3.000E+000
+ Occupied orbitals: 5
+ Discarded 1 core orbitals
+ Active occupied orbitals: 4
+ Virtual orbitals: 431
+ Using frequency and Laplace transform quadratures from previous run
+ Frequency integration will employ 12 points
+
+ -------------------------------------------------------
+ #    Freq      Weight    E(Freq)             
+ -------------------------------------------------------
+ 1    2.3E-002  5.9E-002  -1.242110E+000      
+ 2    1.2E-001  1.5E-001  -1.223046E+000      
+ 3    3.2E-001  2.5E-001  -1.125778E+000      
+ 4    6.4E-001  4.0E-001  -8.963339E-001      
+ 5    1.1E+000  6.2E-001  -5.855383E-001      
+ 6    1.9E+000  9.7E-001  -3.108838E-001      
+ 7    3.2E+000  1.6E+000  -1.344292E-001      
+ 8    5.4E+000  2.9E+000  -4.594640E-002      
+ 9    9.5E+000  5.9E+000  -1.108598E-002      
+ 10   1.9E+001  1.5E+001  -1.368414E-003      
+ 11   4.9E+001  5.8E+001  -4.488107E-005      
+ 12   2.7E+002  6.9E+002  -5.949871E-008      
+
+ RPA correlation energy (a.u.): -3.17829429E-001
+ Direct-ring T2 amplitudes
+ cutoff for linear dependencies     1.0E-010
+ cutoff for eigenvalues             1.0E-006
+ randomized eigendecomposition      3612 guess vectors
+ Removing small eigenvalues of T2
+ remove mu if Abs(a(mu)) <= supersystem threshold = 1.000E-006
+ Removed 38% of eigenvectors
+ Full set of eigenvecs:    1080
+ Reduced set of eigenvecs: 670
+ NVecsT2/(NOcc+NVirt)     1.5E+000
+
+ Computing natural orbitals by diagonalization of the vv block of 1-RDM
+ 1-RDM: Table S2 in Ref. 2
+ 1. Ramberger, Sukurma, Schäfer, Kresse, J. Chem. Phys. 151, 214106 (2019); doi: 10.1063/1.5128415
+ 2. Cieśliński, Tucholska, Modrzejewski, J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+ Cutoff for occupation numbers: 1.0E-011
+ Full virtual space:       431
+ Virtual natural orbitals: 302
+
+
+ Total time                                        3.4E+000
+ RPA                                               3.0E-001
+ T2 amplitudes                                     3.1E+000
+ natural orbitals                                  2.9E-002
+
+ Single-Point Energies (a.u.)
+ ----------------------------
+ mean field                                  -5.62242953E+001
+ 1-RDM linear                                 4.21409924E-015
+ 1-RDM quadratic                             -3.48356730E-015
+ direct ring                                 -3.17829429E-001
+ cumulant 1b/SOSEX                            0.00000000E+000
+ cumulant 2g/MBPT3                            0.00000000E+000
+ total energy                                -5.65421248E+001
+
+
+ Orbital basis for the RPA+MBPT3 calculation
+ -------------------------------------------
+ Atomic orbitals: 436 spherical
+ Threshold for inert core orbitals (a.u.): -3.000E+000
+ Occupied orbitals: 5
+ Discarded 1 core orbitals
+ Active occupied orbitals: 4
+ Virtual orbitals: 302
+ Using frequency and Laplace transform quadratures from previous run
+ Frequency integration will employ 12 points
+
+ -------------------------------------------------------
+ #    Freq      Weight    E(Freq)             
+ -------------------------------------------------------
+ 1    2.3E-002  5.9E-002  -1.242110E+000      
+ 2    1.2E-001  1.5E-001  -1.223046E+000      
+ 3    3.2E-001  2.5E-001  -1.125778E+000      
+ 4    6.4E-001  4.0E-001  -8.963339E-001      
+ 5    1.1E+000  6.2E-001  -5.855383E-001      
+ 6    1.9E+000  9.7E-001  -3.108838E-001      
+ 7    3.2E+000  1.6E+000  -1.344292E-001      
+ 8    5.4E+000  2.9E+000  -4.594640E-002      
+ 9    9.5E+000  5.9E+000  -1.108599E-002      
+ 10   1.9E+001  1.5E+001  -1.368413E-003      
+ 11   4.9E+001  5.8E+001  -4.488077E-005      
+ 12   2.7E+002  6.9E+002  -5.949809E-008      
+
+ RPA correlation energy (a.u.): -3.17829427E-001
+ Direct-ring T2 amplitudes
+ cutoff for linear dependencies     1.0E-010
+ cutoff for eigenvalues             1.0E-006
+ randomized eigendecomposition      3612 guess vectors
+ Removing small eigenvalues of T2
+ remove mu if Abs(a(mu)) <= supersystem threshold = 1.000E-006
+ Removed 34% of eigenvectors
+ Full set of eigenvecs:    1008
+ Reduced set of eigenvecs: 667
+ NVecsT2/(NOcc+NVirt)     2.2E+000
+
+ ----------------------------------------------------------------------------
+                   Particle-Hole Corrections to Direct RPA                   
+ ----------------------------------------------------------------------------
+
+ Energy terms: EcSOSEX, Ec2b, Ec2c, Ec2d, Ec2g, Ec2h, Ec2i, Ec2j
+ Definitions: Table 2 of Ref. 1
+
+ 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
+    J. Chem. Theory Comput. 19, 6619 (2023);
+    doi: 10.1021/acs.jctc.3c00496
+
+ SVD of T(ab;ij)        randomized
+ Subspace dimension     500
+ Oversampling           50
+ Subspace iterations    2
+ Switchover to full SVD 201 vectors
+
+ Localized occupied orbitals: Boys
+ Convergence threshold: Max(ij)|dF/dKij| < 1.0E-005
+ Max number of iters: 300
+ Localization converged in 25 iterations
+ Objective function (initial Cholesky localization): 1.2E+001
+ Objective function (minimum):                       8.3E+000
+ RandomizedSVD will use conventional full-rank SVD
+
+ Pair-natural orbitals cutoff 1.0E-007
+ AverageNVirtPNO              268
+ Max NVirtPNO                 279
+ Pairs with zero NVirtPNO     0 out of 10
+ NVirt                        302
+ AverageNVirtPNO/NVirt        8.9E-001
+ Vabij integrals cutoff       0.0E+000
+
+  10% completed (7.3E-002 s)
+  20% completed (3.9E-002 s)
+  30% completed (3.8E-002 s)
+  40% completed (3.8E-002 s)
+  50% completed (6.7E-002 s)
+  60% completed (3.9E-002 s)
+  70% completed (3.9E-002 s)
+  80% completed (6.6E-002 s)
+  90% completed (3.9E-002 s)
+ 100% completed (6.6E-002 s)
+
+ Calculation of particle-hole corrections completed
+ Skipped 0/10 blocks of Vabij integrals
+ Timings in seconds:
+ Total time           7.6E-001
+ Orbital localization 4.2E-002
+ Schwarz inequality   2.0E-002
+ SVD                  2.0E-001
+ SOSEX                1.1E-001
+ Gabij, Gaibj         1.1E-001
+ Tr(VGabij)           3.3E-002
+ Tr(VGaibj)           3.1E-002
+ ZXX                  9.1E-002
+ ZYX                  1.1E-001
+ Energy terms         5.1E-001
+
+
+ Total time                                        3.9E+000
+ RPA                                               2.7E-001
+ T2 amplitudes                                     2.8E+000
+ beyond-RPA corrections                            7.7E-001
+
+ Single-Point Energies (a.u.)
+ ----------------------------
+ mean field                                  -5.62242953E+001
+ 1-RDM linear                                 4.21409924E-015
+ 1-RDM quadratic                             -3.48356730E-015
+ direct ring                                 -3.17829427E-001
+ cumulant 1b/SOSEX                            1.21222460E-001
+ cumulant 2g/MBPT3                           -1.11603646E-001
+ total energy                                -5.65325060E+001
+
+ ----------------------------------------------------------------------------
+                  RPA for Monomer B: H3N + ghost centers H3N                 
+ ----------------------------------------------------------------------------
+
+ Using spin-restricted closed-shell Kohn-Sham reference
+
+ Orbital basis for the RPA+MBPT3 calculation
+ -------------------------------------------
+ Atomic orbitals: 436 spherical
+ Threshold for inert core orbitals (a.u.): -3.000E+000
+ Occupied orbitals: 5
+ Discarded 1 core orbitals
+ Active occupied orbitals: 4
+ Virtual orbitals: 431
+ Using frequency and Laplace transform quadratures from previous run
+ Frequency integration will employ 12 points
+
+ -------------------------------------------------------
+ #    Freq      Weight    E(Freq)             
+ -------------------------------------------------------
+ 1    2.3E-002  5.9E-002  -1.242232E+000      
+ 2    1.2E-001  1.5E-001  -1.223168E+000      
+ 3    3.2E-001  2.5E-001  -1.125896E+000      
+ 4    6.4E-001  4.0E-001  -8.964269E-001      
+ 5    1.1E+000  6.2E-001  -5.856024E-001      
+ 6    1.9E+000  9.7E-001  -3.109244E-001      
+ 7    3.2E+000  1.6E+000  -1.344535E-001      
+ 8    5.4E+000  2.9E+000  -4.595561E-002      
+ 9    9.5E+000  5.9E+000  -1.108832E-002      
+ 10   1.9E+001  1.5E+001  -1.369201E-003      
+ 11   4.9E+001  5.8E+001  -4.491939E-005      
+ 12   2.7E+002  6.9E+002  -5.955484E-008      
+
+ RPA correlation energy (a.u.): -3.17871505E-001
+ Direct-ring T2 amplitudes
+ cutoff for linear dependencies     1.0E-010
+ cutoff for eigenvalues             1.0E-006
+ randomized eigendecomposition      3612 guess vectors
+ Removing small eigenvalues of T2
+ remove mu if Abs(a(mu)) <= supersystem threshold = 1.000E-006
+ Removed 37% of eigenvectors
+ Full set of eigenvecs:    1107
+ Reduced set of eigenvecs: 699
+ NVecsT2/(NOcc+NVirt)     1.6E+000
+
+ Computing natural orbitals by diagonalization of the vv block of 1-RDM
+ 1-RDM: Table S2 in Ref. 2
+ 1. Ramberger, Sukurma, Schäfer, Kresse, J. Chem. Phys. 151, 214106 (2019); doi: 10.1063/1.5128415
+ 2. Cieśliński, Tucholska, Modrzejewski, J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
+ Cutoff for occupation numbers: 1.0E-011
+ Full virtual space:       431
+ Virtual natural orbitals: 315
+
+
+ Total time                                        3.4E+000
+ RPA                                               3.0E-001
+ T2 amplitudes                                     3.1E+000
+ natural orbitals                                  3.0E-002
+
+ Single-Point Energies (a.u.)
+ ----------------------------
+ mean field                                  -5.62243003E+001
+ 1-RDM linear                                -1.79501519E-014
+ 1-RDM quadratic                             -1.83201531E-014
+ direct ring                                 -3.17871505E-001
+ cumulant 1b/SOSEX                            0.00000000E+000
+ cumulant 2g/MBPT3                            0.00000000E+000
+ total energy                                -5.65421718E+001
+
+
+ Orbital basis for the RPA+MBPT3 calculation
+ -------------------------------------------
+ Atomic orbitals: 436 spherical
+ Threshold for inert core orbitals (a.u.): -3.000E+000
+ Occupied orbitals: 5
+ Discarded 1 core orbitals
+ Active occupied orbitals: 4
+ Virtual orbitals: 315
+ Using frequency and Laplace transform quadratures from previous run
+ Frequency integration will employ 12 points
+
+ -------------------------------------------------------
+ #    Freq      Weight    E(Freq)             
+ -------------------------------------------------------
+ 1    2.3E-002  5.9E-002  -1.242231E+000      
+ 2    1.2E-001  1.5E-001  -1.223168E+000      
+ 3    3.2E-001  2.5E-001  -1.125896E+000      
+ 4    6.4E-001  4.0E-001  -8.964269E-001      
+ 5    1.1E+000  6.2E-001  -5.856024E-001      
+ 6    1.9E+000  9.7E-001  -3.109244E-001      
+ 7    3.2E+000  1.6E+000  -1.344534E-001      
+ 8    5.4E+000  2.9E+000  -4.595561E-002      
+ 9    9.5E+000  5.9E+000  -1.108832E-002      
+ 10   1.9E+001  1.5E+001  -1.369201E-003      
+ 11   4.9E+001  5.8E+001  -4.491915E-005      
+ 12   2.7E+002  6.9E+002  -5.955436E-008      
+
+ RPA correlation energy (a.u.): -3.17871504E-001
+ Direct-ring T2 amplitudes
+ cutoff for linear dependencies     1.0E-010
+ cutoff for eigenvalues             1.0E-006
+ randomized eigendecomposition      3612 guess vectors
+ Removing small eigenvalues of T2
+ remove mu if Abs(a(mu)) <= supersystem threshold = 1.000E-006
+ Removed 33% of eigenvectors
+ Full set of eigenvecs:    1030
+ Reduced set of eigenvecs: 694
+ NVecsT2/(NOcc+NVirt)     2.2E+000
+
+ ----------------------------------------------------------------------------
+                   Particle-Hole Corrections to Direct RPA                   
+ ----------------------------------------------------------------------------
+
+ Energy terms: EcSOSEX, Ec2b, Ec2c, Ec2d, Ec2g, Ec2h, Ec2i, Ec2j
+ Definitions: Table 2 of Ref. 1
+
+ 1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski
+    J. Chem. Theory Comput. 19, 6619 (2023);
+    doi: 10.1021/acs.jctc.3c00496
+
+ SVD of T(ab;ij)        randomized
+ Subspace dimension     500
+ Oversampling           50
+ Subspace iterations    2
+ Switchover to full SVD 210 vectors
+
+ Localized occupied orbitals: Boys
+ Convergence threshold: Max(ij)|dF/dKij| < 1.0E-005
+ Max number of iters: 300
+ Localization converged in 31 iterations
+ Objective function (initial Cholesky localization): 1.1E+001
+ Objective function (minimum):                       8.1E+000
+ RandomizedSVD will use conventional full-rank SVD
+
+ Pair-natural orbitals cutoff 1.0E-007
+ AverageNVirtPNO              280
+ Max NVirtPNO                 304
+ Pairs with zero NVirtPNO     0 out of 10
+ NVirt                        315
+ AverageNVirtPNO/NVirt        8.9E-001
+ Vabij integrals cutoff       0.0E+000
+
+  10% completed (7.4E-002 s)
+  20% completed (4.0E-002 s)
+  30% completed (4.2E-002 s)
+  40% completed (4.0E-002 s)
+  50% completed (6.8E-002 s)
+  60% completed (4.1E-002 s)
+  70% completed (4.0E-002 s)
+  80% completed (7.1E-002 s)
+  90% completed (4.1E-002 s)
+ 100% completed (6.8E-002 s)
+
+ Calculation of particle-hole corrections completed
+ Skipped 0/10 blocks of Vabij integrals
+ Timings in seconds:
+ Total time           8.1E-001
+ Orbital localization 4.0E-002
+ Schwarz inequality   2.0E-002
+ SVD                  2.2E-001
+ SOSEX                1.2E-001
+ Gabij, Gaibj         1.1E-001
+ Tr(VGabij)           3.6E-002
+ Tr(VGaibj)           3.7E-002
+ ZXX                  9.1E-002
+ ZYX                  1.1E-001
+ Energy terms         5.3E-001
+
+
+ Total time                                        4.0E+000
+ RPA                                               2.6E-001
+ T2 amplitudes                                     2.9E+000
+ beyond-RPA corrections                            8.2E-001
+
+ Single-Point Energies (a.u.)
+ ----------------------------
+ mean field                                  -5.62243003E+001
+ 1-RDM linear                                -1.79501519E-014
+ 1-RDM quadratic                             -1.83201531E-014
+ direct ring                                 -3.17871504E-001
+ cumulant 1b/SOSEX                            1.21241440E-001
+ cumulant 2g/MBPT3                           -1.11612307E-001
+ total energy                                -5.65325427E+001
+
+ ----------------------------------------------------------------------------
+                    Errors due to numerical approximations                   
+ ----------------------------------------------------------------------------
+ EcRPA interaction energies and errors are in kcal/mol
+ error for each approximation is defined as energy(i)-energy(i-1)
+
+ i                                  direct-ring energy               error
+ 1  accurate                            -8.288844E-001
+ 2  natural orbitals                    -8.288860E-001           -1.6E-006
+ 3  eigendecomposition of T2            -8.288860E-001            8.5E-009
+ 4  pair-natural orbitals               -8.288857E-001            3.2E-007
+
+
+ sensitivity to perturbations of T2CutoffThresh
+ all values in kcal/mol
+
+ T2CutoffThresh      Eint(direct ring)
+ 1.010E-006             -8.288860E-001
+ 1.020E-006             -8.288860E-001
+ 1.030E-006             -8.288860E-001
+ 1.040E-006             -8.288860E-001
+ 1.050E-006             -8.288860E-001
+ 1.060E-006             -8.288860E-001
+ 1.070E-006             -8.288860E-001
+ 1.080E-006             -8.288860E-001
+ 1.090E-006             -8.288860E-001
+ 1.100E-006             -8.288860E-001
+ 1.000E-006             -8.288860E-001
+ max abs diff                 5.0E-008
+ max rel diff                 6.0E-008
+
+ RPA 2-Body Interaction Energies (kcal/mol)
+ ------------------------------------------
+ Eint(DFT)                                     -1.357683E+000
+ Eint(HF)                                      -1.357683E+000
+ Eint(1-RDM linear)                            -1.513407E-011
+ Eint(1-RDM quadratic)                          1.369948E-011
+ Eint(direct ring)                             -8.288844E-001
+ Eint(SOSEX)                                   -6.351684E-002
+ Eint(3rd order ph)                            -2.056977E-001
+ Eint(total)                                   -2.455782E+000
+
+0
+% Job finished at Fri Aug 14 20:28:05 UTC 2026
+% Total wall clock time [hours]: 0.055

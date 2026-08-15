@@ -54,7 +54,7 @@ def main():
             
         # Construct new preamble
         preamble_lines = []
-        preamble_lines.append(f"! Reference values computed with version from 2025 with accuracy set to {best_acc}:")
+        preamble_lines.append(f"! Reference values computed with accuracy set to {best_acc}:")
         for key in KEYS_TO_CHECK:
             if key in energies:
                 preamble_lines.append(f"! {key} = {energies[key]}")

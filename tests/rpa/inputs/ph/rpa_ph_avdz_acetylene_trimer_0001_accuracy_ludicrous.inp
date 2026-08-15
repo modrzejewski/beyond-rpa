@@ -1,0 +1,32 @@
+! Reference values computed with with accuracy set to ludicrous:
+! EintNadd(direct ring) = 4.687890E-002
+! EintNadd(SOSEX) = -1.680943E-002
+! EintNadd(3rd order ph) = 2.583000E-002
+! EintNadd(total) = -1.047032E-001
+
+jobtype uks rpa
+basis aug-cc-pVDZ
+scf
+ xcfunc HF
+end
+
+rpa
+ accuracy ludicrous
+ TheoryLevel RPA+ph
+end
+
+xyz
+4 4 4
+C 3.4013 2.7037 5.7562
+C 2.7037 3.4013 6.4538
+H 4.02198 2.08302 5.13552
+H 2.08302 4.02198 7.07448
+C 5.7562 3.4013 2.7037
+C 6.4538 2.7037 3.4013
+H 5.13552 4.02198 2.08302
+H 7.07448 2.08302 4.02198
+C 2.7037 5.7562 3.4013
+C 3.4013 6.4538 2.7037
+H 2.08302 5.13552 4.02198
+H 4.02198 7.07448 2.08302
+end
