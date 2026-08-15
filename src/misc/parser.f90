@@ -1104,7 +1104,7 @@ contains
       integer :: current_block
       integer :: k, z
       integer :: AtomIdx, ChargeIdx
-      logical :: RPADefined, XYZDefined
+      logical :: XYZDefined
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_ECP = 2
@@ -1117,7 +1117,6 @@ contains
       integer, parameter :: block_SCF = 9
       integer, parameter :: block_basis_assign = 10
 
-      RPADefined = .false.
       XYZDefined = .false.
 
       open(newunit=u, file=filename, status="old", &
@@ -1177,7 +1176,7 @@ contains
                call msg("Cannot define RPA parameters for non-RPA job types", MSG_ERROR)
                error stop
             end if
-            RPADefined = .true.
+            RPAParams%Initialized = .true.
             current_block = block_RPA
             cycle lines
           case ("SCF")
@@ -1504,19 +1503,19 @@ contains
       ! Check for errors in user's input
       !
       if (JOBTYPE .eq. JOB_UNKNOWN) then
-         if (RPADefined) then
+         if (RPAParams%Initialized) then
             JOBTYPE = JOB_REAL_UKS_RPA
          else
             JOBTYPE = JOB_REAL_UKS_SP
          end if
       end if
 
-      if (JOBTYPE == JOB_REAL_UKS_RPA .and. .not. RPADefined) then
+      if (JOBTYPE == JOB_REAL_UKS_RPA .and. .not. RPAParams%Initialized) then
          call msg("RPA parameters not defined", MSG_ERROR)
          error stop
       end if
 
-      if (JOBTYPE /= JOB_REAL_UKS_RPA .and. RPADefined) then
+      if (JOBTYPE /= JOB_REAL_UKS_RPA .and. RPAParams%Initialized) then
          call msg("Cannot define RPA parameters for non-RPA job types", MSG_ERROR)
          error stop
       end if
@@ -1604,7 +1603,7 @@ contains
       ! Configure the internal algorithm and orbital settings based
       ! on the specified TheoryLevel.
       !
-      call RPAParams%postprocess()
+      call rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params)
       !
       ! Update effective nuclear charges if a pseudopotential is defined
       ! The ECP nuclear charges will be the same as physical charges if there's no pseudopotential
@@ -3231,11 +3230,13 @@ contains
        case ("ACCURACY")
          select case (uppercase(val))
           case ("DEFAULT")
-            call rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+            RPAParams%Accuracy = RPA_ACCURACY_DEFAULT
           case ("TIGHT")
-            call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+            RPAParams%Accuracy = RPA_ACCURACY_TIGHT
           case ("LUDICROUS")
-            call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+            RPAParams%Accuracy = RPA_ACCURACY_LUDICROUS
+          case ("CUSTOM")
+            RPAParams%Accuracy = RPA_ACCURACY_CUSTOM
           case default
             call msg("Invalid RPA accuracy level", MSG_ERROR)
             error stop

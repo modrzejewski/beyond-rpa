@@ -33,7 +33,7 @@ def extract_energy_from_output(stdout: str) -> float:
         return float(match.group(1))
     raise ValueError("Could not find converged energy in output")
 
-@pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.name)
+@pytest.mark.parametrize("filepath", get_input_files(), ids=lambda p: p.stem)
 def test_basis_energy(filepath: Path, record_property):
     print(f"\nTesting {filepath.name} ... ", end="", flush=True)
     

@@ -1,0 +1,23 @@
+! Reference values computed with version from 2024 with accuracy set to ludicrous:
+! Eint(direct ring) = -0.0003904888
+! Eint(total) = 0.001548704
+
+basis aug-cc-pVTZ
+scf
+xcfunc PBE
+end
+rpa
+accuracy default
+TheoryLevel rPT2
+end
+xyz
+4 4
+N        1.08099635    1.08099635     1.08099635
+H        1.89264145    1.37035655     0.59462495
+H        1.37035655    0.59462495     1.89264145
+H        0.59462495    1.89264145     1.37035655
+N        1.48425365    -21.60299635     -1.48425365
+H        1.97062505    -22.41464145     -1.19489345
+H        0.67260855    -21.89235655     -1.97062505
+H        1.19489345    -21.11662494999999     -0.67260855
+end

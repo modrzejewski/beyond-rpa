@@ -1,0 +1,28 @@
+! Reference values computed with accuracy set to ludicrous:
+! Eint(direct ring) = -5.939572E-001
+! Eint(SOSEX) = -2.932892E-002
+! Eint(3rd order ph) = -1.783835E-001
+! Eint(total) = -8.014858E-001
+
+jobtype uks rpa
+basis aug-cc-pVTZ
+scf
+ xcfunc HF
+end
+
+rpa
+ accuracy default
+ TheoryLevel RPA+ph
+end
+
+xyz
+4 4
+C 3.4013 2.7037 5.7562
+C 2.7037 3.4013 6.4538
+H 4.02198 2.08302 5.13552
+H 2.08302 4.02198 7.07448
+C 5.7562 3.4013 2.7037
+C 6.4538 2.7037 3.4013
+H 5.13552 4.02198 2.08302
+H 7.07448 2.08302 4.02198
+end

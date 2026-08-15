@@ -60,15 +60,27 @@ if pytest.found()
     workdir: meson.project_source_root()
   )
 
-  test('rpa',
+  test('rpa+ph',
     pytest,
     args: [
       '-v', '-s',
-      '--junitxml=rpa_report.xml',
-      meson.project_source_root() / 'tests' / 'rpa' / 'test_rpa.py'
+      '--junitxml=ph_report.xml',
+      meson.project_source_root() / 'tests' / 'rpa' / 'test_ph.py'
     ],
     depends: post_build_target,
     timeout: 600,
+    workdir: meson.project_source_root()
+  )
+
+  test('rpt2',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=rpt2_report.xml',
+      meson.project_source_root() / 'tests' / 'rpa' / 'test_rpt2.py'
+    ],
+    depends: post_build_target,
+    timeout: 900,
     workdir: meson.project_source_root()
   )
 else
