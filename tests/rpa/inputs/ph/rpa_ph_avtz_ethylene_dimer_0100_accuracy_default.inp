@@ -1,4 +1,4 @@
-! Reference values computed with with accuracy set to ludicrous:
+! Reference values computed with accuracy set to ludicrous:
 ! Eint(direct ring) = -9.327780E-004
 ! Eint(SOSEX) = -1.567060E-006
 ! Eint(3rd order ph) = -2.896541E-004

@@ -1,4 +1,4 @@
-! Reference values computed with with accuracy set to ludicrous:
+! Reference values computed with accuracy set to ludicrous:
 ! EintNadd(direct ring) = 3.846902E-002
 ! EintNadd(SOSEX) = -5.509290E-003
 ! EintNadd(3rd order ph) = 2.416215E-002
