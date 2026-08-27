@@ -4,7 +4,7 @@ module rpa_CCD_Corrections
       use rpa_definitions
       use rpa_MeanField
       use rpa_CCD_Corrections_Experimental
-      use rpa_JCTC2024
+      use rpa_JCTC2025
       use rpa_CCS_Corrections
       use rpa_CC_Doubles
       use rpa_Orbitals
@@ -40,7 +40,7 @@ contains
             logical, parameter :: Compute_2bcd = .false.
 
             if (RPAParams%TheoryLevel==RPA_THEORY_PH) then
-                  call rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+                  call rpa_JCTC2025_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
                         RPAParams, AOBasis)
             else if (RPAParams%TheoryLevel==RPA_THEORY_PH_PP_HH) then
                   !
