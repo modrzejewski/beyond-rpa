@@ -6,7 +6,7 @@ module rpa_THC
       use rpa_CC
       use rpa_CC_Singles
       use rpa_CC_Doubles
-      use rpa_CC_Exchange
+      use rpa_JCTC2023_Cholesky
       use rpa_CCD_Corrections
       
       implicit none

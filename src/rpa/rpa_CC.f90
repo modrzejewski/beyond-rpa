@@ -14,7 +14,7 @@ module rpa_CC
       use rpa_definitions
       use rpa_core_MO
       use rpa_CC_Singles
-      use rpa_CC_Exchange
+      use rpa_JCTC2023_Cholesky
       use rpa_CC_1RDM
       use rpa_CC_Doubles
 
@@ -72,7 +72,7 @@ contains
                   end select
             end if
             
-            call rpa_CC_Exchange_Summary(ExchangeApprox)
+            call rpa_JCTC2023_Cholesky_Summary(ExchangeApprox)
             call blankline()
       end subroutine rpa_CC_Summary
 
@@ -960,28 +960,28 @@ contains
                         if (k <= QuadEnd .and. k >= QuadStart) then
                               UseOperatorS = .true.
                               Alpha = TWO
-                              call rpa_CC_Exchange_SOSEX(VxLambda(k), Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
+                              call rpa_JCTC2023_Cholesky_SOSEX(VxLambda(k), Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
                         end if
                   case (RPA_EXCHANGE_SOSEX)
                         if (k == Lambda1) then
                               UseOperatorS = .false.
                               Alpha = ONE
-                              call rpa_CC_Exchange_SOSEX(EcExchange_SOSEX, Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
+                              call rpa_JCTC2023_Cholesky_SOSEX(EcExchange_SOSEX, Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
                               EcExchange = EcExchange_SOSEX
                         end if
                   case (RPA_EXCHANGE_MBPT3_1_NUMERICAL)
                         if (k <= DerivEnd .and. k >= DerivStart) then
                               UseOperatorS = .false.
                               Alpha = ONE
-                              call rpa_CC_Exchange_SOSEX(VxLambda(k), Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
+                              call rpa_JCTC2023_Cholesky_SOSEX(VxLambda(k), Alpha, V, A, Rkai, NOcc(s), NVirt(s), NVecsPiU, NVecsT2, UseOperatorS)
                         end if
                   case (RPA_EXCHANGE_MBPT3_1)
                         if (k == Lambda1) then
                               if (ChiOrbitals == RPA_ORBITALS_CANONICAL) then
-                                    call rpa_CC_Exchange_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
+                                    call rpa_JCTC2023_Cholesky_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
                                           OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s))
                               else
-                                    call rpa_CC_Exchange_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
+                                    call rpa_JCTC2023_Cholesky_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
                                           SemiFii(:, s), SemiFaa(:, s), NOcc(s), NVirt(s))
                               end if
                               EcExchange = EcExchange_MBPT3_1
@@ -989,13 +989,13 @@ contains
                   case (RPA_EXCHANGE_MBPT3_2)
                         if (k == Lambda1) then
                               if (ChiOrbitals == RPA_ORBITALS_CANONICAL) then
-                                    call rpa_CC_Exchange_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
+                                    call rpa_JCTC2023_Cholesky_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
                                           OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s))
                               else
-                                    call rpa_CC_Exchange_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
+                                    call rpa_JCTC2023_Cholesky_MBPT3_1(EcExchange_MBPT3_1, V, A, NVecsT2, Rkai(:, :, s), NVecsPiU, &
                                           SemiFii(:, s), SemiFaa(:, s), NOcc(s), NVirt(s))
                               end if
-                              call rpa_CC_Exchange_MBPT3_2(EcExchange_MBPT3_2, Rkai(:, :, s), V, A, NOcc(s), NVirt(s), NVecsPiU, NVecsT2)
+                              call rpa_JCTC2023_Cholesky_MBPT3_2(EcExchange_MBPT3_2, Rkai(:, :, s), V, A, NOcc(s), NVirt(s), NVecsPiU, NVecsT2)
                               EcExchange = EcExchange_MBPT3_1 + EcExchange_MBPT3_2
                         end if
                   end select

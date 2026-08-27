@@ -1,4 +1,4 @@
-module rpa_CC_Exchange
+module rpa_JCTC2023_Cholesky
       use arithmetic
       use math_constants
       use rpa_definitions
@@ -8,7 +8,7 @@ module rpa_CC_Exchange
 
 contains
 
-      subroutine rpa_CC_Exchange_Summary(ExchangeApprox)
+      subroutine rpa_JCTC2023_Cholesky_Summary(ExchangeApprox)
             integer, intent(in) :: ExchangeApprox
 
             call msg("Exchange contribution")
@@ -30,10 +30,10 @@ contains
                   call msg(lfield("", 30) // "             + 2*Sum(aibjck) (ai|bj)T(ak,ci;Lambda=1)*T(cj,bk;Lambda=1)")
                   call msg(lfield("", 30) // "using the Lyapunov equation to solve for dT/dLambda")
             end select
-      end subroutine rpa_CC_Exchange_Summary
+      end subroutine rpa_JCTC2023_Cholesky_Summary
 
 
-      subroutine rpa_CC_Exchange_SOSEX(EcExchange, Alpha, Vkai, Ak, Rkai, NOcc, NVirt, NVecsPiU, NVecsT2, S2Operator)
+      subroutine rpa_JCTC2023_Cholesky_SOSEX(EcExchange, Alpha, Vkai, Ak, Rkai, NOcc, NVirt, NVecsPiU, NVecsT2, S2Operator)
             !
             ! EcExchange =  -Alpha * Sum(abij) (aj|bi)*Taibj
             !
@@ -94,7 +94,7 @@ contains
             end do
             EcExchange = Alpha * EcExchange
             sync all
-      end subroutine rpa_CC_Exchange_SOSEX
+      end subroutine rpa_JCTC2023_Cholesky_SOSEX
 
 
       subroutine rpa_CC_EcExchange1(EcExchange, Wij, Wji, Ak, NVecsChol, NVecsT2)
@@ -229,7 +229,7 @@ contains
       end subroutine rpa_CC_Dkl
 
 
-      subroutine rpa_CC_Exchange_MBPT3_1(EcExchange, Vkai, Ak, NVecsT2, Rkai, NVecsPiU, &
+      subroutine rpa_JCTC2023_Cholesky_MBPT3_1(EcExchange, Vkai, Ak, NVecsT2, Rkai, NVecsPiU, &
             OccEnergies, VirtEnergies, NOcc, NVirt)
 
             real(F64), intent(out)                                  :: EcExchange
@@ -269,7 +269,7 @@ contains
             call real_Lyapunov(X, B, A)
             call rpa_CC_TrXK(TrXK, X, Vkai, Rkai, NOcc, NVirt, NVecsPiU, NVecsT2)
             EcExchange = -TrXK
-      end subroutine rpa_CC_Exchange_MBPT3_1
+      end subroutine rpa_JCTC2023_Cholesky_MBPT3_1
 
 
       subroutine rpa_CC_TrXK(TrXK, Xmn, Vkai, Rkai, NOcc, NVirt, NVecsPiU, NVecsT2)
@@ -376,7 +376,7 @@ contains
       end subroutine rpa_CC_TrW2
 
 
-      subroutine rpa_CC_Exchange_MBPT3_2(EcExchange, Rkai, Vkai, Ak, NOcc, NVirt, NVecsPiU, NVecsT2)
+      subroutine rpa_JCTC2023_Cholesky_MBPT3_2(EcExchange, Rkai, Vkai, Ak, NOcc, NVirt, NVecsPiU, NVecsT2)
             real(F64), intent(out)                                  :: EcExchange
             real(F64), dimension(NVecsPiU, NVirt, NOcc), intent(in) :: Rkai
             real(F64), dimension(NVecsT2, NVirt, NOcc), intent(in)  :: Vkai
@@ -390,5 +390,5 @@ contains
 
             call rpa_CC_TrW2(TrW2, Rkai, Vkai, Ak, NOcc, NVirt, NVecsPiU, NVecsT2)
             EcExchange = TWO * TrW2
-      end subroutine rpa_CC_Exchange_MBPT3_2
-end module rpa_CC_Exchange
+      end subroutine rpa_JCTC2023_Cholesky_MBPT3_2
+end module rpa_JCTC2023_Cholesky
