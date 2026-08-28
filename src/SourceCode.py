@@ -550,8 +550,8 @@ FileList += [("DFT", ["rpa/rpa_CC_Singles.f90",
                       "rpa/rpa_JCTC2025_Experimental.f90",
                       "rpa/rpa_JCTC2025.f90",
                       "rpa/rpa_CCS_Corrections.f90",
-                      "rpa/rpa_PT_Terms.f90"])]
-FileList += [("DFT", ["rpa/rpa_CCD_Corrections.f90"])]
+                      "rpa/rpa_JCTC2025_PT.f90"])]
+FileList += [("DFT", ["rpa/rpa_JCTC2023_THC.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC_1RDM.f90"])]
 FileList += [("DFT", ["rpa/rpa_CC.f90"])]
 FileList += [("DFT", ["rpa/rpa_THC.f90"])]

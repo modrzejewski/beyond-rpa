@@ -1,14 +1,13 @@
-module rpa_PT_Terms
+module rpa_JCTC2025_PT
       use arithmetic      
       use real_linalg
       use rpa_definitions
-      use clock
 
       implicit none
 
 contains 
 
-      subroutine rpa_PT_Order2(Energy, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, NOcc, NVirt, NGridTHC)
+      subroutine rpa_JCTC2025_PT_Order2(Energy, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, NOcc, NVirt, NGridTHC)
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
             integer, intent(in)                                    :: NGridTHC
@@ -74,10 +73,10 @@ contains
             Energy(MP2_ENERGY_TRIPLET_PAIR) = EcTriplet
             Energy(MP2_ENERGY_DIRECT) = EcDirectMP2
             Energy(MP2_ENERGY_TOTAL) = EcTotMP2
-      end subroutine rpa_PT_Order2
+      end subroutine rpa_JCTC2025_PT_Order2
 
 
-      subroutine rpa_PT_Order3(Energy, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, NOcc, NVirt, NGridTHC)
+      subroutine rpa_JCTC2025_PT_Order3(Energy, Zgk, Yga, Xgi, OccEnergies, VirtEnergies, NOcc, NVirt, NGridTHC)
             integer, intent(in)                                    :: NOcc
             integer, intent(in)                                    :: NVirt
             integer, intent(in)                                    :: NGridTHC
@@ -134,13 +133,13 @@ contains
             deallocate(YXg)
             !$omp end parallel
 
-            call rpa_PT_Order3_abcd(Ec2a, Ec2b, Ec2c, Ec2d, Rkai, OccEnergies, &
+            call rpa_JCTC2025_PT_Order3_abcd(Ec2a, Ec2b, Ec2c, Ec2d, Rkai, OccEnergies, &
                   VirtEnergies, NOcc, NVirt, NCholesky)
-            call rpa_PT_Order3_ghij(Ec2g, Ec2h, Ec2i, Ec2j, Rkai, Rkij, Rkab, &
+            call rpa_JCTC2025_PT_Order3_ghij(Ec2g, Ec2h, Ec2i, Ec2j, Rkai, Rkij, Rkab, &
                   OccEnergies, VirtEnergies, NOcc, NVirt, NCholesky)
-            call rpa_PT_Order3_ef(Ec2e, Ec2f, Rkai, Rkij, OccEnergies, &
+            call rpa_JCTC2025_PT_Order3_ef(Ec2e, Ec2f, Rkai, Rkij, OccEnergies, &
                   VirtEnergies, NOcc, NVirt, NCholesky)
-            call rpa_PT_Order3_kl(Ec2k, Ec2l, Rkai, Rkab, OccEnergies, &
+            call rpa_JCTC2025_PT_Order3_kl(Ec2k, Ec2l, Rkai, Rkab, OccEnergies, &
                   VirtEnergies, NOcc, NVirt, NCholesky)
             
             Energy(MP3_ENERGY_A) = Ec2a
@@ -159,10 +158,10 @@ contains
                   Ec2a + Ec2b + Ec2c + Ec2d &
                   + Ec2g + Ec2h + Ec2i + Ec2j &
                   + Ec2e + Ec2f + Ec2k + Ec2l
-      end subroutine rpa_PT_Order3
+      end subroutine rpa_JCTC2025_PT_Order3
 
 
-      subroutine rpa_PT_Order3_abcd(Ec2a, Ec2b, Ec2c, Ec2d, Rkai, &
+      subroutine rpa_JCTC2025_PT_Order3_abcd(Ec2a, Ec2b, Ec2c, Ec2d, Rkai, &
             OccEnergies, VirtEnergies, NOcc, NVirt, NCholesky)
             
             real(F64), intent(out)                    :: Ec2a, Ec2b, Ec2c, Ec2d
@@ -222,10 +221,10 @@ contains
             Ec2b = -FOUR * Ec2b ! -4 this is the exact MBPT prefactor of the corresponding 3rd order diagram 2b
             Ec2c = Ec2b         ! -4 this is the exact MBPT prefactor of the corresponding 3rd order diagram 2c
             Ec2d = TWO * Ec2d
-      end subroutine rpa_PT_Order3_abcd
+      end subroutine rpa_JCTC2025_PT_Order3_abcd
 
 
-      subroutine rpa_PT_Order3_ghij(Ec2g, Ec2h, Ec2i, Ec2j, Rkai, Rkij, Rkab, &
+      subroutine rpa_JCTC2025_PT_Order3_ghij(Ec2g, Ec2h, Ec2i, Ec2j, Rkai, Rkij, Rkab, &
             OccEnergies, VirtEnergies, NOcc, NVirt, NCholesky)
             
             real(F64), intent(out)                    :: Ec2g, Ec2h, Ec2i, Ec2j
@@ -289,10 +288,10 @@ contains
             Ec2h = -FOUR * Ec2h
             Ec2i = TWO * Ec2i
             Ec2j = TWO * Ec2j
-      end subroutine rpa_PT_Order3_ghij
+      end subroutine rpa_JCTC2025_PT_Order3_ghij
 
 
-      subroutine rpa_PT_Order3_ef(Ec2e, Ec2f, Rkai, Rkij, OccEnergies, &
+      subroutine rpa_JCTC2025_PT_Order3_ef(Ec2e, Ec2f, Rkai, Rkij, OccEnergies, &
             VirtEnergies, NOcc, NVirt, NCholesky)
             
             real(F64), intent(out)                    :: Ec2e, Ec2f
@@ -347,10 +346,10 @@ contains
             !$omp end parallel do            
             Ec2e = TWO * Ec2e
             Ec2f = -Ec2f
-      end subroutine rpa_PT_Order3_ef
+      end subroutine rpa_JCTC2025_PT_Order3_ef
 
 
-      subroutine rpa_PT_Order3_kl(Ec2k, Ec2l, Rkai, Rkab, OccEnergies, &
+      subroutine rpa_JCTC2025_PT_Order3_kl(Ec2k, Ec2l, Rkai, Rkab, OccEnergies, &
             VirtEnergies, NOcc, NVirt, NCholesky)
             
             real(F64), intent(out)                    :: Ec2k, Ec2l
@@ -405,5 +404,5 @@ contains
             !$omp end parallel do            
             Ec2k = TWO * Ec2k
             Ec2l = -Ec2l
-      end subroutine rpa_PT_Order3_kl
-end module rpa_PT_Terms
+      end subroutine rpa_JCTC2025_PT_Order3_kl
+end module rpa_JCTC2025_PT

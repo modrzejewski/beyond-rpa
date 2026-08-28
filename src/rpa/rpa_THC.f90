@@ -7,7 +7,10 @@ module rpa_THC
       use rpa_CC_Singles
       use rpa_CC_Doubles
       use rpa_JCTC2023_Cholesky
-      use rpa_CCD_Corrections
+      use rpa_JCTC2023_THC
+      use rpa_JCTC2025
+      use rpa_JCTC2025_Experimental
+      use rpa_JCTC2025_PT
       
       implicit none
 
@@ -150,7 +153,7 @@ contains
                         ! Variant with T's in the full canonical orbital basis
                         ! ---------------------------------------------------------------------------------
                         call clock_start(timer)
-                        call rpa_Corrections(RPAOutput, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
+                        call rpa_THC_Corrections(RPAOutput, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                               Uaim, Am, OccCoeffs(:, 1:NOcc(s), s), NOcc(s), NVirt(s), NVecsT2, NGridTHC, &
                               RPAParams, AOBasis)
                         t_Corrections = clock_readwall(timer)
@@ -162,10 +165,10 @@ contains
             ! Perturbation theory terms
             ! This is an extremely slow code and should be used only for debugging
             ! ---------------------------------------------------------------------------------
-            if (PT_Order2) call rpa_PT_Order2(RPAOutput%Energy, &
+            if (PT_Order2) call rpa_JCTC2025_PT_Order2(RPAOutput%Energy, &
                   THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), NGridTHC)
-            if (PT_Order3) call rpa_PT_Order3(RPAOutput%Energy, &
+            if (PT_Order3) call rpa_JCTC2025_PT_Order3(RPAOutput%Energy, &
                   THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
                   OccEnergies(:, s), VirtEnergies(:, s), NOcc(s), NVirt(s), NGridTHC)
             call blankline()
@@ -183,6 +186,66 @@ contains
             end if
             call blankline()
       end subroutine rpa_THC_MBPT3
+
+
+      subroutine rpa_THC_Corrections(RPAOutput, Zgk, Yga, Xgi, &
+            Uaim, Am, Cpi, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams, AOBasis)
+            
+            integer, intent(in)                                    :: NOcc
+            integer, intent(in)                                    :: NVirt
+            integer, intent(in)                                    :: NVecsT2
+            integer, intent(in)                                    :: NGridTHC
+            type(TRPAOutput), intent(inout)                        :: RPAOutput
+            real(F64), dimension(:, :), intent(in)                 :: Zgk
+            real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
+            real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
+            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
+            real(F64), dimension(:), intent(in)                    :: Am
+            real(F64), dimension(:, :), intent(in)                 :: Cpi
+            type(TRPAParams), intent(in)                           :: RPAParams
+            type(TAOBasis), intent(in)                             :: AOBasis
+
+            real(F64), dimension(:, :), allocatable :: YXUggm, Zgh
+            type(TClock) :: timer_total, timer            
+            integer, parameter :: BlockDim = 300
+            logical, parameter :: Compute_1b2g = .true.
+            logical, parameter :: Compute_2bcd = .false.
+
+            if (RPAParams%TheoryLevel==RPA_THEORY_PH) then
+                  call rpa_JCTC2025_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+                        RPAParams, AOBasis)
+            else if (RPAParams%TheoryLevel==RPA_THEORY_PH_PP_HH) then
+                  !
+                  ! Warning: this code path allocates large matrices
+                  !
+                  call rpa_JCTC2025_Experimental_FullSet(RPAOutput%Energy, Zgk, Yga, Xgi, &
+                        Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))                  
+            else if (RPAParams%TheoryLevel==RPA_THEORY_2G) then
+                  call msg("CCD corrections to RPA correlation energy")
+                  call clock_start(timer_total)
+                  allocate(Zgh(NGridTHC, NGridTHC))
+                  call real_abT(Zgh, Zgk, Zgk)
+                  if (Compute_1b2g) then
+                        call clock_start(timer)
+                        call rpa_JCTC2023_THC_1b2g(RPAOutput, Zgh, Xgi, Yga, Uaim, &
+                              Am, BlockDim, Compute_2bcd, YXUggm)
+                        call msg("SOSEX+2g computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  end if
+                  if (Compute_2bcd) then
+                        call clock_start(timer)
+                        call rpa_JCTC2023_THC_2bcd(RPAOutput%Energy, Zgh, Xgi, Yga, Uaim, Am, YXUggm)
+                        call msg("2b+2c+2d computed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  end if
+                  !
+                  ! Rescale the energy terms to get the correct MBPT prefactors.
+                  ! After scaling by 1/2, the 1b term is equivalent to SOSEX.
+                  !
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_1B)
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2B)
+                  RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * RPAOutput%Energy(RPA_ENERGY_CUMULANT_2C)
+                  call msg("All CCD corrections computed in " // str(clock_readwall(timer_total),d=1) // " seconds")
+            end if
+      end subroutine rpa_THC_Corrections
 
 
       subroutine rpa_THC_MOTransf(Xga, Xgi, Xgp, OccCoeffs_ao, VirtCoeffs_ao, NOcc, NVirt)
