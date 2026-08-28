@@ -41,10 +41,6 @@ contains
       type(TChol2Vecs), intent(inout)                           :: Chol2Vecs
       type(TCoulTHCGrid), intent(inout)                         :: THCGrid
 
-      real(F64) :: EtotDFT_AB, EtotHF_AB, EtotRPA_AB, EcSingles_AB, EcRPA_AB, EcExchange_AB
-      real(F64) :: EtotDFT_ABC, EtotHF_ABC, EtotRPA_ABC, EcSingles_ABC, EcRPA_ABC, EcExchange_ABC
-      real(F64) :: EtotDFT_ABCD, EtotHF_ABCD, EtotRPA_ABCD, EcSingles_ABCD, EcRPA_ABCD, EcExchange_ABCD
-      real(F64) :: EtotDFT_Nadd, EtotHF_Nadd, EtotRPA_Nadd, EcSingles_Nadd, EcRPA_Nadd, EcExchange_Nadd
       integer, parameter :: MaxNSubsystems = 15
       real(F64), dimension(MaxNSubsystems) :: EtotDFT, EtotRPA, EtotHF, EcSingles, EcRPA, EcExchange
       real(F64), dimension(MaxNSubsystems) :: EcRPA_Chi_MO, EcRPA_Chi_NO, EcRPA_T2_MO, EcRPA_T2_NO, EcRPA_T2_PNO
@@ -103,7 +99,10 @@ contains
          SpinUnres = (NSpins>1)
       end do
       allocate(MeanFieldStates(NSystems))
-      if (RPAParams%Algorithm == RPA_ALGO_JCTC2025) then
+      if ( &
+            RPAParams%Algorithm == RPA_ALGO_JCTC2025 .or. &
+            RPAParams%Algorithm == RPA_ALGO_JCTC2023_THC &
+            ) then
             !
             ! For RPA+ph, the singles corrections (referred to 1-RDM linear and 1-RDM
             ! quadratic) are computed to correct the numerical errors originating from the
@@ -112,20 +111,20 @@ contains
             ! for the many-body expansion of the crystal lattice energy.
             !
             if (SCFParams%XCFunc == XCF_HF) then
-            call rpa_MeanField_RefineHF_Preamble(RPAParams, SCFParams)
-         end if
-         call clock_start(timer)
-         if (SCFParams%XCFunc == XCF_HF) then
-            call rpa_MeanField_RefineHF(MeanFieldStates, System, SCFOutput, &
-               Chol2Vecs, THCGrid, RPAParams, AOBasis)
-         else
-            do k = 1, NSystems
-               call sys_Init(System, k)
-               call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
-                  RPAParams, AOBasis, System, THCGrid)
-            end do
-         end if
-         call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
+                  call rpa_MeanField_RefineHF_Preamble(RPAParams, SCFParams)
+            end if
+            call clock_start(timer)
+            if (SCFParams%XCFunc == XCF_HF) then
+                  call rpa_MeanField_RefineHF(MeanFieldStates, System, SCFOutput, &
+                        Chol2Vecs, THCGrid, RPAParams, AOBasis)
+            else
+                  do k = 1, NSystems
+                        call sys_Init(System, k)
+                        call rpa_MeanField_Semi(MeanFieldStates(k), SCFOutput(k), SCFParams, &
+                              RPAParams, AOBasis, System, THCGrid)
+                  end do
+            end if
+            call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
       end if
       allocate(RPAGrids%daiValues(RPA_HISTOGRAM_NBINS, n))
       allocate(RPAGrids%daiWeights(RPA_HISTOGRAM_NBINS, n))
@@ -134,31 +133,37 @@ contains
       do k = 1, NSystems
          NSpins = size(SCFOutput(k)%OrbEnergies, dim=2)
          if (k == 1 .and. RPAParams%GridLimitDai) then
-            !
-            ! Compute the maximum Ea-Ei difference
-            ! for the entire complex. That threshold
-            ! value is subsequently used to limit
-            ! the range of orbital excitations considered
-            ! during the grid optimization.
-            !
-            if (RPAParams%Algorithm == RPA_ALGO_JCTC2025) then
-               call rpa_DaiMaxThresh(DaiMaxThresh, &
-                  MeanFieldStates(k)%OrbEnergies, &
-                  MeanFieldStates(k)%NOcc, &
-                  MeanFieldStates(k)%NVirt, &
-                  MeanFieldStates(k)%NSpins, &
-                  RPAParams%CoreOrbThresh)
-            else
-               call rpa_DaiMaxThresh(DaiMaxThresh, &
-                  SCFOutput(k)%OrbEnergies, &
-                  SCFOutput(k)%NOcc, &
-                  SCFOutput(k)%NVirt, &
-                  NSpins, &
-                  RPAParams%CoreOrbThresh)
-            end if
+               !
+               ! Compute the maximum Ea-Ei difference
+               ! for the entire complex. That threshold
+               ! value is subsequently used to limit
+               ! the range of orbital excitations considered
+               ! during the grid optimization.
+               !
+               if ( &
+                     RPAParams%Algorithm == RPA_ALGO_JCTC2025 .or. &
+                     RPAParams%Algorithm == RPA_ALGO_JCTC2023_THC &
+                     ) then
+                     call rpa_DaiMaxThresh(DaiMaxThresh, &
+                           MeanFieldStates(k)%OrbEnergies, &
+                           MeanFieldStates(k)%NOcc, &
+                           MeanFieldStates(k)%NVirt, &
+                           MeanFieldStates(k)%NSpins, &
+                           RPAParams%CoreOrbThresh)
+               else
+                     call rpa_DaiMaxThresh(DaiMaxThresh, &
+                           SCFOutput(k)%OrbEnergies, &
+                           SCFOutput(k)%NOcc, &
+                           SCFOutput(k)%NVirt, &
+                           NSpins, &
+                           RPAParams%CoreOrbThresh)
+               end if
          end if
          do s = 1, NSpins
-            if (RPAParams%Algorithm == RPA_ALGO_JCTC2025) then
+               if ( &
+                     RPAParams%Algorithm == RPA_ALGO_JCTC2025 .or. &
+                     RPAParams%Algorithm == RPA_ALGO_JCTC2023_THC &
+                     ) then
                call rpa_DaiHistogram( &
                   RPAGrids%daiValues(:, m), &
                   RPAGrids%daiWeights(:, m), &
@@ -680,7 +685,6 @@ contains
       ! Expectation-Value Coupled-Cluster Formulation,
       ! J. Chem. Theory Comput. 19, 6619 (2023); doi: 10.1021/acs.jctc.3c00496
       !
-
       real(F64), dimension(:), intent(out)                      :: Energy
       type(TSCFOutput), intent(in)                              :: SCFOutput
       type(TAOBasis), intent(in)                                :: AOBasis
@@ -747,23 +751,16 @@ contains
          Energy(RPA_ENERGY_1RDM_QUADRATIC) + &
          Energy(RPA_ENERGY_CORR)
       Energy(RPA_ENERGY_TOTAL) = Etot
+      
       call msg("Single-Point Energies (a.u.)", underline=.true.)
-      if (RPAParams%Algorithm == RPA_ALGO_JCTC2025) then
-         call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
-         call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
-         call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
-         call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
-         call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
-         call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
-         call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
-      else
-         call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
-         call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
-         call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
-         call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
-         call msg(lfield("exchange", 40) //          rfield(str(Energy(RPA_ENERGY_EXCHANGE), d=8), 20))
-         call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
-      end if
+
+      call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+      call msg(lfield("1-RDM linear", 40) //       rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+      call msg(lfield("1-RDM quadratic", 40) //    rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+      call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+      call msg(lfield("exchange", 40) //          rfield(str(Energy(RPA_ENERGY_EXCHANGE), d=8), 20))
+      call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
+
       call blankline()
       call co_broadcast(Energy, source_image=1)
    end subroutine rpa_entrypoint_JCTC2023_Cholesky
@@ -815,41 +812,11 @@ contains
          end if
       end associate
       call rpa_THC_GatherEnergyContribs(RPAOutput%Energy, MeanField)
-      associate (Energy => RPAOutput%Energy)
-         call msg("Single-Point Energies (a.u.)", underline=.true.)
-         if (RPAParams%PT_Order2) then
-            call msg(lfield("MP2 singlet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
-            call msg(lfield("MP2 triplet pairs", 40) //    rfield(str(Energy(MP2_ENERGY_TRIPLET_PAIR), d=8), 20))
-            call msg(lfield("direct MP2", 40) //           rfield(str(Energy(MP2_ENERGY_DIRECT), d=8), 20))
-            call msg(lfield("total MP2", 40) //            rfield(str(Energy(MP2_ENERGY_TOTAL), d=8), 20))
-         end if
-         if (RPAParams%PT_Order3) then
-            call msg(lfield("MP3 A", 40) // rfield(str(Energy(MP3_ENERGY_A), d=8), 20))
-            call msg(lfield("MP3 B", 40) // rfield(str(Energy(MP3_ENERGY_B), d=8), 20))
-            call msg(lfield("MP3 C", 40) // rfield(str(Energy(MP3_ENERGY_C), d=8), 20))
-            call msg(lfield("MP3 D", 40) // rfield(str(Energy(MP3_ENERGY_D), d=8), 20))
-            call msg(lfield("MP3 E", 40) // rfield(str(Energy(MP3_ENERGY_E), d=8), 20))
-            call msg(lfield("MP3 F", 40) // rfield(str(Energy(MP3_ENERGY_F), d=8), 20))
-            call msg(lfield("MP3 G", 40) // rfield(str(Energy(MP3_ENERGY_G), d=8), 20))
-            call msg(lfield("MP3 H", 40) // rfield(str(Energy(MP3_ENERGY_H), d=8), 20))
-            call msg(lfield("MP3 I", 40) // rfield(str(Energy(MP3_ENERGY_I), d=8), 20))
-            call msg(lfield("MP3 J", 40) // rfield(str(Energy(MP3_ENERGY_J), d=8), 20))
-            call msg(lfield("MP3 K", 40) // rfield(str(Energy(MP3_ENERGY_K), d=8), 20))
-            call msg(lfield("MP3 L", 40) // rfield(str(Energy(MP3_ENERGY_L), d=8), 20))
-            call msg(lfield("total MP3", 40) // rfield(str(Energy(MP3_ENERGY_TOTAL), d=8), 20))
-         end if
-         call msg(lfield("mean field", 40) //        rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
-         call msg(lfield("1-RDM linear", 40) //      rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
-         call msg(lfield("1-RDM quadratic", 40) //   rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
-         call msg(lfield("direct ring", 40) //       rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
-         call msg(lfield("cumulant 1b/SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_1B), d=8), 20))
-         call msg(lfield("cumulant 2g/MBPT3", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
-         call msg(lfield("total energy", 40) //      rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
-         call blankline()
-      end associate
+      call rpa_PrintSinglePoint(RPAOutput%Energy, RPAParams)
+      call blankline()
    end subroutine rpa_entrypoint_THC
 
-
+   
    subroutine rpa_THC_GatherEnergyContribs(Energy, MeanField)
       real(F64), dimension(:), intent(inout) :: Energy
       type(TMeanField), intent(in)           :: MeanField
@@ -1383,4 +1350,66 @@ contains
          call msg(Label // rfield(str(E, d=9), 20))
       end if
    end subroutine rpa_EnergyTableRow
+
+
+   subroutine rpa_PrintSinglePoint(Energy, RPAParams)
+         real(F64), dimension(:), intent(in) :: Energy
+         type(TRPAParams), intent(in)        :: RPAParams
+
+         call msg("Single-Point Energies (a.u.)", underline=.true.)
+
+         if (RPAParams%PT_Order2) then
+               call msg(lfield("MP2 singlet pairs", 40) // rfield(str(Energy(MP2_ENERGY_SINGLET_PAIR), d=8), 20))
+               call msg(lfield("MP2 triplet pairs", 40) // rfield(str(Energy(MP2_ENERGY_TRIPLET_PAIR), d=8), 20))
+               call msg(lfield("direct MP2", 40)        // rfield(str(Energy(MP2_ENERGY_DIRECT), d=8), 20))
+               call msg(lfield("total MP2", 40)         // rfield(str(Energy(MP2_ENERGY_TOTAL), d=8), 20))
+         end if
+
+         if (RPAParams%PT_Order3) then
+               call msg(lfield("MP3 A", 40) // rfield(str(Energy(MP3_ENERGY_A), d=8), 20))
+               call msg(lfield("MP3 B", 40) // rfield(str(Energy(MP3_ENERGY_B), d=8), 20))
+               call msg(lfield("MP3 C", 40) // rfield(str(Energy(MP3_ENERGY_C), d=8), 20))
+               call msg(lfield("MP3 D", 40) // rfield(str(Energy(MP3_ENERGY_D), d=8), 20))
+               call msg(lfield("MP3 E", 40) // rfield(str(Energy(MP3_ENERGY_E), d=8), 20))
+               call msg(lfield("MP3 F", 40) // rfield(str(Energy(MP3_ENERGY_F), d=8), 20))
+               call msg(lfield("MP3 G", 40) // rfield(str(Energy(MP3_ENERGY_G), d=8), 20))
+               call msg(lfield("MP3 H", 40) // rfield(str(Energy(MP3_ENERGY_H), d=8), 20))
+               call msg(lfield("MP3 I", 40) // rfield(str(Energy(MP3_ENERGY_I), d=8), 20))
+               call msg(lfield("MP3 J", 40) // rfield(str(Energy(MP3_ENERGY_J), d=8), 20))
+               call msg(lfield("MP3 K", 40) // rfield(str(Energy(MP3_ENERGY_K), d=8), 20))
+               call msg(lfield("MP3 L", 40) // rfield(str(Energy(MP3_ENERGY_L), d=8), 20))
+               call msg(lfield("total MP3", 40) // rfield(str(Energy(MP3_ENERGY_TOTAL), d=8), 20))
+         end if
+
+         call msg(lfield("mean field", 40)       // rfield(str(Energy(RPA_ENERGY_HF), d=8), 20))
+         call msg(lfield("1-RDM linear", 40)     // rfield(str(Energy(RPA_ENERGY_1RDM_LINEAR), d=8), 20))
+         call msg(lfield("1-RDM quadratic", 40)  // rfield(str(Energy(RPA_ENERGY_1RDM_QUADRATIC), d=8), 20))
+         call msg(lfield("direct ring", 40)      // rfield(str(Energy(RPA_ENERGY_DIRECT_RING), d=8), 20))
+
+         select case (RPAParams%TheoryLevel)
+         case (RPA_THEORY_DIRECT_RING)
+               continue
+         case (RPA_THEORY_2G)
+               call msg(lfield("SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_SOSEX), d=8), 20))
+               call msg(lfield("2g", 40)    // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))            
+         case (RPA_THEORY_PH)
+               call msg(lfield("SOSEX", 40)        // rfield(str(Energy(RPA_ENERGY_CUMULANT_SOSEX), d=8), 20))
+               call msg(lfield("3rd order ph", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_PH3), d=8), 20))
+         case (RPA_THEORY_PH_PP_HH)
+               call msg(lfield("SOSEX", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_SOSEX), d=8), 20))
+               call msg(lfield("2b", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2B), d=8), 20))       
+               call msg(lfield("2c", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2C), d=8), 20))
+               call msg(lfield("2d", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2D), d=8), 20))
+               call msg(lfield("2e", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2E), d=8), 20))
+               call msg(lfield("2f", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2F), d=8), 20))
+               call msg(lfield("2g", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2G), d=8), 20))
+               call msg(lfield("2h", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2H), d=8), 20)) 
+               call msg(lfield("2i", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2I), d=8), 20)) 
+               call msg(lfield("2j", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2J), d=8), 20))
+               call msg(lfield("2k", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2K), d=8), 20))
+               call msg(lfield("2l", 40) // rfield(str(Energy(RPA_ENERGY_CUMULANT_2L), d=8), 20))
+         end select
+
+         call msg(lfield("total energy", 40)  // rfield(str(Energy(RPA_ENERGY_TOTAL), d=8), 20))
+   end subroutine rpa_PrintSinglePoint
 end module rpa_driver

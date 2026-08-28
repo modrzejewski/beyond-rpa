@@ -1863,7 +1863,7 @@ contains
             !
             ! Call the main subroutine which integrates the RPA correlation energy over the frequency grid
             !
-            if (RPAParams%Algorithm == RPA_ALGO_JCTC2023) then
+            if (RPAParams%Algorithm == RPA_ALGO_JCTC2023_CHOLESKY) then
                   call rpa_CC_Energy_1(Energy, OccActCoeffs, VirtActCoeffs, Ei, Ea, ShellCenters, &
                         AtomCoords, LmaxGTO, ShellLoc, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, &
                         Exponents, NormFactors, NAO, NShells, NAtoms, NOccAct, NVirt, NSpins, SpherAO, AOBasis, &
