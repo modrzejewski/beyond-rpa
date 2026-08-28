@@ -3,7 +3,7 @@ module rpa_CCD_Corrections
       use real_linalg
       use rpa_definitions
       use rpa_MeanField
-      use rpa_CCD_Corrections_Experimental
+      use rpa_JCTC2025_Experimental
       use rpa_JCTC2025
       use rpa_CCS_Corrections
       use rpa_CC_Doubles
@@ -46,7 +46,7 @@ contains
                   !
                   ! Warning: this code path allocates large matrices
                   !
-                  call rpa_CCD_corrections_FullSet(RPAOutput%Energy, Zgk, Yga, Xgi, &
+                  call rpa_JCTC2025_Experimental_FullSet(RPAOutput%Energy, Zgk, Yga, Xgi, &
                         Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, size(Zgk, dim=2))                  
             else if (RPAParams%TheoryLevel==RPA_THEORY_2G) then
                   call msg("CCD corrections to RPA correlation energy")

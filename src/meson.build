@@ -501,7 +501,7 @@ sources = files(
   'rpa/rpa_CC_Doubles.f90',
   'rpa/rpa_JCTC2023_Cholesky.f90',
   'rpa/rpa_MeanField.f90',
-  'rpa/rpa_CCD_Corrections_Experimental.f90',
+  'rpa/rpa_JCTC2025_Experimental.f90',
   'rpa/rpa_JCTC2025.f90',
   'rpa/rpa_CCS_Corrections.f90',
   'rpa/rpa_PT_Terms.f90',
