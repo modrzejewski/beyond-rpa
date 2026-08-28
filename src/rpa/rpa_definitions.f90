@@ -210,7 +210,7 @@ module rpa_definitions
    ! Correlation energy contributions in the cumulant formulation
    ! ------------------------------------------------------------------
    integer, parameter :: RPA_ENERGY_DIRECT_RING = 20
-   integer, parameter :: RPA_ENERGY_CUMULANT_1B = 21
+   integer, parameter :: RPA_ENERGY_CUMULANT_1B = 21       ! synonym to SOSEX
    integer, parameter :: RPA_ENERGY_CUMULANT_SOSEX = 21
    integer, parameter :: RPA_ENERGY_CUMULANT_2B = 22
    integer, parameter :: RPA_ENERGY_CUMULANT_2C = 23
@@ -218,7 +218,7 @@ module rpa_definitions
    integer, parameter :: RPA_ENERGY_CUMULANT_2E = 25
    integer, parameter :: RPA_ENERGY_CUMULANT_2F = 26
    integer, parameter :: RPA_ENERGY_CUMULANT_2G = 27
-   integer, parameter :: RPA_ENERGY_CUMULANT_PH3 = 27
+   integer, parameter :: RPA_ENERGY_CUMULANT_PH3 = 27      ! uses the same field as 2G
    integer, parameter :: RPA_ENERGY_CUMULANT_2H = 28
    integer, parameter :: RPA_ENERGY_CUMULANT_2I = 29
    integer, parameter :: RPA_ENERGY_CUMULANT_2J = 30
@@ -269,10 +269,11 @@ module rpa_definitions
    integer, parameter :: RPA_THEORY_PH          = 5  ! RPA(HF) + 1b (SOSEX) + 2b + 2c + 2d + 2g + 2h + 2i + 2j
    integer, parameter :: RPA_THEORY_PH_PP_HH    = 6  ! RPA(HF) + ph + pp/hh third-order corrections
 
-   integer, parameter :: RPA_ALGO_JCTC2020_AO = 1
-   integer, parameter :: RPA_ALGO_JCTC2020_MO = 2
-   integer, parameter :: RPA_ALGO_JCTC2023    = 3
-   integer, parameter :: RPA_ALGO_JCTC2025    = 4
+   integer, parameter :: RPA_ALGO_JCTC2020_AO       = 1
+   integer, parameter :: RPA_ALGO_JCTC2020_MO       = 2
+   integer, parameter :: RPA_ALGO_JCTC2023_CHOLESKY = 3
+   integer, parameter :: RPA_ALGO_JCTC2023_THC      = 5
+   integer, parameter :: RPA_ALGO_JCTC2025          = 4
 
    type TRPAParams
       logical :: Initialized = .false.
@@ -643,15 +644,17 @@ contains
       end if
 
       select case (this%TheoryLevel)
-       case (RPA_THEORY_PH, RPA_THEORY_PH_PP_HH, RPA_THEORY_DIRECT_RING)
-         this%Algorithm = RPA_ALGO_JCTC2025
-       case (RPA_THEORY_2G, RPA_THEORY_RPT2)
-         this%Algorithm = RPA_ALGO_JCTC2023
-       case (RPA_THEORY_RSE)
-         this%Algorithm = RPA_ALGO_JCTC2020_MO
-       case default
-         call msg("Unsupported TheoryLevel provided", priority=MSG_ERROR)
-         error stop
+      case (RPA_THEORY_PH, RPA_THEORY_PH_PP_HH, RPA_THEORY_DIRECT_RING)
+            this%Algorithm = RPA_ALGO_JCTC2025
+      case (RPA_THEORY_2G)
+            this%Algorithm = RPA_ALGO_JCTC2023_THC
+      case (RPA_THEORY_RPT2)
+            this%Algorithm = RPA_ALGO_JCTC2023_CHOLESKY
+      case (RPA_THEORY_RSE)
+            this%Algorithm = RPA_ALGO_JCTC2020_MO
+      case default
+            call msg("Unsupported TheoryLevel provided", priority=MSG_ERROR)
+            error stop
       end select
    end subroutine select_algorithm
 
@@ -719,13 +722,16 @@ contains
       RPAParams%T2AdaptiveCutoffTargetKcal = 0.05_F64
       
       select case (RPAParams%Algorithm)
-       case (RPA_ALGO_JCTC2025)
-         SCFParams%ERI_Algorithm = SCF_ERI_THC
-       case (RPA_ALGO_JCTC2020_AO, RPA_ALGO_JCTC2020_MO, RPA_ALGO_JCTC2023)
-         SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
-       case default
-         call msg("rpa_Params_Default: unrecognized RPA algorithm", MSG_ERROR)
-         error stop
+      case (RPA_ALGO_JCTC2025)
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+      case (RPA_ALGO_JCTC2020_AO, &
+            RPA_ALGO_JCTC2020_MO, &
+            RPA_ALGO_JCTC2023_CHOLESKY, &
+            RPA_ALGO_JCTC2023_THC)
+            SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+      case default
+            call msg("rpa_Params_Default: unrecognized RPA algorithm", MSG_ERROR)
+            error stop
       end select
 
       SCFParams%THC_QRThresh = 1.0E-4_F64
@@ -765,13 +771,16 @@ contains
       RPAParams%T2AdaptiveCutoffTargetKcal = 0.005_F64
       
       select case (RPAParams%Algorithm)
-       case (RPA_ALGO_JCTC2025)
-         SCFParams%ERI_Algorithm = SCF_ERI_THC
-       case (RPA_ALGO_JCTC2020_AO, RPA_ALGO_JCTC2020_MO, RPA_ALGO_JCTC2023)
-         SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
-       case default
-         call msg("rpa_Params_Tight: unrecognized RPA algorithm", MSG_ERROR)
-         error stop
+      case (RPA_ALGO_JCTC2025)
+            SCFParams%ERI_Algorithm = SCF_ERI_THC
+      case (RPA_ALGO_JCTC2020_AO, &
+            RPA_ALGO_JCTC2020_MO, &
+            RPA_ALGO_JCTC2023_CHOLESKY, &
+            RPA_ALGO_JCTC2023_THC)
+            SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
+      case default
+            call msg("rpa_Params_Tight: unrecognized RPA algorithm", MSG_ERROR)
+            error stop
       end select
 
       SCFParams%THC_QRThresh = 1.0E-4_F64
