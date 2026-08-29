@@ -74,6 +74,7 @@ contains
             integer :: s
             integer :: ThisImage
             integer :: NVecsT2
+            logical :: BeyondDirectRing
             real(F64) :: Lambda
             type(tclock) :: timer, timer_total
             real(F64) :: t_T2, t_RPA, t_Corrections, t_NO, t_PiUDiag
@@ -101,6 +102,9 @@ contains
             allocate(PiUEigenvals(NVecsPiU, NFreqs))
             allocate(Rkai(NVecsPiU, MaxNai, NSpins))
             EcRPA = ZERO
+            BeyondDirectRing = ( &
+                  RPAParams%TheoryLevel /= RPA_THEORY_DIRECT_RING .and. &
+                  RPAParams%TheoryLevel /= RPA_THEORY_RSE)
             !
             ! Polarizability Chi(u) and T2 amplitudes built from the semicanonical orbitals of hHF(OO+VV)
             ! RPA correlation energy, EcRPA, evaluated analytically from Pi(u)
@@ -111,7 +115,7 @@ contains
             call rpa_CC_EcRPA_Analytic(EcRPA, PiUEigenvecs, Freqs, FreqWeights, NFreqs, NVecsPiU)
             RPAOutput%Energy(RPA_ENERGY_DIRECT_RING) = EcRPA
             t_RPA = clock_readwall(timer)
-            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING .or. RPAParams%ComputeNaturalOrbitals) then
+            if (BeyondDirectRing .or. RPAParams%ComputeNaturalOrbitals) then
                   !
                   ! T2 amplitudes. The T2 amplitudes are computed at full coupling strength, Lambda=1,
                   ! unless the T2CouplingStrength parameter has a non-default value. This should be
@@ -145,7 +149,7 @@ contains
                               VirtCoeffs(:, 1:NVirt(s), s), NOCoeffs_mo)
                         t_NO = clock_readwall(timer)
                   end if
-                  if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING) then
+                  if (BeyondDirectRing) then
                         ! ---------------------------------------------------------------------------------
                         ! SOSEX + higher-order contributions to the correlation energy derived from
                         ! the non-ring part of the expectation value of the hamiltonian
@@ -174,11 +178,10 @@ contains
             call blankline()
             call msg(lfield("Total time", 50)     // str(clock_readwall(timer_total),d=1))
             call msg(lfield("RPA", 50)           // str(t_RPA,d=1))
-            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING .or. &
-                  RPAParams%ComputeNaturalOrbitals) then
+            if (BeyondDirectRing .or. RPAParams%ComputeNaturalOrbitals) then
                   call msg(lfield("T2 amplitudes", 50)  // str(t_T2,d=1))
             end if
-            if (RPAParams%TheoryLevel > RPA_THEORY_DIRECT_RING) then
+            if (BeyondDirectRing) then
                   call msg(lfield("beyond-RPA corrections", 50) // str(t_Corrections,d=1))
             end if
             if (RPAParams%ComputeNaturalOrbitals) then
