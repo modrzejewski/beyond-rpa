@@ -778,4 +778,130 @@ contains
                   end if
             end if
       end subroutine sys_Read_XYZ_NextLine
+
+
+      subroutine sys_Read_Embedding(System, FilePath, Units)
+            type(TSystem), intent(inout)  :: System
+            character(*), intent(in)      :: FilePath
+            integer, optional, intent(in) :: Units
+
+            logical :: EmbeddingDefined, InsideEmbedding, EmbeddingCompleted
+            integer :: ChargeIdx
+            integer :: u
+            character(:), allocatable :: key, val
+            character(:), allocatable :: line
+            logical :: eof
+            integer :: Units_
+
+            if (present(Units)) then
+                  Units_ = Units
+            else
+                  Units_ = SYS_UNITS_ANGSTROM
+            end if
+            
+            u = io_text_open(FilePath, "OLD")
+            EmbeddingDefined = .false.
+            InsideEmbedding = .false.
+            EmbeddingCompleted = .false.
+            ChargeIdx = -1
+            
+            System%NPointCharges = 0
+            if (allocated(System%PointCharges)) deallocate(System%PointCharges)
+            if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
+
+            lines: do
+                  call io_text_readline(line, u, eof)
+                  if (eof) exit lines
+                  
+                  if (isblank(line) .or. iscomment(line)) cycle lines
+                  
+                  call split(line, key, val)
+                  key = uppercase(key)
+                  
+                  if (key == "EMBEDDING") then
+                        EmbeddingDefined = .true.
+                        InsideEmbedding = .true.
+                        cycle lines
+                  else if (key == "END") then
+                        if (InsideEmbedding) then
+                              InsideEmbedding = .false.
+                              EmbeddingCompleted = .true.
+                              exit lines
+                        else
+                              cycle lines
+                        end if
+                  else
+                        if (InsideEmbedding) then
+                              call sys_Read_Embedding_NextLine(System, ChargeIdx, line, Units_)
+                        end if
+                  end if
+            end do lines
+            close(u)
+            
+            if (EmbeddingDefined) then
+                  if (.not. EmbeddingCompleted) then
+                        call msg("Unexpected end of file while reading EMBEDDING block. " &
+                              // "Missing END keyword.", MSG_ERROR)
+                        error stop
+                  end if
+                  
+                  if (ChargeIdx /= System%NPointCharges) then
+                        call msg("Number of point charges read does not match the " &
+                              // "specified number.", MSG_ERROR)
+                        error stop
+                  end if
+            end if
+      end subroutine sys_Read_Embedding
+
+
+      subroutine sys_Read_Embedding_NextLine(System, ChargeIdx, line, Units)
+            type(TSystem), intent(inout) :: System
+            integer, intent(inout)       :: ChargeIdx
+            character(*), intent(in)     :: line
+            integer, intent(in)          :: Units
+            
+            integer :: k, i1, i2
+            character(:), allocatable :: qstr, coords, line_upper
+            
+            line_upper = uppercase(line)
+            
+            if (ChargeIdx == -1) then
+                  ! First line of the block should be the number of charges
+                  read(line, *) System%NPointCharges
+                  if (System%NPointCharges > 0) then
+                        allocate(System%PointCharges(System%NPointCharges))
+                        allocate(System%PointChargeCoords(3, System%NPointCharges))
+                  else
+                        call msg("Invalid number of point charges in EMBEDDING block. " &
+                              // "Must be positive.", MSG_ERROR)
+                        error stop
+                  end if
+                  ChargeIdx = 0
+            else
+                  if (ChargeIdx < System%NPointCharges) then
+                        ChargeIdx = ChargeIdx + 1
+                        ! Expected Format: Q(charge) x y z
+                        i1 = index(line_upper, "Q(")
+                        i2 = index(line_upper, ")")
+                        if (i1 > 0 .and. i2 > i1) then
+                              qstr = line(i1+2:i2-1)
+                              coords = line(i2+1:)
+                              read(qstr, *) System%PointCharges(ChargeIdx)
+                              read(coords, *) (System%PointChargeCoords(k, ChargeIdx), k=1,3)
+                              
+                              if (Units == SYS_UNITS_ANGSTROM) then
+                                    System%PointChargeCoords(:, ChargeIdx) = tobohr(System%PointChargeCoords(:, ChargeIdx))
+                              end if
+                        else
+                              call msg("Invalid format in EMBEDDING block. " &
+                                    // "Expected Q(charge) x y z", MSG_ERROR)
+                              error stop
+                        end if
+                  else
+                        call msg("Inconsistent number of point charges specified " &
+                              // "in EMBEDDING block", MSG_ERROR)
+                        error stop
+                  end if
+            end if
+      end subroutine sys_Read_Embedding_NextLine
 end module sys_definitions
