@@ -1,4 +1,4 @@
-module rpa_JCTC2024
+module rpa_JCTC2025
       use arithmetic
       use math_constants
       use rpa_definitions
@@ -21,7 +21,7 @@ module rpa_JCTC2024
       
 contains
 
-      subroutine rpa_JCTC2024_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+      subroutine rpa_JCTC2025_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
             RPAParams, AOBasis)
             
             type(TRPAOutput), intent(inout)                        :: RPAOutput
@@ -67,10 +67,14 @@ contains
             call msg(cfield("Particle-Hole Corrections to Direct RPA", 76))
             call midrule()
             call blankline()
-            call msg("Energy terms: EcSOSEX, Ec2b, Ec2c, Ec2d, Ec2g, Ec2h, Ec2i, Ec2j")
-            call msg("Definitions: Table 2 of Ref. 1")
+            call msg("EcPH = EcSOSEX + Ec2b + Ec2d + Ec2g + Ec2h + 2 Ec2i")
+            call msg("Definitions: Eq. 13 and Table 1 in Ref. 1")
             call blankline()
-            call msg("1. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski")
+            call msg("1. K. Syty, G. Czekało, K. N. Pham, and M. Modrzejewski")
+            call msg("   J. Chem. Theory Comput. 21, 5533 (2025);")
+            call msg("   doi: 10.1021/acs.jctc.5c00428")
+            call blankline()
+            call msg("2. D. Cieśliński, A. M. Tucholska, and M. Modrzejewski")
             call msg("   J. Chem. Theory Comput. 19, 6619 (2023);")
             call msg("   doi: 10.1021/acs.jctc.3c00496")
             call blankline()
@@ -117,7 +121,7 @@ contains
             !
             if (RPAParams%LocalizedOrbitals == RPA_LOCALIZED_ORBITALS_BOYS) then
                   call clock_start(timer_Schwarz)
-                  call rpa_JCTC2024_MaxVabab(MaxVabab, Yga, Zgk, NVirt, NCholesky, NGridTHC)
+                  call rpa_JCTC2025_MaxVabab(MaxVabab, Yga, Zgk, NVirt, NCholesky, NGridTHC)
                   t_Schwarz = clock_readwall(timer_Schwarz)
             else
                   MaxVabab = ZERO
@@ -164,7 +168,7 @@ contains
             SumNVirtPNO = 0
             do j = 1, NOcc
                   do i = j, NOcc
-                        call rpa_JCTC2024_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
+                        call rpa_JCTC2025_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
                               NOcc, NVirt, NVecsT2)
                         call rsvd_Decompose(U, V, Sigma, NVirtPNO, Tabij, RSVDWorkspace)
                         if (NVirtPNO > 0) then
@@ -214,7 +218,7 @@ contains
             ! Ec2g + Ec2h + Ec2i + Ec2j
             !
             call clock_start(timer_Energy)
-            call rpa_JCTC2024_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
+            call rpa_JCTC2025_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
                   PNOData, PNOTransform, XgiLoc, Yga, Zgk, RPAParams, MaxVabab, &
                   MaxNVirtPNO, NVirt, NOcc, &
                   NGridTHC, NCholesky, t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, &
@@ -254,10 +258,10 @@ contains
             call msg("ZYX                  " // str(t_ZYX,d=1))
             call msg("Energy terms         " // str(t_Energy,d=1))
             call blankline()
-      end subroutine rpa_JCTC2024_Corrections
+      end subroutine rpa_JCTC2025_Corrections
 
 
-      subroutine rpa_JCTC2024_MaxVabab(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
+      subroutine rpa_JCTC2025_MaxVabab(MaxVabab, Xga, Zgk, NVirt, NCholesky, NGridTHC)
             integer, intent(in)                                   :: NVirt
             integer, intent(in)                                   :: NCholesky, NGridTHC
             real(F64), intent(out)                                :: MaxVabab
@@ -275,10 +279,10 @@ contains
             ZXXka(:, :) = ZXXka(:, :)**2
             Vabab = sum(ZXXka, dim=1)
             MaxVabab = maxval(Vabab)
-      end subroutine rpa_JCTC2024_MaxVabab
+      end subroutine rpa_JCTC2025_MaxVabab
 
       
-      subroutine rpa_JCTC2024_PackTransfMatrices(PQaxki, PQaxkiLoc, PQAxkiNum, i, &
+      subroutine rpa_JCTC2025_PackTransfMatrices(PQaxki, PQaxkiLoc, PQAxkiNum, i, &
             PNOData, PNOTransform, NOcc, NVirt)
             
             real(F64), dimension(:, :), intent(out)                         :: PQaxki
@@ -317,10 +321,10 @@ contains
 
                   PQaxki(:, :) = Tax(:, :)
             end subroutine store_PQxaki
-      end subroutine rpa_JCTC2024_PackTransfMatrices
+      end subroutine rpa_JCTC2025_PackTransfMatrices
 
 
-      subroutine rpa_JCTC2024_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
+      subroutine rpa_JCTC2025_Gaibj_Gabij_v2(EcRPA, Ec1b, Ec2bcd, Ec2ghij, &
             PNOData, PNOTransform, Xgi, Yga, Zgk, RPAParams, MaxVabab, &
             MaxNVirtPNO, NVirt, NOcc, NGridTHC, NCholesky, &
             t_SOSEX, t_G, t_TrVGaibj, t_TrVGabij, t_ZYX, t_ZXX, NSmallVabij)
@@ -407,7 +411,7 @@ contains
             call clock_start(timer_Job)
             call blankline()
             do j = 1, NOcc
-                  call rpa_JCTC2024_PackTransfMatrices(PQax_kj, PQaxkjLoc, PQAxkjNum, j, &
+                  call rpa_JCTC2025_PackTransfMatrices(PQax_kj, PQaxkjLoc, PQAxkjNum, j, &
                         PNOData, PNOTransform, NOcc, NVirt)
                   SumNVirtPNOkj = sum(PQaxkjNum)
                   call clock_start(timer)
@@ -422,7 +426,7 @@ contains
                   do i = j, NOcc
                         if (i /= j) then
                               Weight = TWO
-                              call rpa_JCTC2024_PackTransfMatrices(PQax_ki, PQaxkiLoc, PQaxkiNum, i, &
+                              call rpa_JCTC2025_PackTransfMatrices(PQax_ki, PQaxkiLoc, PQaxkiNum, i, &
                                     PNOData, PNOTransform, NOcc, NVirt)
                         else
                               PQax_ki = PQax_kj
@@ -464,7 +468,7 @@ contains
                         if (Nij > 0) then
                               ij0 = PQaxkjLoc(i)
                               ij1 = PQaxkjLoc(i) + 2*Nij - 1
-                              call rpa_JCTC2024_S1ab(S1a, S1b, Wga, Wgb, &
+                              call rpa_JCTC2025_S1ab(S1a, S1b, Wga, Wgb, &
                                     PQax_kj(:, ij0:ij1), YXgai, ZYXgbj, &
                                     NVirt, NGridTHC, Nij)
                               Ec1b = Ec1b - TWO * Weight * S1b
@@ -482,7 +486,7 @@ contains
                                     kj1 = PQaxkjLoc(k) + 2*Nkj - 1
                                     ki0 = PQaxkiLoc(k)
                                     ki1 = PQaxkiLoc(k) + 2*Nki - 1
-                                    call rpa_JCTC2024_phRPA_Gab_jik( &
+                                    call rpa_JCTC2025_phRPA_Gab_jik( &
                                           Gab_2bcd, Gab_2ghij, &
                                           S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik, &
                                           QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik, QS, &
@@ -545,10 +549,10 @@ contains
                   call real_ab(Wga, ZYXgbj, Gab)
                   call real_vw_x(D, Wga, YXgai, NGridTHC*NVirt)
             end subroutine TrVbjaiGajbi
-      end subroutine rpa_JCTC2024_Gaibj_Gabij_v2
+      end subroutine rpa_JCTC2025_Gaibj_Gabij_v2
 
 
-      subroutine rpa_JCTC2024_S1ab(S1a, S1b, Wgx, Wgy, PQij, YXgai, ZYXgbj, NVirt, NGridTHC, Nij)
+      subroutine rpa_JCTC2025_S1ab(S1a, S1b, Wgx, Wgy, PQij, YXgai, ZYXgbj, NVirt, NGridTHC, Nij)
             integer, intent(in)                                :: NVirt, NGridTHC, Nij
             real(F64), intent(out)                             :: S1a, S1b
             real(F64), dimension(NGridTHC, Nij), intent(out)   :: Wgx
@@ -569,10 +573,10 @@ contains
             call real_ab(Wgx, YXgai, PQij(:, :, Qji))
             call real_ab(Wgy, ZYXgbj, PQij(:, :, Pji))
             call real_vw_x(S1a, Wgx, Wgy, NGridTHC*Nij)
-      end subroutine rpa_JCTC2024_S1ab
+      end subroutine rpa_JCTC2025_S1ab
 
 
-      subroutine rpa_JCTC2024_phRPA_Gab_jik( &
+      subroutine rpa_JCTC2025_phRPA_Gab_jik( &
             Gab_2bcd, Gab_2ghij, &
             S_jk_ki, S_jk_ik, S_kj_ki, S_kj_ik, &
             QS_jk_ki, QS_jk_ik, QS_kj_ki, QS_kj_ik, QS, &
@@ -678,10 +682,10 @@ contains
                   call real_abT_x(Gab_2bcd, NVirt, PQ_kj(:, :, Pkj), NVirt, QS(:, :, Pkj), NVirt, &
                         NVirt, NVirt, Nkj, ONE, ONE)
             end if
-      end subroutine rpa_JCTC2024_phRPA_Gab_jik
+      end subroutine rpa_JCTC2025_phRPA_Gab_jik
       
 
-      subroutine rpa_JCTC2024_Tabij(Tabij, Pam, Qam, Uaim, Am, i, j, NOcc, NVirt, NVecsT2)
+      subroutine rpa_JCTC2025_Tabij(Tabij, Pam, Qam, Uaim, Am, i, j, NOcc, NVirt, NVecsT2)
             integer, intent(in)                                    :: NOcc, NVirt, NVecsT2
             real(F64), dimension(NVirt, NVirt), intent(out)        :: Tabij
             real(F64), dimension(NVirt, NVecsT2), intent(out)      :: Pam
@@ -700,5 +704,5 @@ contains
             end do
             !$omp end parallel do
             call real_abT(Tabij, Pam, Qam)
-      end subroutine rpa_JCTC2024_Tabij
-end module rpa_JCTC2024
+      end subroutine rpa_JCTC2025_Tabij
+end module rpa_JCTC2025

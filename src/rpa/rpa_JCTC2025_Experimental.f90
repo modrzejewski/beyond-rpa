@@ -1,4 +1,4 @@
-module rpa_CCD_Corrections_Experimental
+module rpa_JCTC2025_Experimental
       use arithmetic      
       use real_linalg
       use rpa_definitions
@@ -511,7 +511,7 @@ contains
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
     !----------------------------------------------          Beyond RPA corrections main procedure          -----------------------------------------------!
     !------------------------------------------------------------------------------------------------------------------------------------------------------!
-      subroutine rpa_CCD_corrections_FullSet(Energy, Zgk, Yga, Xgi, &
+      subroutine rpa_JCTC2025_Experimental_FullSet(Energy, Zgk, Yga, Xgi, &
             Uaim, Am, NOcc, NVirt, NVecsT2, NGridTHC, NCholesky)
             
             
@@ -596,5 +596,5 @@ contains
             Energy(RPA_ENERGY_CUMULANT_1B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_1B)
             Energy(RPA_ENERGY_CUMULANT_2B) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2B)
             Energy(RPA_ENERGY_CUMULANT_2C) = (ONE/TWO) * Energy(RPA_ENERGY_CUMULANT_2C)
-      end subroutine rpa_CCD_corrections_FullSet
-end module rpa_CCD_Corrections_Experimental
+      end subroutine rpa_JCTC2025_Experimental_FullSet
+end module rpa_JCTC2025_Experimental
