@@ -141,3 +141,53 @@ H     -1.789372    -0.742283    -0.371009
 H     -1.777037     0.777638    -0.304264
 end
 ```
+
+## Embedding with Point Charges
+
+QM/MM embedding with point charges is configured using the `embedding` block. The block specifies the total number of point charges followed by a list defining their charge and XYZ coordinates.
+
+* **Number of charges:** A single integer indicating the total number of point charges in the environment.
+* **Charge definition:** Each point charge is specified on a new line using the format `Q({charge}) {x} {y} {z}`, where `{charge}` is the partial charge, and `{x}`, `{y}`, `{z}` are its spatial coordinates in Angstroms.
+
+Example: Water dimer with 16 point charges computed at the RPA+ph level of theory.
+```text
+basis aug-cc-pVDZ
+
+scf
+ xcfunc HF
+end
+
+rpa
+ TheoryLevel RPA+ph
+end
+
+xyz
+3 3
+O      1.531750     0.005922    -0.120880
+H      0.575968    -0.005249     0.024966
+H      1.906249    -0.037561     0.763218
+O     -1.396226    -0.004990     0.106766
+H     -1.789372    -0.742283    -0.371009
+H     -1.777037     0.777638    -0.304264
+end
+
+embedding
+16
+Q(0.1) 4.12 -3.21 2.55
+Q(-0.1) -4.55 2.11 -3.1
+Q(0.1) 3.05 4.44 -2.15
+Q(-0.1) -2.9 -4.8 1.5
+Q(0.1) 5.1 0.25 0.85
+Q(-0.1) -5.2 -0.15 -1.25
+Q(0.1) 0.85 5.5 3.2
+Q(-0.1) -0.75 -5.6 -2.8
+Q(0.1) 2.2 -2.3 4.9
+Q(-0.1) -1.8 3.4 -4.5
+Q(0.1) 4.8 2.9 1.1
+Q(-0.1) -3.7 -2.5 -1.7
+Q(0.1) 1.5 -4.1 5.5
+Q(-0.1) -1.1 5.2 -5.1
+Q(0.1) 0.0 0.0 6.0
+Q(-0.1) 0.0 0.0 -6.0
+end
+```
