@@ -531,7 +531,7 @@ contains
 
             integer :: i, j, s, t
             real(F64), dimension(3) :: Ra, Rb, Rab
-            real(F64) :: Dab, Qa, Qb
+            real(F64) :: Dab, Qa, Qb, EnuclAB, EnuclAPC
 
             associate ( &
                   AtomCoords => System%AtomCoords, &
@@ -540,7 +540,8 @@ contains
                   ZNumbers => System%ZNumbers, &
                   ZNumbersECP => System%ZNumbersECP &                  
                   )
-                  Enucl = ZERO
+                  EnuclAB = ZERO
+                  EnuclAPC = ZERO
                   do s = 1, 2
                         do i = RealAtoms(1, s), RealAtoms(2, s)
                               Ra = AtomCoords(:, i)
@@ -559,11 +560,30 @@ contains
                                           end if
                                           Rab = Ra - Rb
                                           Dab = norm2(Rab)
-                                          Enucl = Enucl + Qa * Qb / Dab
+                                          EnuclAB = EnuclAB + Qa * Qb / Dab
                                     end do
                               end do
+                              !
+                              ! Atom - point charge interaction (QM-MM)
+                              !
+                              if (System%NPointCharges > 0) then
+                                    associate ( &
+                                          NPointCharges => System%NPointCharges, &
+                                          PointCharges => System%PointCharges, &
+                                          PointChargeCoords => System%PointChargeCoords &
+                                          )
+                                          do j = 1, NPointCharges
+                                                Rb = PointChargeCoords(:, j)
+                                                Qb = PointCharges(j)
+                                                Rab = Ra - Rb
+                                                Dab = norm2(Rab)
+                                                EnuclAPC = EnuclAPC + Qa * Qb / Dab
+                                          end do
+                                    end associate
+                              end if
                         end do
                   end do
+                  Enucl = EnuclAB + EnuclAPC
             end associate
       end subroutine sys_NuclearRepulsion
 
