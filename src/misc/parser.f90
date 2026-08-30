@@ -1104,20 +1104,21 @@ contains
       integer :: current_block
       integer :: k, z
       integer :: AtomIdx, ChargeIdx
-      logical :: XYZDefined
+      logical :: XYZDefined, EmbeddingDefined
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_ECP = 2
       integer, parameter :: block_RhoSpher = 3
       integer, parameter :: block_RhoDiff = 4
       integer, parameter :: block_NonSCF = 5
-      integer, parameter :: block_PointCharges = 6
+      integer, parameter :: block_embedding = 6
       integer, parameter :: block_RPA = 7
       integer, parameter :: block_XYZ = 8
       integer, parameter :: block_SCF = 9
       integer, parameter :: block_basis_assign = 10
 
       XYZDefined = .false.
+      EmbeddingDefined = .false.
 
       open(newunit=u, file=filename, status="old", &
          access="sequential", position="rewind")
@@ -1168,8 +1169,9 @@ contains
           case ("NONSCF")
             current_block = block_NonSCF
             cycle lines
-          case ("POINT-CHARGES", "POINT_CHARGES")
-            current_block = block_PointCharges
+          case ("EMBEDDING")
+            EmbeddingDefined = .true.
+            current_block = block_embedding
             cycle lines
           case ("RPA")
             if (JOBTYPE /= JOB_REAL_UKS_RPA .and. JOBTYPE /= JOB_UNKNOWN) then
@@ -1226,30 +1228,8 @@ contains
             call read_block_RhoDiff(line)
          else if (current_block == block_NonSCF) then
             call read_block_NonSCF(SCFParams, line)
-         else if (current_block == block_PointCharges) then
-            if (key == "NCHARGES") then
-               ChargeIdx = 0
-               if (allocated(POINT_CHARGES_Q)) then
-                  deallocate(POINT_CHARGES_Q)
-                  deallocate(POINT_CHARGES_R)
-               end if
-               read(val, *) POINT_CHARGES_N
-               allocate(POINT_CHARGES_Q(POINT_CHARGES_N))
-               allocate(POINT_CHARGES_R(3, POINT_CHARGES_N))
-            else
-               if (ChargeIdx > -1) then
-                  ChargeIdx = ChargeIdx + 1
-                  if (ChargeIdx <= POINT_CHARGES_N) then
-                     read(line, *) POINT_CHARGES_Q(ChargeIdx), (POINT_CHARGES_R(k, ChargeIdx), k=1,3)
-                  else
-                     call msg("Inconsistent number of charges specified", MSG_ERROR)
-                     stop
-                  end if
-               else
-                  call msg("Unspecified number of charges", MSG_ERROR)
-                  stop
-               end if
-            end if
+         else if (current_block == block_embedding) then
+            cycle lines
          else if (current_block == block_RPA) then
             call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
          else if (current_block == block_SCF) then
@@ -1612,6 +1592,10 @@ contains
       if (XYZDefined) then
          call pp_ZNumbers(System, SCFParams%ECPFile)
          call sys_SortDistances(System)
+      end if
+      
+      if (EmbeddingDefined) then
+         call sys_Read_Embedding(System, filename)
       end if
    end subroutine read_inputfile
 
