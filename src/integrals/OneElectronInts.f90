@@ -9,6 +9,8 @@ module OneElectronInts
       use display
       use real_linalg
       use sphergto
+      use string
+      use Pseudopotential, only: pp_V
 
       implicit none
 
@@ -998,4 +1000,39 @@ contains
                   AOBasis%NAOCart, &
                   AOBasis%NShells, TransfWork)
       end subroutine ints1e_SpherAOTransf
+
+
+      subroutine ints1e_H(H, AOBasis, System, ECPFile)
+            !
+            ! One-electron hamiltonian matrix in the spherical Gaussian
+            ! in the basis of spherical Gaussian atomic orbitals.
+            ! Includes the pseudopotential matrix if an ECP
+            ! is enabled.
+            ! Both upper and lower triangles of the output matrix
+            ! are filled with data.
+            !
+            real(F64), dimension(:, :), intent(out) :: H
+            type(TAOBasis), intent(in)              :: AOBasis
+            type(TSystem), intent(in)               :: System
+            type(TStringList), intent(in)           :: ECPFile
+
+            real(F64), dimension(:, :), allocatable :: H_cao
+            real(F64), dimension(:, :), allocatable :: Ts_cao
+            real(F64), dimension(:, :), allocatable :: Vne_cao
+            integer :: NAOCart
+
+            NAOCart = AOBasis%NAOCart
+            allocate(H_cao(NAOCart, NAOCart))
+            allocate(Ts_cao(NAOCart, NAOCart))
+            allocate(Vne_cao(NAOCart, NAOCart))
+            
+            call ints1e_Kinetic(Ts_cao, AOBasis)
+            call ints1e_Coulomb(Vne_cao, AOBasis, System)
+            call pp_V(Vne_cao, AOBasis, System, ECPFile)
+            
+            H_cao = Ts_cao + Vne_cao
+            
+            call real_smfill(H_cao)
+            call ints1e_SpherAOTransf(H, H_cao, AOBasis)
+      end subroutine ints1e_H
 end module OneElectronInts
