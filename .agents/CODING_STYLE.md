@@ -20,3 +20,10 @@
 * **User Messages:** All messages printed for the user should be done by calling the `msg` subroutine from the `display` module, instead of using standard `print` or `write` statements. Use appropriate priority levels like `MSG_ERROR` if needed. Since calls to `msg` often result in very long lines, they should be elegantly split across multiple lines using the `&` continuation character to maintain readability.
 * **Imports:** All `use` statements (imports) must be placed at the top of the module, never inside individual subroutines or functions.
 * **Functions:** Functions should be declared without the `result(...)` suffix. Furthermore, the declaration of the type of the function result should be the very first declaration inside the function body, preceding the list of dummy arguments.
+* **Associate Construct:** When defining an `associate` block, always place a line break after the `associate (` statement, listing each association on a separate indented line, followed by a closing parenthesis on its own line. Example:
+  ```fortran
+  associate ( &
+        Var1 => Object%Var1, &
+        Var2 => Object%Var2 &
+        )
+  ```
