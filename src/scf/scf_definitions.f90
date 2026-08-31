@@ -210,8 +210,6 @@ module scf_definitions
             ! ----------------------------------------------------
             integer :: AsympVxc = AC_NONE
             real(F64) :: AsympVxcOmega = 0.15_F64
-            logical :: SlaterVxc = .false.
-            logical :: non_scf_SlaterVxc = .false.
             ! ----------------------------------------------------
             !            AUXILIARY NUMERICAL INTEGRALS
             ! ----------------------------------------------------

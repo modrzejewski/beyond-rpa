@@ -523,7 +523,6 @@ FileList += [("DFT", ["scf/fock2el.f90",
                  "scf/xcfunc.f90"])]
 FileList += [("DFT", ["scf/fbuild.f90"])]
 FileList += [("DFT", ["scf/scf.f90"])]
-FileList += [("DFT", ["scf/Slater.f90"])]
 FileList += [("DFT", ["scf/SCFMatrices.f90"])]
 FileList += [("DFT", ["scf/real_scf.f90"])]
 FileList += [("DFT", ["scf/PostSCF.f90"])]

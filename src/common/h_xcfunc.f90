@@ -359,10 +359,6 @@ module h_xcfunc
             !
             integer :: AsympVxc = AC_NONE
             real(F64) :: AsympVxcOmega
-            !
-            ! Slater potential
-            !
-            logical :: SlaterVxc = .false.
       end type txcdef
       
 contains
@@ -578,12 +574,7 @@ contains
 
             integer :: xcid, aux_id
 
-            if (ixc%SlaterVxc) then
-                  !
-                  ! Constructing model potential on the numerical grid
-                  !
-                  xcf_numint = .true.
-            else if (ixc%AsympVxc == AC_LFAS) then
+            if (ixc%AsympVxc == AC_LFAS) then
                   xcf_numint = .true.
             else
                   xcid = xcf_get_id(ixc)

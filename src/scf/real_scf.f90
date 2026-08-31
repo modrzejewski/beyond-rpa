@@ -18,7 +18,6 @@ module real_scf
    use basis_sets
    use Fock
    use KohnSham
-   use Slater
    use SCFMatrices
    use CholeskyCoulomb
    use CholeskyExchange
@@ -444,11 +443,6 @@ contains
             call msg("Prefactor 1/2 removed to enable direct energy minimization")
             call msg("Exc won't be correct unless recomputed post-SCF")
          end if
-      end if
-      if (XCModel%SlaterVxc) then
-         call msg("Exact exchange potential: using multiplicative potential VxSlater")
-         call msg("VxSlater employs resolution of the identity")
-         call msg("J. Chem. Phys. 115, 5718 (2001); doi: 10.1063/1.1398093")
       end if
    end subroutine scf_XCInfo
 
@@ -1401,22 +1395,15 @@ contains
          call msg("Starting non-SCF DFT energy computation")
          call clock_start(timer_Iter)
          call scf_XCInfo(NonSCF)
-         if (.not. NonSCF%SlaterVxc) then
-            call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
-               BufferTxc, BufferK, BufferJ, BufferRho1D, NonSCF, &
-               RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
-               ThreshFockJK, GridKind, GridPruning, time_F)
-         else
-            call slater_F_RI(Fn_cao, EelN, ExcN, NonSCF, RhoN_cao, Hbare_cao, &
-               S_cao, BasisVecs_cao, AOBasis, System, ThreshFockJK, gdiag, &
-               GridKind, GridPruning, time_F)
-            Fn_sao = ZERO
-         end if
+         call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
+            BufferTxc, BufferK, BufferJ, BufferRho1D, NonSCF, &
+            RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
+            ThreshFockJK, GridKind, GridPruning, time_F)
          do s = 1, NSpins
             if (ThisImage == 1) then
                call scf_TransformF(Fn_oao(:, :, s), Fn_cao(:, :, s), Fn_sao(:, :, s), &
                   BasisVecs_cao, BasisVecs_sao, Noao, NAOCart, NAOSpher, &
-                  (SpherAO .and. .not. NonSCF%SlaterVxc), TransfWork)
+                  SpherAO, TransfWork)
             end if
          end do
          EtotN = EelN + Enucl
@@ -1548,7 +1535,6 @@ contains
          allocate(SCFOutput%AUXOut(aux_arraydim(AUXInt_Type1, SpinUnres)))
          call xcf_define(XCModel, xcfunc, AUXInt_Type1, SpinUnres)
          call xcf_define(NonSCF, non_scf_xcfunc, AUX_NONE, SpinUnres)
-         NonSCF%SlaterVxc = SCFParams%SlaterVxc
          if (SCFParams%AsympVxc == AC_LFAS_v2) then
             if (System%NAtoms == 1) then
                XCModel%AsympVxc = AC_LFAS_v2_FREE
