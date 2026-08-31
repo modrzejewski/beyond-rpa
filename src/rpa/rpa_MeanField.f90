@@ -190,7 +190,7 @@ contains
             end if
             call msg("Fock matrix calculation")
             call rpa_HF_Fpq(MeanFieldStates, System, Dpqk, DpqkLoc, &
-                  NOcc, NSpins, Chol2Vecs, AOBasis)
+                  NOcc, NSpins, Chol2Vecs, SCFOutput, AOBasis)
             call msg("Fock matrices completed for all systems")
             allocate(Dpq(NAO, NAO, maxval(NSpins)))
             do k = 1, NSystems

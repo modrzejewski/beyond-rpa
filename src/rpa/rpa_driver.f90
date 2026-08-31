@@ -445,7 +445,7 @@ contains
          MOBasisVecsCart => SCFOutput%MOBasisVecsCart, &
          MOBasisVecsSpher => SCFOutput%MOBasisVecsSpher, &
          Rho_cao => SCFOutput%Rho_cao, &
-         Hbare_cao => SCFOutput%Hbare_cao, &
+         H_sao => SCFOutput%H_sao, &
          Noao => SCFOutput%Noao, &
          NOcc => SCFOutput%NOcc, &
          NVirt => SCFOutput%NVirt, &
@@ -514,7 +514,7 @@ contains
          time_F = ZERO
          call scf_F_RealRho(F_cao, F_sao, EtotHF, ExcDummy, diag, AUXOut, &
             BufferTxc, BufferK, BufferJ, BufferRho1D, HFonDFT, &
-            Rho_cao, Rho_sao, Hbare_cao, AUXIn, AOBasis, System, &
+            Rho_cao, Rho_sao, H_sao, AUXIn, AOBasis, System, &
             SCFParams%ThreshFockJK, SCFParams%GridKind, SCFParams%GridPruning, time_F)
          deallocate(BufferK, BufferJ, BufferRho1D, BufferTxc)
          !

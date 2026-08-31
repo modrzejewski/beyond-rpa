@@ -1006,7 +1006,7 @@ contains
             !
             ! One-electron hamiltonian matrix in the spherical Gaussian
             ! in the basis of spherical Gaussian atomic orbitals.
-            ! Includes the pseudopotential matrix if an ECP
+            ! Includes the pseudopotential matrix if ECP
             ! is enabled.
             ! Both upper and lower triangles of the output matrix
             ! are filled with data.

@@ -413,9 +413,7 @@ contains
 
             integer :: NSpins, s
             integer :: DimTxc, DimJK, DimRho1D, NThreads
-            real(F64), dimension(:, :), allocatable :: Ts_cao, Hbare_cao
-            real(F64), dimension(:, :), allocatable :: Hbare_sao
-            real(F64), dimension(:), allocatable :: TransfWork
+            real(F64), dimension(:, :), allocatable :: H_sao
             real(F64), dimension(:), allocatable :: BufferK, BufferJ, BufferRho1D
             type(TClock) :: timer_F
             integer :: ThisImage
@@ -436,38 +434,8 @@ contains
                   !
                   ! One-electron part of the hamiltonian
                   !
-                  allocate(Ts_cao(NAOCart, NAOCart))
-                  allocate(Hbare_cao(NAOCart, NAOCart))
-                  call ints1e_Kinetic(Ts_cao, AOBasis)
-                  call ints1e_Coulomb(Hbare_cao, AOBasis, System)
-                  !
-                  ! Add effective core potential to
-                  ! the nuclei-electrons potential
-                  !            
-                  call pp_V(Hbare_cao, AOBasis, System, ECPFile)
-                  Hbare_cao = Hbare_cao + Ts_cao
-                  if (SpherAO) then
-                        !
-                        ! Transform the bare-nuclei hamiltonian to the spherical
-                        ! AO basis. From now on, all components of the Fock matrix
-                        ! will be expressed in the same basis which makes
-                        ! the MO transformation simpler.
-                        !
-                        allocate(TransfWork(NAOSpher*NAOCart))
-                        allocate(Hbare_sao(NAOSpher, NAOSpher))
-                        call smfill(Hbare_cao)
-                        call SpherGTO_TransformMatrix_U(Hbare_sao, Hbare_cao, &
-                              AOBasis%LmaxGTO, &
-                              AOBasis%NormFactorsSpher, &
-                              AOBasis%NormFactorsCart, &
-                              AOBasis%ShellLocSpher, &
-                              AOBasis%ShellLocCart, &
-                              AOBasis%ShellMomentum, &
-                              AOBasis%ShellParamsIdx, &
-                              AOBasis%NAOSpher, &
-                              AOBasis%NAOCart, &
-                              AOBasis%NShells, TransfWork)
-                  end if
+                  allocate(H_sao(NAOSpher, NAOSpher))
+                  call ints1e_H(H_sao, AOBasis, System, ECPFile)
                   call scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
                   allocate(BufferK(DimJK))
                   allocate(BufferJ(DimJK))
@@ -486,13 +454,8 @@ contains
                               EHFTwoEl = EHFTwoEl + (ONE/TWO) * fock_RhoTrace(Rho_ao(:, :, s), F_ao(:, :, s))
                         end do
                         do s = 1, NSpins
-                              if (SpherAO) then
-                                    EHbare = EHbare + fock_RhoTrace(Rho_ao(:, :, s), Hbare_sao)
-                                    F_ao(:, :, s) = F_ao(:, :, s) + Hbare_sao
-                              else
-                                    EHbare = EHbare + fock_RhoTrace(Rho_ao(:, :, s), Hbare_cao)
-                                    F_ao(:, :, s) = F_ao(:, :, s) + Hbare_cao
-                              end if
+                              EHbare = EHbare + fock_RhoTrace(Rho_ao(:, :, s), H_sao)
+                              F_ao(:, :, s) = F_ao(:, :, s) + H_sao
                               call smfill(F_ao(:, :, s))
                         end do
                         call sys_NuclearRepulsion(Enucl, System)

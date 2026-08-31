@@ -644,7 +644,7 @@ contains
       
 
       subroutine rpa_HF_Fpq(MeanFieldStates, System, Dpqk, DpqkLoc, &
-            NOcc, NSpins, Chol2Vecs, AOBasis)
+            NOcc, NSpins, Chol2Vecs, SCFOutput, AOBasis)
             
             type(TMeanField), dimension(:), intent(out)   :: MeanFieldStates
             type(TSystem), intent(inout)                  :: System
@@ -653,17 +653,17 @@ contains
             integer, dimension(:, :), intent(in)          :: NOcc
             integer, dimension(:), intent(in)             :: NSpins
             type(TChol2Vecs), intent(in)                  :: Chol2Vecs
+            type(TSCFOutput), dimension(:), intent(in)    :: SCFOutput
             type(TAOBasis), intent(in)                    :: AOBasis
 
             integer :: NAO
             integer :: s, k, l
-            real(F64), dimension(:, :), allocatable :: Tpq, Vpq
             real(F64), dimension(:, :), allocatable :: Dpq
             real(F64), dimension(:), allocatable :: Jpqk, Kpqk
             integer, dimension(:, :), allocatable :: JKpqkLoc
             integer :: JKpqkDim
             real(F64) :: EHFTwoEl, Enucl, EHbare
-            real(F64) :: TrDJK, TrDT, TrDV
+            real(F64) :: TrDJK, TrDH
             integer :: NDensities, NSystems
             integer, dimension(2) :: t
 
@@ -679,14 +679,14 @@ contains
             ! and all subsystems
             !
             call rpa_HF_IntegralsLoop(Jpqk, Kpqk, JKpqkLoc, Dpqk, DpqkLoc, NDensities, AOBasis, Chol2Vecs)
-            allocate(Vpq(NAO, NAO))
-            allocate(Tpq(NAO, NAO))
             allocate(Dpq(NAO, NAO))
-            call ints1e_T(Tpq, AOBasis)
             do k = 1, NSystems
                   call sys_Init(System, k)
                   allocate(MeanFieldStates(k)%F_ao(NAO, NAO, NSpins(k)))
-                  associate (Fpq => MeanFieldStates(k)%F_ao(:, :, :))
+                  associate ( &
+                        Fpq => MeanFieldStates(k)%F_ao(:, :, :), &
+                        Hpq => SCFOutput(k)%H_sao &
+                        )
                         call sys_NuclearRepulsion(Enucl, System)
                         l = 0
                         if (k > 1) l = sum(NSpins(1:k-1))
@@ -717,22 +717,19 @@ contains
                         end do
                         EHFTwoEl = ZERO
                         EHbare = ZERO
-                        call ints1e_Vne(Vpq, AOBasis, System)                  
                         do s = 1, NSpins(k)
                               if (NOcc(s, k) > 0) then
                                     call rpa_HF_UnpackDpqk(Dpq, t(s), Dpqk, DpqkLoc, AOBasis)
                                     call real_vw_x(TrDJK, Dpq, Fpq(:, :, s), NAO**2)
-                                    call real_vw_x(TrDV, Dpq, Vpq, NAO**2)
-                                    call real_vw_x(TrDT, Dpq, Tpq, NAO**2)
+                                    call real_vw_x(TrDH, Dpq, Hpq, NAO**2)
                                     if (NSpins(k) == 1) then
                                           EHFTwoEl = EHFTwoEl + TWO * (ONE/TWO) * TrDJK
-                                          EHbare = EHbare + TWO * (TrDV + TrDT)
+                                          EHbare = EHbare + TWO * TrDH
                                     else
                                           EHFTwoEl = EHFTwoEl + (ONE/TWO) * TrDJK
-                                          EHbare = EHbare + TrDV + TrDT
+                                          EHbare = EHbare + TrDH
                                     end if
-                                    Fpq(:, :, s) = Fpq(:, :, s) + Tpq(:, :)
-                                    Fpq(:, :, s) = Fpq(:, :, s) + Vpq(:, :)
+                                    Fpq(:, :, s) = Fpq(:, :, s) + Hpq
                               end if
                         end do
                         MeanFieldStates(k)%EtotHF = Enucl + EHbare + EHFTwoEl

@@ -547,7 +547,7 @@ contains
 
 
    subroutine scf_F_RealRho(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, K, J, Rho1D, &
-      xcmodel, Rho_cao, Rho_sao, Hbare_cao, AUXIn, AOBasis, System, ThreshFockJK, &
+      xcmodel, Rho_cao, Rho_sao, H_sao, AUXIn, AOBasis, System, ThreshFockJK, &
       GridKind, GridPruning, time_F)
 
       real(F64), dimension(:, :, :), intent(out)             :: F_cao[*]
@@ -563,7 +563,7 @@ contains
       type(txcdef), intent(in)                               :: xcmodel
       real(F64), dimension(:, :, :), intent(in)              :: Rho_cao
       real(F64), dimension(:, :, :), intent(in)              :: Rho_sao
-      real(F64), dimension(:, :), intent(in)                 :: Hbare_cao
+      real(F64), dimension(:, :), intent(in)                 :: H_sao
       real(F64), dimension(:, :), intent(in)                 :: AUXIn
       type(TAOBasis), intent(in)                             :: AOBasis
       type(TSystem), intent(in)                              :: System
@@ -653,8 +653,8 @@ contains
          if (BareH) then
             EHbare = ZERO
             do s = 1, NSpins
-               EHbare = EHbare + fock_RhoTrace(Rho_cao(:, :, s), Hbare_cao)
-               F_cao(:, :, s) = F_cao(:, :, s) + Hbare_cao
+               EHbare = EHbare + fock_RhoTrace(Rho_sao(:, :, s), H_sao)
+               F_sao(:, :, s) = F_sao(:, :, s) + H_sao
             end do
          end if
          Eel = EHbare + EHFTwoEl + ExcDFT
@@ -668,7 +668,7 @@ contains
 
 
    subroutine scf_F_Cholesky(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, &
-      xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, Hbare_cao, AUXIn, &
+      xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, H_sao, AUXIn, &
       AOBasis, System, Rkpq, CholeskyBasis, GridKind, GridPruning, &
       MaxBufferDimMB, TargetBlockDim, time_F)
 
@@ -685,7 +685,7 @@ contains
       integer, dimension(:), intent(in)                      :: NOcc
       real(F64), dimension(:, :, :), intent(in)              :: Rho_cao
       real(F64), dimension(:, :, :), intent(in)              :: Rho_sao
-      real(F64), dimension(:, :), intent(in)                 :: Hbare_cao
+      real(F64), dimension(:, :), intent(in)                 :: H_sao
       real(F64), dimension(:, :), intent(in)                 :: AUXIn
       type(TAOBasis), intent(in)                             :: AOBasis
       type(TSystem), intent(in)                              :: System
@@ -742,8 +742,8 @@ contains
          if (ThisImage==1) then
             EHbare = ZERO
             do s = 1, NSpins
-               EHbare = EHbare + fock_RhoTrace(Rho_cao(:, :, s), Hbare_cao)
-               F_cao(:, :, s) = F_cao(:, :, s) + Hbare_cao
+               EHbare = EHbare + fock_RhoTrace(Rho_sao(:, :, s), H_sao)
+               F_sao(:, :, s) = F_sao(:, :, s) + H_sao
             end do
          end if
       end if
@@ -760,7 +760,7 @@ contains
 
 
    subroutine scf_F_THC(F_cao, F_sao, Eel, ExcDFT, diag, AUXOut, Txc, &
-      xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, Hbare_cao, AUXIn, &
+      xcmodel, Cocc_cao, Cocc_sao, NOcc, Rho_cao, Rho_sao, H_sao, AUXIn, &
       AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
 
       real(F64), dimension(:, :, :), intent(out)             :: F_cao
@@ -776,7 +776,7 @@ contains
       integer, dimension(:), intent(in)                      :: NOcc
       real(F64), dimension(:, :, :), intent(in)              :: Rho_cao
       real(F64), dimension(:, :, :), intent(in)              :: Rho_sao
-      real(F64), dimension(:, :), intent(in)                 :: Hbare_cao
+      real(F64), dimension(:, :), intent(in)                 :: H_sao
       real(F64), dimension(:, :), intent(in)                 :: AUXIn
       type(TAOBasis), intent(in)                             :: AOBasis
       type(TSystem), intent(in)                              :: System
@@ -833,8 +833,8 @@ contains
          if (ThisImage==1) then
             EHbare = ZERO
             do s = 1, NSpins
-               EHbare = EHbare + fock_RhoTrace(Rho_cao(:, :, s), Hbare_cao)
-               F_cao(:, :, s) = F_cao(:, :, s) + Hbare_cao
+               EHbare = EHbare + fock_RhoTrace(Rho_sao(:, :, s), H_sao)
+               F_sao(:, :, s) = F_sao(:, :, s) + H_sao
             end do
          end if
       end if
@@ -948,7 +948,7 @@ contains
 
 
    subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
-      Noao, Ehomo, Elumo, Hbare_cao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
+      Noao, Ehomo, Elumo, H_sao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
       XCModel, NonSCF, NOcc, LinDepThresh, Enucl, MaxRhoDiff, MaxOrbGrad, MaxNIters, &
       ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, ERI_Algorithm, &
       MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis, &
@@ -965,7 +965,7 @@ contains
       integer, intent(out)                                      :: Noao
       real(F64), intent(out)                                    :: Ehomo
       real(F64), intent(out)                                    :: Elumo
-      real(F64), dimension(:, :), allocatable, intent(out)      :: Hbare_cao
+      real(F64), dimension(:, :), allocatable, intent(out)      :: H_sao
       real(F64), dimension(:, :, :), allocatable, intent(out)   :: C_oao
       real(F64), dimension(:, :), allocatable, intent(out)      :: MOBasisVecsCart
       real(F64), dimension(:, :), allocatable, intent(out)      :: MOBasisVecsSpher
@@ -1001,7 +1001,7 @@ contains
       real(F64), dimension(:, :, :), allocatable :: Fn_cao[:], Fn_sao[:]
       real(F64), dimension(:, :, :), allocatable :: RhoN_cao, RhoN_sao
       real(F64), dimension(:, :, :), allocatable :: Cocc_cao, Cocc_sao
-      real(F64), dimension(:, :), allocatable :: S_cao, Ts_cao, Vne_cao
+      real(F64), dimension(:, :), allocatable :: S_cao
       real(F64), dimension(:), allocatable :: TransfWork
       integer :: NSpins, NVirtA, NVirtB
       integer :: NOccA, NOccB
@@ -1078,9 +1078,7 @@ contains
       memoryRho1D = io_size_byte(BufferRho1D) / real(1024**3, F64)
       call msg("Allocated " // str(memoryJK+memoryTxc+memoryRho1D, d=1) // " GiB of scratch space for the KS matrix build")
       allocate(S_cao(NAOCart, NAOCart))
-      allocate(Ts_cao(NAOCart, NAOCart))
-      allocate(Vne_cao(NAOCart, NAOCart))
-      allocate(Hbare_cao(NAOCart, NAOCart))
+      allocate(H_sao(NAOSpher, NAOSpher))
       !
       ! Intermediates matrix for THC integrals evaluation
       !
@@ -1093,14 +1091,7 @@ contains
       ! and nuclei-electron attraction
       !
       call ints1e_OverlapMatrix(S_cao, AOBasis)
-      call ints1e_Kinetic(Ts_cao, AOBasis)
-      call ints1e_Coulomb(Vne_cao, AOBasis, System)
-      !
-      ! Add effective core potential to
-      ! the nuclei-electrons potential
-      !
-      call pp_V(Vne_cao, AOBasis, System, ECPFile)
-      Hbare_cao = Ts_cao + Vne_cao
+      call ints1e_H(H_sao, AOBasis, System, ECPFile)
       !
       ! Compute the orthogonal basis vectors.
       ! Remove linear dependencies and transform vectors
@@ -1180,17 +1171,17 @@ contains
       select case (ERI_Algorithm)
        case (SCF_ERI_CHOLESKY)
          call scf_F_Cholesky(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
-            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
+            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, H_sao, AUXIn, &
             AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
             MaxBufferDimMB, TargetBlockDim, time_F)
        case (SCF_ERI_THC)
          call scf_F_THC(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, BufferTxc, &
-            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, Hbare_cao, AUXIn, &
+            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoK_cao, RhoN_sao, H_sao, AUXIn, &
             AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
        case default ! Exact integrals
          call scf_F_RealRho(Fn_cao, Fn_sao, EelK, ExcK, gdiag, AUXOut, &
             BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, RhoK_cao, RhoN_sao, &
-            Hbare_cao, AUXIn, AOBasis, System, ThreshFockJK, GridKind, GridPruning, time_F)
+            H_sao, AUXIn, AOBasis, System, ThreshFockJK, GridKind, GridPruning, time_F)
       end select
       EtotK = EelK + Enucl
       do s = 1, NSpins
@@ -1228,17 +1219,17 @@ contains
       select case (ERI_Algorithm)
        case (SCF_ERI_CHOLESKY)
          call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, H_sao, AUXIn, &
             AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
             MaxBufferDimMB, TargetBlockDim, time_F)
        case (SCF_ERI_THC)
          call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+            XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, H_sao, AUXIn, &
             AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
        case default ! exact integrals
          call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
             BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
-            RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
+            RhoN_cao, RhoN_sao, H_sao, AUXIn, AOBasis, System, &
             ThreshFockJK, GridKind, GridPruning, time_F)
       end select
       if (ThisImage == 1) then
@@ -1289,17 +1280,17 @@ contains
             select case (ERI_Algorithm)
              case (SCF_ERI_CHOLESKY)
                call scf_F_Cholesky(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                  XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                  XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, H_sao, AUXIn, &
                   AOBasis, System, CholeskyVecs, CholeskyBasis, GridKind, GridPruning, &
                   MaxBufferDimMB, TargetBlockDim, time_F)
              case (SCF_ERI_THC)
                call scf_F_THC(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, BufferTxc, &
-                  XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, &
+                  XCModel, Cocc_cao, Cocc_sao, NOcc, RhoN_cao, RhoN_sao, H_sao, AUXIn, &
                   AOBasis, System, THCGrid, Zgh, GridKind, GridPruning, time_F)
              case default ! exact integrals
                call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
                   BufferTxc, BufferK, BufferJ, BufferRho1D, XCModel, &
-                  RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
+                  RhoN_cao, RhoN_sao, H_sao, AUXIn, AOBasis, System, &
                   ThreshFockJK, GridKind, GridPruning, time_F)
             end select
             EtotN = EelN + Enucl
@@ -1397,7 +1388,7 @@ contains
          call scf_XCInfo(NonSCF)
          call scf_F_RealRho(Fn_cao, Fn_sao, EelN, ExcN, gdiag, AUXOut, &
             BufferTxc, BufferK, BufferJ, BufferRho1D, NonSCF, &
-            RhoN_cao, RhoN_sao, Hbare_cao, AUXIn, AOBasis, System, &
+            RhoN_cao, RhoN_sao, H_sao, AUXIn, AOBasis, System, &
             ThreshFockJK, GridKind, GridPruning, time_F)
          do s = 1, NSpins
             if (ThisImage == 1) then
@@ -1590,7 +1581,7 @@ contains
                SCFOutput%Noao, &
                SCFOutput%Ehomo, &
                SCFOutput%Elumo, &
-               SCFOutput%Hbare_cao, &
+               SCFOutput%H_sao, &
                SCFOutput%C_oao, &
                SCFOutput%MOBasisVecsCart, &
                SCFOutput%MOBasisVecsSpher, &
@@ -1623,7 +1614,7 @@ contains
                SCFOutput%Noao, &
                SCFOutput%Ehomo, &
                SCFOutput%Elumo, &
-               SCFOutput%Hbare_cao, &
+               SCFOutput%H_sao, &
                SCFOutput%C_oao, &
                SCFOutput%MOBasisVecsCart, &
                SCFOutput%MOBasisVecsSpher, &
@@ -1653,7 +1644,7 @@ contains
                SCFOutput%Noao, &
                SCFOutput%Ehomo, &
                SCFOutput%Elumo, &
-               SCFOutput%Hbare_cao, &
+               SCFOutput%H_sao, &
                SCFOutput%C_oao, &
                SCFOutput%MOBasisVecsCart, &
                SCFOutput%MOBasisVecsSpher, &
