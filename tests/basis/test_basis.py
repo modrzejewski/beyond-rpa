@@ -58,11 +58,9 @@ def test_basis_energy(filepath: Path, record_property):
         raise
 
 if __name__ == "__main__":
-    print("\n" + "="*95)
-    print(" BASIS TEST RESULTS SUMMARY ".center(95, "="))
-    print("="*95)
-    print(f"{'Test Title':<45} | {'Reference':<15} | {'Result':<15} | {'Deviation':<12} | {'Status'}")
-    print("-" * 95)
+    print("\n" + "."*105)
+    print(f"{'Test Title':<45} | {'Reference':>15} | {'Result':>15} | {'Deviation':>12} | {'Status'}")
+    print("." * 105)
     
     for filepath in get_input_files():
         ref_energy = get_reference_energy(filepath)
@@ -84,6 +82,6 @@ if __name__ == "__main__":
         calc_str = f"{calc_energy:.8f}" if isinstance(calc_energy, float) else "N/A"
         ref_str = f"{ref_energy:.8f}" if isinstance(ref_energy, float) else "N/A"
         
-        print(f"{filepath.name:<45} | {ref_str:<15} | {calc_str:<15} | {dev_str:<12} | {status}")
+        print(f"{filepath.name:<45} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
     
-    print("="*95 + "\n")
+    print("\n")
