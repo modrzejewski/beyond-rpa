@@ -1,0 +1,29 @@
+! reference values from pyscf
+! HF single point AB (a.u.):           -305.09734100
+! MP2 single point AB (a.u.):            -0.61641226
+! HF single point A (a.u.):            -152.55045951
+! MP2 single point A (a.u.):             -0.30567466
+! HF single point B (a.u.):            -152.55045951
+! MP2 single point B (a.u.):             -0.30567466
+! HF interaction A...B (kcal/mol):          2.245242
+! MP2 interaction A...B (kcal/mol):        -3.177038
+
+basis def2-svpd
+
+scf
+ xcfunc hf
+end
+
+rpa
+ TheoryLevel RPA+ph
+ PT2
+ accuracy default
+end
+
+xyz
+1 1
+Hg 0.0 0.0 0.0
+Hg 0.0 0.0 3.63
+end
+
+

@@ -20,8 +20,11 @@ def pytest_collection_modifyitems(config, items):
         test_id = getattr(item.callspec, "id", "") if hasattr(item, "callspec") else ""
         filepath = Path(test_id)
         
+        # ECP tests are unconditionally fast
+        is_ecp = "test_ecp" in getattr(item, "nodeid", "")
+        
         # Use shared logic to determine if it's slow
-        if not utils.is_fast(filepath):
+        if not is_ecp and not utils.is_fast(filepath):
             item.add_marker(pytest.mark.slow)
             if not run_full:
                 item.add_marker(skip_slow)
