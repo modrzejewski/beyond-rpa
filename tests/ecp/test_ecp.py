@@ -23,6 +23,11 @@ INPUTS_DIR = Path(__file__).parent / "inputs"
 TOLERANCE_INTERACTION_DEFAULT = 5.0e-4  # kcal/mol
 TOLERANCE_INTERACTION_LUDICROUS = 5.0e-5  # kcal/mol
 
+CALC_KEY_HF = "Eint(HF)"
+CALC_KEY_1RDM_LIN = "Eint(1-RDM linear)"
+CALC_KEY_1RDM_QUAD = "Eint(1-RDM quadratic)"
+CALC_KEY_MP2 = "Eint(total MP2)"
+
 def get_input_files():
     files = list(INPUTS_DIR.glob("*.inp"))
     files.sort()
@@ -43,10 +48,10 @@ FLOAT_REGEX = r"([-+]?\d*\.\d+[Ee][-+]?\d+|[-+]?\d*\.\d+)"
 def extract_calc_energies(text: str) -> dict:
     energies = {}
     
-    # HF components
-    match_hf = re.search(r"^\s*Eint\(HF\)\s+" + FLOAT_REGEX, text, re.MULTILINE)
-    match_1rdm_lin = re.search(r"^\s*Eint\(1RDM linear\)\s+" + FLOAT_REGEX, text, re.MULTILINE)
-    match_1rdm_quad = re.search(r"^\s*Eint\(1RDM quadratic\)\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    # HF component
+    match_hf = re.search(r"^\s*" + re.escape(CALC_KEY_HF) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    match_1rdm_lin = re.search(r"^\s*" + re.escape(CALC_KEY_1RDM_LIN) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    match_1rdm_quad = re.search(r"^\s*" + re.escape(CALC_KEY_1RDM_QUAD) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
     
     if match_hf and match_1rdm_lin and match_1rdm_quad:
         e_hf = float(match_hf.group(1))
@@ -55,7 +60,7 @@ def extract_calc_energies(text: str) -> dict:
         energies["HF"] = e_hf + e_1rdm_lin + e_1rdm_quad
         
     # MP2 component
-    match_mp2 = re.search(r"^\s*Eint\(total MP2\)\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    match_mp2 = re.search(r"^\s*" + re.escape(CALC_KEY_MP2) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
     if match_mp2:
         energies["MP2"] = float(match_mp2.group(1))
         
@@ -101,6 +106,7 @@ def test_ecp(filepath: Path, record_property):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ECP tests.")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use")
+    parser.add_argument("--full", action="store_true", help="Run the full test suite (including slow tests)")
     args = parser.parse_args()
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
     
@@ -109,17 +115,33 @@ if __name__ == "__main__":
     print(f"{'Test File':<35} | {'Term':<4} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | {'Status'}")
     print("." * 105)
     
-    for filepath in get_input_files():
+    all_files = get_input_files()
+    if not args.full:
+        files = [f for f in all_files if utils.is_fast_ecp(f)]
+        if len(files) < len(all_files):
+            print(f"Running {len(files)} fast tests. Use --full to run all {len(all_files)} tests.")
+            print("-" * 105)
+    else:
+        files = all_files
+        
+    for filepath in files:
         ref_energies = extract_ref_energies(filepath)
         if not ref_energies:
             continue
             
+        print(f"Running {filepath.name}... ", end="", flush=True)
+        start_time = time.time()
+        
         try:
             result = subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
+            elapsed = time.time() - start_time
             if result.returncode != 0:
-                print(f"{filepath.name:<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | CRASHED")
+                print(f"FAILED ({elapsed:.2f}s)")
+                print(f"{'':<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | CRASHED")
+                print("-" * 105)
                 continue
                 
+            print(f"done ({elapsed:.2f}s)")
             calc_energies = extract_calc_energies(result.stdout)
             tol = get_tolerance(filepath)
             
@@ -143,7 +165,9 @@ if __name__ == "__main__":
                 print(f"{prefix:<35} | {key:<4} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
                 
         except Exception:
-            print(f"{filepath.name:<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | ERROR")
+            elapsed = time.time() - start_time
+            print(f"FAILED ({elapsed:.2f}s)")
+            print(f"{'':<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | ERROR")
             
         print("-" * 105)
     print("\n")

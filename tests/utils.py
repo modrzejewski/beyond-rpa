@@ -23,6 +23,13 @@ def get_thread_count() -> int:
         
     return cores
 
+def is_fast_ecp(filepath: Path) -> bool:
+    """
+    Determine if an ECP test is considered 'fast'.
+    Slow ECP tests are those using the avtz-pp or avqz-pp basis set.
+    """
+    return "avtz-pp" not in filepath.name and "avqz-pp" not in filepath.name
+
 def is_fast(filepath: Path) -> bool:
     """
     Determine if a test is considered 'fast' (default behavior).
