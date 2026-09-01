@@ -238,24 +238,26 @@ module rpa_definitions
    ! -------------------------------------------------------------------
    ! Perturbation theory contributions
    ! Slow implementation, should be used only for testing
+   ! Slots 84:100 are reserved for perturbation theory contributions
+   ! and must remain disjoint from the RPA energy components.
    ! -------------------------------------------------------------------
-   integer, parameter :: MP2_ENERGY_SINGLET_PAIR = 50
-   integer, parameter :: MP2_ENERGY_TRIPLET_PAIR = 51
-   integer, parameter :: MP2_ENERGY_DIRECT       = 52
-   integer, parameter :: MP2_ENERGY_TOTAL        = 53
-   integer, parameter :: MP3_ENERGY_A            = 54
-   integer, parameter :: MP3_ENERGY_B            = 55
-   integer, parameter :: MP3_ENERGY_C            = 56
-   integer, parameter :: MP3_ENERGY_D            = 57
-   integer, parameter :: MP3_ENERGY_E            = 58
-   integer, parameter :: MP3_ENERGY_F            = 59
-   integer, parameter :: MP3_ENERGY_G            = 60
-   integer, parameter :: MP3_ENERGY_H            = 61
-   integer, parameter :: MP3_ENERGY_I            = 62
-   integer, parameter :: MP3_ENERGY_J            = 63
-   integer, parameter :: MP3_ENERGY_K            = 64
-   integer, parameter :: MP3_ENERGY_L            = 65
-   integer, parameter :: MP3_ENERGY_TOTAL        = 66
+   integer, parameter :: MP2_ENERGY_SINGLET_PAIR = 84
+   integer, parameter :: MP2_ENERGY_TRIPLET_PAIR = 85
+   integer, parameter :: MP2_ENERGY_DIRECT       = 86
+   integer, parameter :: MP2_ENERGY_TOTAL        = 87
+   integer, parameter :: MP3_ENERGY_A            = 88
+   integer, parameter :: MP3_ENERGY_B            = 89
+   integer, parameter :: MP3_ENERGY_C            = 90
+   integer, parameter :: MP3_ENERGY_D            = 91
+   integer, parameter :: MP3_ENERGY_E            = 92
+   integer, parameter :: MP3_ENERGY_F            = 93
+   integer, parameter :: MP3_ENERGY_G            = 94
+   integer, parameter :: MP3_ENERGY_H            = 95
+   integer, parameter :: MP3_ENERGY_I            = 96
+   integer, parameter :: MP3_ENERGY_J            = 97
+   integer, parameter :: MP3_ENERGY_K            = 98
+   integer, parameter :: MP3_ENERGY_L            = 99
+   integer, parameter :: MP3_ENERGY_TOTAL        = 100
 
    integer, parameter :: RPA_ACCURACY_DEFAULT   = 1
    integer, parameter :: RPA_ACCURACY_TIGHT     = 2
