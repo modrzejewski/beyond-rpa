@@ -1984,15 +1984,6 @@ contains
                                           ONE, ONE-EXXFrac, System)
                               end select
                               ! ------------------------------------------------------------------
-                              ! Slater potential computed according to Eq. 22 in
-                              ! Della Sala, F. and Gorling, A. J. Chem. Phys. 115, 5718 (2001);
-                              ! doi: 10.1063/1.1398093
-                              ! ------------------------------------------------------------------
-                              if (XCDef%SlaterVxc) then
-                                    call slater_YU_Sphere(Exc, YURho, RhoEff, XURho, XOrb, &
-                                          XShells, XNShells, XWeights, NSpher, DeltaK, AOBasis)
-                              end if
-                              ! ------------------------------------------------------------------
                               ! Contributions to the exchange-correlation matrix and
                               ! the exchange-correlation energy
                               ! ------------------------------------------------------------------
@@ -2088,15 +2079,6 @@ contains
                                           GRD_LEBY(s0:s1), GRD_LEBZ(s0:s1), NSpher, XRho, XCDef%AsympVxcOmega, &
                                           ONE, ONE-EXXFrac, System)
                               end select
-                              ! ------------------------------------------------------------------
-                              ! Slater potential computed according to Eq. 22 in
-                              ! Della Sala, F. and Gorling, A. J. Chem. Phys. 115, 5718 (2001);
-                              ! doi: 10.1063/1.1398093
-                              ! ------------------------------------------------------------------
-                              if (XCDef%SlaterVxc) then
-                                    call slater_Y_Sphere(Exc, YRho, RhoEff(:, :, 1), XRho, XOrb, &
-                                          XShells, XNShells, XWeights, NSpher, DeltaK, AOBasis)
-                              end if
                               ! ------------------------------------------------------------------
                               ! Contributions to the exchange-correlation matrix and
                               ! the exchange-correlation energy

@@ -6,6 +6,7 @@ When writing, refactoring, or modifying tests for the `beyond-rpa` project, you 
 All Python test scripts must be designed to function simultaneously as an automated `pytest` suite and a manual standalone debugging script.
 - **Automated Mode (via `pytest` / `meson test`)**: Tests should use standard `@pytest.mark.parametrize` decorators and should execute silently on success.
 - **Standalone Mode (via `python script.py`)**: The script must include an `if __name__ == '__main__':` block. This block manually loops through the test cases, executes the external binary, and prints a detailed, tabular summary directly to standard output. The table must explicitly list Test Titles, Reference Values, Calculated Results, Deviations, and Pass/Fail Status.
+  - **Progress Indication**: To provide immediate feedback, the script must print `Running <test title>...` *before* executing the binary. Once the binary finishes, it must print the elapsed time (e.g. `done (3.42s)`) and *only then* print the corresponding table rows for that test.
 - **Numerical Tolerance**: Tests should rely on `pytest.approx` for numerical tolerance checking. The exact numerical value of this tolerance must always be determined by the human programmer. An AI agent must not guess or set this value independently, and must prompt the user for the required tolerance when creating testing scripts.
 
 ## 2. CI/CD Structured Reporting

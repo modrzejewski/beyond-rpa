@@ -56,6 +56,7 @@ contains
             call rpa_FosterBoys_ObjectiveFunction(F, RijLL, R2ijCC)
             InitF = F
             OptF = F
+            OptLijCL = LijCL
             Converged = .false.
             do u = 1, RPAParams%LocBoysMaxNIters
                   call rpa_FosterBoys_Sweep(LijCL, RijLL)

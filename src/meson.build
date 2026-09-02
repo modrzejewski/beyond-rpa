@@ -479,7 +479,6 @@ sources = files(
   'scf/xcfunc.f90',
   'scf/fbuild.f90',
   'scf/scf.f90',
-  'scf/Slater.f90',
   'scf/SCFMatrices.f90',
   'scf/real_scf.f90',
   'scf/PostSCF.f90',

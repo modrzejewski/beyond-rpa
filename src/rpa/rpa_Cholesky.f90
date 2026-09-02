@@ -438,7 +438,7 @@ contains
 
 
       subroutine rpa_Cholesky_F(Fpq, EtotHF, Cpi, NOcc, Chol2Vecs, &
-            Chol2Params, AOBasis, System, RPAParams)
+            Chol2Params, SCFOutput, AOBasis, System, RPAParams)
             
             real(F64), dimension(:, :, :), intent(out) :: Fpq
             real(F64), intent(out)                     :: EtotHF
@@ -446,6 +446,7 @@ contains
             integer, dimension(:), intent(in)          :: NOcc
             type(TChol2Vecs), intent(in)               :: Chol2Vecs
             type(TChol2Params), intent(in)             :: Chol2Params
+            type(TSCFOutput), intent(in)               :: SCFOutput
             type(TAOBasis), intent(in)                 :: AOBasis
             type(TSystem), intent(in)                  :: System
             type(TRPAParams), intent(in)               :: RPAParams
@@ -454,7 +455,7 @@ contains
             integer :: s
             real(F64), dimension(:, :), allocatable :: W1pq, W2pq, Dpq
             real(F64) :: EHFTwoEl, Enucl, EHbare
-            real(F64) :: TrDJK, TrDT, TrDV
+            real(F64) :: TrDJK, TrDH
             type(TClock) :: timer_Total
             real(F64) :: t_Transform, t_Matmul_Coul, t_Matmul_Exch
 
@@ -490,26 +491,24 @@ contains
             end do
             EHFTwoEl = ZERO
             EHbare = ZERO
-            associate (Tpq => W1pq, Vpq => W2pq)
-                  call ints1e_T(Tpq, AOBasis)
-                  call ints1e_Vne(Vpq, AOBasis, System)                  
+            associate ( &
+                  Hpq => SCFOutput%H_sao &
+                  )
                   do s = 1, NSpins
                         if (NOcc(s) > 0) then
                               associate (Cpj => Cpi(:, 1:NOcc(s), s))
                                     call real_abT(Dpq, Cpj, Cpj)
                                     call real_vw_x(TrDJK, Dpq, Fpq(:, :, s), NAO**2)
-                                    call real_vw_x(TrDV, Dpq, Vpq, NAO**2)
-                                    call real_vw_x(TrDT, Dpq, Tpq, NAO**2)
+                                    call real_vw_x(TrDH, Dpq, Hpq, NAO**2)
                                     if (NSpins == 1) then
                                           EHFTwoEl = EHFTwoEl + TWO * (ONE/TWO) * TrDJK
-                                          EHbare = EHbare + TWO * (TrDV + TrDT)
+                                          EHbare = EHbare + TWO * TrDH
                                     else
                                           EHFTwoEl = EHFTwoEl + (ONE/TWO) * TrDJK
-                                          EHbare = EHbare + TrDV + TrDT
+                                          EHbare = EHbare + TrDH
                                     end if
                               end associate
-                              Fpq(:, :, s) = Fpq(:, :, s) + Tpq(:, :)
-                              Fpq(:, :, s) = Fpq(:, :, s) + Vpq(:, :)
+                              Fpq(:, :, s) = Fpq(:, :, s) + Hpq(:, :)
                         end if
                   end do
             end associate

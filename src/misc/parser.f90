@@ -3905,8 +3905,6 @@ contains
          else
             SCFParams%non_scf_omega = a
          end if
-       case ("SLATERVXC")
-         SCFParams%SlaterVxc = .true.
       end select
    end subroutine read_block_NonSCF
 

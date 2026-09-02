@@ -1,0 +1,28 @@
+! reference values from pyscf
+! HF single point AB (a.u.):           -305.10522756
+! dRPA single point AB (a.u.):           -0.64053762
+! HF single point A (a.u.):            -152.55434532
+! dRPA single point A (a.u.):            -0.31913203
+! HF single point B (a.u.):            -152.55434532
+! dRPA single point B (a.u.):            -0.31913203
+! HF interaction A...B (kcal/mol):          2.173112
+! dRPA interaction A...B (kcal/mol):       -1.426680
+
+basis def2-tzvpd
+
+scf
+ xcfunc hf
+end
+
+rpa
+ TheoryLevel RPA+ph
+ accuracy ludicrous
+end
+
+xyz
+1 1
+Hg 0.0 0.0 0.0
+Hg 0.0 0.0 3.63
+end
+
+

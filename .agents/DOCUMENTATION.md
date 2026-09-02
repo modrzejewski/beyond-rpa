@@ -10,6 +10,7 @@
   !
   ```
 * **Abstraction:** In documentation, abstract from technical details, formats, or technologies that may change.
+* **Capitalization:** The word "hamiltonian" should not be capitalized in documentation or comments.
 
 ## Type Definitions
 

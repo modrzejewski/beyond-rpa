@@ -114,10 +114,11 @@ module scf_definitions
             !
             real(F64) :: EdispDFT
             !
-            ! Bare-nuclei Hamiltonian: kinetic energy operator + electron-nuclei potential
-            ! (Cartesian AO basis)
+            ! One-electron hamiltonian matrix (kinetic energy + electron-nuclei potential
+            ! and pseudopotential matrix if ECP is enabled).
+            ! Spherical AO basis. Both upper and lower triangles are stored.
             !
-            real(F64), dimension(:, :), allocatable :: Hbare_cao
+            real(F64), dimension(:, :), allocatable :: H_sao
             !
             ! Density matrix (Cartesian AO basis) obtained from the digonalization
             ! of the converged Kohn-Sham/Fock matrix
@@ -210,8 +211,6 @@ module scf_definitions
             ! ----------------------------------------------------
             integer :: AsympVxc = AC_NONE
             real(F64) :: AsympVxcOmega = 0.15_F64
-            logical :: SlaterVxc = .false.
-            logical :: non_scf_SlaterVxc = .false.
             ! ----------------------------------------------------
             !            AUXILIARY NUMERICAL INTEGRALS
             ! ----------------------------------------------------
