@@ -26,7 +26,8 @@ TOLERANCE_INTERACTION_LUDICROUS = 5.0e-5  # kcal/mol
 TOLERANCE_EXCEPTIONS = {
     # The poorer numerical accuracy for cd2 is well explained by the numerical error
     # estimates provided at the end of the RPA+ph output (e.g., errors due to the T2
-    # diagonalization threshold and other numerical approximations).
+    # diagonalization threshold and other numerical approximations). This means that
+    # the user is aware of the sensitivity of this system to numerical thresholds.
     "cd2_avdz-pp_accuracy_default.inp": 1.3e-3,
     "hg2_avdz-pp_accuracy_ludicrous.inp": 6.0e-5,
     "hg2_avtz-pp_accuracy_ludicrous.inp": 6.0e-5,
@@ -114,6 +115,15 @@ def test_ecp(filepath: Path, record_property):
         print("FAILED")
         raise
 
+def _display_tolerances():
+    print("\nTolerances:")
+    print(f"  interaction energy (default accuracy):   {TOLERANCE_INTERACTION_DEFAULT:.1e} kcal/mol")
+    print(f"  interaction energy (ludicrous accuracy): {TOLERANCE_INTERACTION_LUDICROUS:.1e} kcal/mol")
+    if TOLERANCE_EXCEPTIONS:
+        print("  exceptions:")
+        for fname, tol in TOLERANCE_EXCEPTIONS.items():
+            print(f"    - {fname}: {tol:.1e} kcal/mol")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ECP tests.")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use")
@@ -122,6 +132,9 @@ if __name__ == "__main__":
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
     
     print(f"\nNumber of threads: {nthreads}")
+    
+    _display_tolerances()
+    
     print("\n" + "." * 105)
     print(f"{'Test File':<35} | {'Term':<4} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | {'Status'}")
     print("." * 105)
