@@ -1,12 +1,12 @@
 ! reference values from pyscf
 ! HF single point AB (a.u.):           -333.67431600
-! MP2 single point AB (a.u.):            -0.95335122
+! dRPA single point AB (a.u.):           -0.94057232
 ! HF single point A (a.u.):            -166.83876656
-! MP2 single point A (a.u.):             -0.47384357
+! dRPA single point A (a.u.):            -0.46879378
 ! HF single point B (a.u.):            -166.83876656
-! MP2 single point B (a.u.):             -0.47384357
+! dRPA single point B (a.u.):            -0.46879378
 ! HF interaction A...B (kcal/mol):          2.018775
-! MP2 interaction A...B (kcal/mol):        -3.554261
+! dRPA interaction A...B (kcal/mol):       -1.872961
 
 basis aug-cc-pVTZ-PP
 

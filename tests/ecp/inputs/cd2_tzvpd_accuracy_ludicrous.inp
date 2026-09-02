@@ -1,12 +1,12 @@
 ! reference values from pyscf
 ! HF single point AB (a.u.):           -333.76457488
-! MP2 single point AB (a.u.):            -0.66550360
+! dRPA single point AB (a.u.):           -0.65320212
 ! HF single point A (a.u.):            -166.88395991
-! MP2 single point A (a.u.):             -0.33080894
+! dRPA single point A (a.u.):            -0.32566361
 ! HF single point B (a.u.):            -166.88395991
-! MP2 single point B (a.u.):             -0.33080894
+! dRPA single point B (a.u.):            -0.32566361
 ! HF interaction A...B (kcal/mol):          2.098989
-! MP2 interaction A...B (kcal/mol):        -2.438327
+! dRPA interaction A...B (kcal/mol):       -1.176513
 
 basis def2-tzvpd
 

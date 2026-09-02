@@ -26,7 +26,7 @@ TOLERANCE_INTERACTION_LUDICROUS = 5.0e-5  # kcal/mol
 CALC_KEY_HF = "Eint(HF)"
 CALC_KEY_1RDM_LIN = "Eint(1-RDM linear)"
 CALC_KEY_1RDM_QUAD = "Eint(1-RDM quadratic)"
-CALC_KEY_MP2 = "Eint(total MP2)"
+CALC_KEY_DRPA = "Eint(direct ring)"
 
 def get_input_files():
     files = list(INPUTS_DIR.glob("*.inp"))
@@ -39,8 +39,8 @@ def extract_ref_energies(filepath: Path) -> dict:
         for line in f:
             if "! HF interaction A...B (kcal/mol):" in line:
                 energies["HF"] = float(line.split(":")[1].strip())
-            elif "! MP2 interaction A...B (kcal/mol):" in line:
-                energies["MP2"] = float(line.split(":")[1].strip())
+            elif "! dRPA interaction A...B (kcal/mol):" in line:
+                energies["dRPA"] = float(line.split(":")[1].strip())
     return energies
 
 FLOAT_REGEX = r"([-+]?\d*\.\d+[Ee][-+]?\d+|[-+]?\d*\.\d+)"
@@ -59,10 +59,10 @@ def extract_calc_energies(text: str) -> dict:
         e_1rdm_quad = float(match_1rdm_quad.group(1))
         energies["HF"] = e_hf + e_1rdm_lin + e_1rdm_quad
         
-    # MP2 component
-    match_mp2 = re.search(r"^\s*" + re.escape(CALC_KEY_MP2) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
-    if match_mp2:
-        energies["MP2"] = float(match_mp2.group(1))
+    # dRPA component
+    match_drpa = re.search(r"^\s*" + re.escape(CALC_KEY_DRPA) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    if match_drpa:
+        energies["dRPA"] = float(match_drpa.group(1))
         
     return energies
 
@@ -77,7 +77,7 @@ def test_ecp(filepath: Path, record_property):
     
     try:
         ref_energies = extract_ref_energies(filepath)
-        if "HF" not in ref_energies or "MP2" not in ref_energies:
+        if "HF" not in ref_energies or "dRPA" not in ref_energies:
             pytest.skip(f"Reference energies missing in {filepath.name}")
             
         ncores = utils.get_thread_count()
@@ -88,7 +88,7 @@ def test_ecp(filepath: Path, record_property):
         
         tol = get_tolerance(filepath)
         
-        for key in ["HF", "MP2"]:
+        for key in ["HF", "dRPA"]:
             assert key in calc_energies, f"Calculated energy for {key} missing from output."
             dev = abs(calc_energies[key] - ref_energies[key])
             
@@ -145,7 +145,7 @@ if __name__ == "__main__":
             calc_energies = extract_calc_energies(result.stdout)
             tol = get_tolerance(filepath)
             
-            for key in ["HF", "MP2"]:
+            for key in ["HF", "dRPA"]:
                 ref_val = ref_energies.get(key)
                 calc_val = calc_energies.get(key)
                 
