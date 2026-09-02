@@ -166,6 +166,11 @@ def test_point_charges(test_case: dict, record_property):
         print("FAILED")
         raise
 
+def _display_tolerances():
+    print("\nTolerances:")
+    print(f"  interaction energy:  {TOLERANCE_INTERACTION:.1e} kcal/mol")
+    print(f"  single point energy: {TOLERANCE_SINGLE_POINT:.1e} a.u.")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run QM/MM Point Charges tests.")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
@@ -174,8 +179,8 @@ if __name__ == "__main__":
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
 
     print(f"\nNumber of threads: {nthreads}")
-    print(f"\nTolerance (interaction energy): {TOLERANCE_INTERACTION:.1e} kcal/mol")
-    print(f"Tolerance (single point energy): {TOLERANCE_SINGLE_POINT:.1e} a.u.")
+    
+    _display_tolerances()
     
     print("\n" + "." * 100)
     print(f"{'Property':<25} | {'Unit':<10} | {'Ref':>15} | {'Calc':>15} | {'Deviation':>12} | {'Status'}")
