@@ -908,16 +908,94 @@ contains
       end subroutine sys_Read_Embedding
 
 
+      subroutine sys_ExtractKeyVal_(val, i1, i2, s, s_upper, key)
+            !
+            ! Extract value and boundaries from KEY(VAL) within string S.
+            !
+            character(:), allocatable, intent(out) :: val
+            integer, intent(out)                   :: i1
+            integer, intent(out)                   :: i2
+            character(*), intent(in)               :: s
+            character(*), intent(in)               :: s_upper
+            character(*), intent(in)               :: key
+
+            integer :: k2
+            character(:), allocatable :: key_tag
+
+            val = ""
+            i1 = 0
+            i2 = 0
+
+            key_tag = key // "("
+
+            i1 = index(s_upper, key_tag)
+            if (i1 == 0) return
+
+            k2 = index(s(i1:), ")")
+            if (k2 > 0) then
+                  i2 = i1 + k2 - 1
+            else
+                  call msg("Missing closing ')' for " // key &
+                        // " in EMBEDDING line: " // trim(s), MSG_ERROR)
+                  error stop
+            end if
+
+            val = trim(adjustl(s(i1 + len(key_tag) : i2 - 1)))
+            if (len_trim(val) == 0) then
+                  call msg("Empty " // key // " specification in EMBEDDING line: " &
+                        // trim(s), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine sys_ExtractKeyVal_
+
+
+      subroutine sys_SplitEmbeddingLine(QPart, ECPPart, HasECP, CoordsPart, line)
+            !
+            ! Split an embedding line into charge, optional pseudopotential, and coordinates parts.
+            !
+            character(:), allocatable, intent(out) :: QPart
+            character(:), allocatable, intent(out) :: ECPPart
+            logical, intent(out)                   :: HasECP
+            character(:), allocatable, intent(out) :: CoordsPart
+            character(*), intent(in)               :: line
+
+            integer :: iq1, iq2, iecp1, iecp2, last_close
+            character(:), allocatable :: line_upper
+
+            line_upper = uppercase(line)
+
+            call sys_ExtractKeyVal_(QPart, iq1, iq2, line, line_upper, "Q")
+            if (iq1 == 0) then
+                  call msg("Missing Q(charge) in EMBEDDING line: " // trim(line), MSG_ERROR)
+                  error stop
+            end if
+
+            call sys_ExtractKeyVal_(ECPPart, iecp1, iecp2, line, line_upper, "ECP")
+            HasECP = (iecp1 > 0)
+
+            if (HasECP) then
+                  last_close = max(iq2, iecp2)
+            else
+                  last_close = iq2
+            end if
+
+            CoordsPart = adjustl(line(last_close+1:))
+            if (len_trim(CoordsPart) == 0) then
+                  call msg("Missing coordinates in EMBEDDING line: " // trim(line), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine sys_SplitEmbeddingLine
+
+
       subroutine sys_Read_Embedding_NextLine(System, ChargeIdx, line, Units)
             type(TSystem), intent(inout) :: System
             integer, intent(inout)       :: ChargeIdx
             character(*), intent(in)     :: line
             integer, intent(in)          :: Units
             
-            integer :: k, i1, i2
-            character(:), allocatable :: qstr, coords, line_upper
-            
-            line_upper = uppercase(line)
+            integer :: k
+            character(:), allocatable :: qstr, ecpstr, coords
+            logical :: has_ecp
             
             if (ChargeIdx == -1) then
                   ! First line of the block should be the number of charges
@@ -934,22 +1012,16 @@ contains
             else
                   if (ChargeIdx < System%NPointCharges) then
                         ChargeIdx = ChargeIdx + 1
-                        ! Expected Format: Q(charge) x y z
-                        i1 = index(line_upper, "Q(")
-                        i2 = index(line_upper, ")")
-                        if (i1 > 0 .and. i2 > i1) then
-                              qstr = line(i1+2:i2-1)
-                              coords = line(i2+1:)
-                              read(qstr, *) System%PointCharges(ChargeIdx)
-                              read(coords, *) (System%PointChargeCoords(k, ChargeIdx), k=1,3)
-                              
-                              if (Units == SYS_UNITS_ANGSTROM) then
-                                    System%PointChargeCoords(:, ChargeIdx) = tobohr(System%PointChargeCoords(:, ChargeIdx))
-                              end if
-                        else
-                              call msg("Invalid format in EMBEDDING block. " &
-                                    // "Expected Q(charge) x y z", MSG_ERROR)
-                              error stop
+                        call sys_SplitEmbeddingLine(qstr, ecpstr, has_ecp, coords, line)
+                        read(qstr, *) System%PointCharges(ChargeIdx)
+                        read(coords, *) (System%PointChargeCoords(k, ChargeIdx), k=1,3)
+                        
+                        if (Units == SYS_UNITS_ANGSTROM) then
+                              System%PointChargeCoords(:, ChargeIdx) = tobohr(System%PointChargeCoords(:, ChargeIdx))
+                        end if
+                        
+                        if (has_ecp) then
+                              call System%EmbeddingECP%Assignment%read_line(ecpstr)
                         end if
                   else
                         call msg("Inconsistent number of point charges specified " &
