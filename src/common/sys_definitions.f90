@@ -5,6 +5,7 @@ module sys_definitions
       use sort
       use display
       use io
+      use basis_definitions
       
       implicit none
       !
@@ -45,6 +46,34 @@ module sys_definitions
       integer, parameter :: SYS_REAL_ATOMS = 2
       integer, parameter :: SYS_GHOST_ATOMS = 3
 
+      type TECPParams
+            !
+            ! True if this ECP subsystem has been initialized with parameters
+            !
+            logical :: Initialized = .false.
+            !
+            ! Total number of ECP centers
+            !
+            integer :: NCenters = 0
+            !
+            ! Cartesian coordinates of ECP centers in bohr (3, NCenters)
+            !
+            real(F64), dimension(:, :), allocatable :: Coords
+            !
+            ! Physical atomic numbers of ECP centers (NCenters) used to
+            ! identify the elements (not the effective nuclear charges).
+            !
+            integer, dimension(:), allocatable :: Z
+            !
+            ! Identifier of the ECP parameter set (1:NCenters).
+            !
+            integer, dimension(:), allocatable :: PseudoParamsIdx
+            !
+            ! Pseudopotential assignment rules inherited from TBasisAssignment
+            !
+            type(TECPAssignment) :: Assignment
+      end type TECPParams
+
       type TSystem
             !
             ! Molecular or atomic system properties and configuration.
@@ -77,6 +106,11 @@ module sys_definitions
             integer :: NPointCharges = 0
             real(F64), dimension(:), allocatable :: PointCharges
             real(F64), dimension(:, :), allocatable :: PointChargeCoords
+            !
+            ! Pseudopotential parameters for quantum chemical and embedding regions
+            !
+            type(TECPParams) :: ECP
+            type(TECPParams) :: EmbeddingECP
             !
             ! Spin multiplicity of the system (1 for singlet, 2 for doublet, etc.). This 
             ! variable is updated to the active subsystem's multiplicity when sys_Init is called

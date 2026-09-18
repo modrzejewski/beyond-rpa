@@ -91,6 +91,9 @@ module basis_definitions
       generic :: assignment(=) => assign
    end type TBasisAssignment
 
+   type, extends(TBasisAssignment) :: TECPAssignment
+   end type TECPAssignment
+
    type TAOBasis
       !
       ! Gaussian atomic orbital basis set parameters and mapping arrays.
@@ -334,6 +337,7 @@ contains
       end if
    end subroutine basis_set_guess_dir
 
+
    subroutine basis_add_global_fallback(BasisAssign, Rule)
       class(TBasisAssignment), intent(inout) :: BasisAssign
       type(TBasisRule), intent(in)           :: Rule
@@ -355,7 +359,7 @@ contains
 
       call basis_ResolvePath(ResolvedRule, BasisAssign, val)
 
-      if (key == "*" .or. uppercase(key) == "BASIS") then
+      if (key == "*" .or. uppercase(key) == "BASIS" .or. uppercase(key) == "ECP") then
          ResolvedRule%id = 0
          call BasisAssign%add_global_fallback(ResolvedRule)
       else if (index(key, "-") > 0) then
@@ -715,8 +719,14 @@ contains
           case ("CRENBL")
             p = "crenbl"
             n = "CRENBL"
+          case ("SMALL-CORE-RELATIVISTIC")
+            p = "small-core-relativistic"
+            n = "small-core-relativistic"
+          case ("SMALL-CORE-SR", "SR-SMALL")
+            p = "sr-small"
+            n = "sr-small"
           case default
-            call msg("Unknown basis set", MSG_ERROR)
+            call msg("Unknown basis set or pseudopotential: " // trim(ValString), MSG_ERROR)
             error stop
          end select
 

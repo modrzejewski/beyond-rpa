@@ -1107,7 +1107,6 @@ contains
       logical :: XYZDefined, EmbeddingDefined
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
-      integer, parameter :: block_ECP = 2
       integer, parameter :: block_RhoSpher = 3
       integer, parameter :: block_RhoDiff = 4
       integer, parameter :: block_NonSCF = 5
@@ -1116,6 +1115,7 @@ contains
       integer, parameter :: block_XYZ = 8
       integer, parameter :: block_SCF = 9
       integer, parameter :: block_basis_assign = 10
+      integer, parameter :: block_ecp_assign = 11
 
       XYZDefined = .false.
       EmbeddingDefined = .false.
@@ -1135,6 +1135,8 @@ contains
 
       call BasisAssign%set_library_dir(BASISDIR)
       call BasisAssign%set_guess_dir(GUESSDIR // "electron-densities" // DIRSEP // "rohf" // DIRSEP)
+      call System%ECP%Assignment%set_library_dir(BASISDIR)
+      call System%EmbeddingECP%Assignment%set_library_dir(BASISDIR)
 
       lines: do
          linenumber = linenumber + 1
@@ -1155,8 +1157,8 @@ contains
                current_block = block_auxint
                cycle lines
             end if
-          case ("ECP")
-            current_block = block_ECP
+          case ("ECP_ASSIGNMENT")
+            current_block = block_ecp_assign
             cycle lines
           case ("RHOSPHER")
             current_block = block_RhoSpher
@@ -1204,22 +1206,8 @@ contains
             end if
          end select
 
-         if (current_block == block_ECP) then
-            if (key == "*") then
-               call read_ecp_path(ecp_path, val)
-               call ECP_PARAMS_PATH%set_default(ecp_path)
-               call SCFParams%ECPFile%set_default(ecp_path)
-            else
-               z = znumber_short(key)
-               if (z > 0) then
-                  call read_ecp_path(ecp_path, val)
-                  call ECP_PARAMS_PATH%update(ecp_path, z)
-                  call SCFParams%ECPFile%update(ecp_path, z)
-               else
-                  call msg("Unknown element specified in the ECP block", MSG_ERROR)
-                  error stop
-               end if
-            end if
+         if (current_block == block_ecp_assign) then
+            call System%ECP%Assignment%read_line(line)
          else if (current_block == block_auxint) then
             call read_block_auxint(SCFParams, line)
          else if (current_block == block_RhoSpher) then
@@ -1242,6 +1230,8 @@ contains
             select case (uppercase(key))
              case ("BASIS")
                call BasisAssign%read_line(line)
+             case ("ECP")
+               call System%ECP%Assignment%read_line(line)
              case ("F12BASIS")
                call read_F12BasisPath(line, SCFParams)
              case ("LINDEP_THRESH")
@@ -1598,24 +1588,6 @@ contains
          call sys_Read_Embedding(System, filename)
       end if
    end subroutine read_inputfile
-
-
-   subroutine read_ecp_path(path, s)
-      character(:), allocatable, intent(out) :: path
-      character(*), intent(in) :: s
-      character(:), allocatable :: a
-
-      a = uppercase(s)
-      select case (a)
-       case ("SMALL-CORE-RELATIVISTIC")
-         path = ECPDIR // "small-core-relativistic.txt"
-       case ("SMALL-CORE-SR")
-         path = ECPDIR // "sr-small.txt"
-       case default
-         call msg("Unknown pseudopotential requested", MSG_ERROR)
-         error stop
-      end select
-   end subroutine read_ecp_path
 
 
    subroutine read_F12BasisPath(line, SCFParams)
