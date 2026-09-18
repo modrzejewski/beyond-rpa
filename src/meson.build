@@ -23,6 +23,7 @@ sources = files(
   'common/periodic.f90',
   'common/uniopt.f90',
   'basis/basis_definitions.f90',
+  'integrals/ECP/ecp_definitions.f90',
   'common/sys_definitions.f90',
   'linear-algebra/blas1.f90',
   'linear-algebra/blas2.f90',
