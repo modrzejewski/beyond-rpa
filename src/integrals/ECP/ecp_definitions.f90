@@ -8,6 +8,40 @@ module ecp_definitions
 
       implicit none
 
+      type TECPConfig
+            !
+            ! Pseudopotential configuration for an atom or an element
+            ! ---
+            !
+            ! Atomic number
+            !
+            integer :: Z
+            !
+            ! Path to the text file with pseudopotential parameters
+            !
+            character(:), allocatable :: PathToParams
+            !
+            ! Number of core electrons represented by the pseudopotential
+            !
+            integer :: NCoreEl
+            !
+            ! Maximum angular momentum of the pseudopotential projector
+            !
+            integer :: Lmax
+            !
+            ! Total number of Gaussian functions
+            !
+            integer :: NGauss
+            !
+            ! True if spin-orbit pseudopotential parameters are available
+            !
+            logical :: SpinOrbit
+            !
+            ! Literature citation for the pseudopotential
+            !
+            character(:), allocatable :: Citation
+      end type TECPConfig
+
 contains
       
       subroutine pp_queryecp(basis_path, element, lmax, ngauss, ncoreel, spin_orbit, citation)

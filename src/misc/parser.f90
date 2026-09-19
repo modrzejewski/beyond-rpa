@@ -1230,8 +1230,6 @@ contains
             select case (uppercase(key))
              case ("BASIS")
                call BasisAssign%read_line(line)
-             case ("ECP")
-               call System%ECP%Assignment%read_line(line)
              case ("F12BASIS")
                call read_F12BasisPath(line, SCFParams)
              case ("LINDEP_THRESH")
