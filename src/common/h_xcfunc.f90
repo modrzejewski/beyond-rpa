@@ -686,91 +686,173 @@ contains
                   c = x
             case (XCF_C_PBE)
                   x = "Hartree-Fock"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_PBE)
-                  x = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
                   c = x
             case (XCF_X_PBE)
-                  x = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
                   c = "No correlation"
             case (XCF_XC_PBE0)
-                  x = "PBE0 [J. Chem. Phys. 110, 5029 (1999); doi: 10.1063/1.478401]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "PBE0 " // &
+                      "[J. Chem. Phys. 110, 5029 (1999); " // &
+                      "doi: 10.1063/1.478401]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_MVS)
-                  x = "MVS [PNAS 112, 685 (2015); doi: 10.1073/pnas.1423145112]"
-                  c = "MVS [PNAS 112, 685 (2015); doi: 10.1073/pnas.1423145112]"
+                  x = "MVS " // &
+                      "[PNAS 112, 685 (2015); " // &
+                      "doi: 10.1073/pnas.1423145112]"
+                  c = "MVS " // &
+                      "[PNAS 112, 685 (2015); " // &
+                      "doi: 10.1073/pnas.1423145112]"
             case (XCF_XC_MVSh)
-                  x = "MVSh [PNAS 112, 685 (2015); doi: 10.1073/pnas.1423145112]"
-                  c = "MVS [PNAS 112, 685 (2015); doi: 10.1073/pnas.1423145112]"
+                  x = "MVSh " // &
+                      "[PNAS 112, 685 (2015); " // &
+                      "doi: 10.1073/pnas.1423145112]"
+                  c = "MVS " // &
+                      "[PNAS 112, 685 (2015); " // &
+                      "doi: 10.1073/pnas.1423145112]"
             case (XCF_XC_MCSv2)
                   x = "EC-B88 [Modrzejewski et al., unpublished]"
-                  c = "MCSv2 correlation (AC-D) + VcInf(TPSS) [Modrzejewski et al., unpublished]"
+                  c = "MCSv2 correlation (AC-D) + VcInf(TPSS) " // &
+                      "[Modrzejewski et al., unpublished]"
             case (XCF_XC_MCSv3)
                   x = "EC-PBEsol [Modrzejewski et al., unpublished]"
-                  c = "MCS correlation (AC-D) + VcInf(TPSS) [Modrzejewski et al., unpublished]"
+                  c = "MCS correlation (AC-D) + VcInf(TPSS) " // &
+                      "[Modrzejewski et al., unpublished]"
             case (XCF_XC_EC_PBEsol)
-                  x = "LC-PBEsol [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "PBEsol [Phys. Rev. Lett. 100, 136406 (2008); doi: 10.1103/PhysRevLett.100.136406]"
+                  x = "LC-PBEsol " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "PBEsol " // &
+                      "[Phys. Rev. Lett. 100, 136406 (2008); " // &
+                      "doi: 10.1103/PhysRevLett.100.136406]"
             case (XCF_XC_EC_PBE)
-                  x = "LC-PBE [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "LC-PBE " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_SH_PBE)
-                  x = "PBE screened hybrid [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "PBE screened hybrid " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_EC_PBE_TPSS)
-                  x = "LC-PBE [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "TPSS [Phys. Rev. Lett. 91, 146401 (2003); doi: 10.1103/PhysRevLett.91.146401]"
+                  x = "LC-PBE " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "TPSS " // &
+                      "[Phys. Rev. Lett. 91, 146401 (2003); " // &
+                      "doi: 10.1103/PhysRevLett.91.146401]"
             case (XCF_XC_EC_MVS)
-                  x = "LC-MVS [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "MVS [PNAS 112, 685 (2015); doi: 10.1073/pnas.1423145112]"
+                  x = "LC-MVS " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "MVS " // &
+                      "[PNAS 112, 685 (2015); " // &
+                      "doi: 10.1073/pnas.1423145112]"
             case (XCF_XC_EC_revTPSS)
-                  x = "LC-revTPSS [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "revTPSS [Phys. Rev. Lett. 103, 026403 (2009); doi: 10.1103/PhysRevLett.103.026403]"
+                  x = "LC-revTPSS " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "revTPSS " // &
+                      "[Phys. Rev. Lett. 103, 026403 (2009); " // &
+                      "doi: 10.1103/PhysRevLett.103.026403]"
             case (XCF_XC_EC_TPSS)
-                  x = "LC-TPSS [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "TPSS [Phys. Rev. Lett. 91, 146401 (2003); doi: 10.1103/PhysRevLett.91.146401]"
+                  x = "LC-TPSS " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "TPSS " // &
+                      "[Phys. Rev. Lett. 91, 146401 (2003); " // &
+                      "doi: 10.1103/PhysRevLett.91.146401]"
             case (XCF_XC_TPSS)
-                  x = "TPSS [Phys. Rev. Lett. 91, 146401 (2003); doi: 10.1103/PhysRevLett.91.146401]"
+                  x = "TPSS " // &
+                      "[Phys. Rev. Lett. 91, 146401 (2003); " // &
+                      "doi: 10.1103/PhysRevLett.91.146401]"
                   c = x
             case (XCF_XC_SCAN)
-                  x = "SCAN [Phys. Rev. Lett. 115, 036402 (2015); doi: 10.1103/PhysRevLett.115.036402]"
+                  x = "SCAN " // &
+                      "[Phys. Rev. Lett. 115, 036402 (2015); " // &
+                      "doi: 10.1103/PhysRevLett.115.036402]"
                   c = x
             case (XCF_XC_SCAN0)
-                  x = "SCAN0 [J. Chem. Phys. 144, 044114 (2016); doi: 10.1063/1.4940734]"
-                  c = "SCAN [Phys. Rev. Lett. 115, 036402 (2015); doi: 10.1103/PhysRevLett.115.036402]"
+                  x = "SCAN0 " // &
+                      "[J. Chem. Phys. 144, 044114 (2016); " // &
+                      "doi: 10.1063/1.4940734]"
+                  c = "SCAN " // &
+                      "[Phys. Rev. Lett. 115, 036402 (2015); " // &
+                      "doi: 10.1103/PhysRevLett.115.036402]"
             case (XCF_XC_LC_SCAN)
                   x = "LC-SCAN [Unpublished]"
-                  c = "SCAN [Phys. Rev. Lett. 115, 036402 (2015); doi: 10.1103/PhysRevLett.115.036402]"
+                  c = "SCAN " // &
+                      "[Phys. Rev. Lett. 115, 036402 (2015); " // &
+                      "doi: 10.1103/PhysRevLett.115.036402]"
             case (XCF_XC_SH_SCAN)
                   x = "SH-SCAN (screened hybrid) [Unpublished]"
-                  c = "SCAN [Phys. Rev. Lett. 115, 036402 (2015); doi: 10.1103/PhysRevLett.115.036402]"
+                  c = "SCAN " // &
+                      "[Phys. Rev. Lett. 115, 036402 (2015); " // &
+                      "doi: 10.1103/PhysRevLett.115.036402]"
             case (XCF_XC_LC_LDATPSS)
                   x = "LC-LDA [Unpublished]"
-                  c = "TPSS [Phys. Rev. Lett. 91, 146401 (2003); doi: 10.1103/PhysRevLett.91.146401]"
+                  c = "TPSS " // &
+                      "[Phys. Rev. Lett. 91, 146401 (2003); " // &
+                      "doi: 10.1103/PhysRevLett.91.146401]"
             case (XCF_XC_LC_LDA)
                   x = "LC-LDA [Unpublished]"
                   c = "LDA"
             case (XCF_XC_revTPSS)
-                  x = "revTPSS [Phys. Rev. Lett. 103, 026403 (2009); doi: 10.1103/PhysRevLett.103.026403]"
+                  x = "revTPSS " // &
+                      "[Phys. Rev. Lett. 103, 026403 (2009); " // &
+                      "doi: 10.1103/PhysRevLett.103.026403]"
                   c = x
             case (XCF_X_EC_TPSS)
-                  x = "EC-TPSS [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
+                  x = "EC-TPSS " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
                   c = "No correlation"
             case (XCF_X_EC_B88)
-                  x = "EC-B88 [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
+                  x = "EC-B88 " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
                   c = "No correlation"
             case (XCF_X_B88)
-                  x = "B88 [Phys. Rev. A 6, 3098 (1988); doi: 10.1103/PhysRevA.38.3098]"
+                  x = "B88 " // &
+                      "[Phys. Rev. A 6, 3098 (1988); " // &
+                      "doi: 10.1103/PhysRevA.38.3098]"
                   c = "No correlation"
             case (XCF_XC_BLYP)
-                  x = "B88 [Phys. Rev. A 6, 3098 (1988); doi: 10.1103/PhysRevA.38.3098]"
-                  c = "LYP [Chem. Phys. Lett. 157, 200 (1989); doi: 10.1016/0009-2614(89)87234-3]"
+                  x = "B88 " // &
+                      "[Phys. Rev. A 6, 3098 (1988); " // &
+                      "doi: 10.1103/PhysRevA.38.3098]"
+                  c = "LYP " // &
+                      "[Chem. Phys. Lett. 157, 200 (1989); " // &
+                      "doi: 10.1016/0009-2614(89)87234-3]"
             case (XCF_XC_B88OPT_LYP)
-                  x = "optB88 [J. Phys.: Condens. Matter 22, 022201 (2010); doi: 10.1088/0953-8984/22/2/022201]"
-                  c = "LYP [Chem. Phys. Lett. 157, 200 (1989); doi: 10.1016/0009-2614(89)87234-3]"
+                  x = "optB88 " // &
+                      "[J. Phys.: Condens. Matter 22, 022201 (2010); " // &
+                      "doi: 10.1088/0953-8984/22/2/022201]"
+                  c = "LYP " // &
+                      "[Chem. Phys. Lett. 157, 200 (1989); " // &
+                      "doi: 10.1016/0009-2614(89)87234-3]"
             case (XCF_XC_EC_BLYP)
-                  x = "EC-B88 [J. Chem. Theory Comput. 12, 3662 (2016); doi: 10.1021/acs.jctc.6b00406]"
-                  c = "LYP [Chem. Phys. Lett. 157, 200 (1989); doi: 10.1016/0009-2614(89)87234-3]"
+                  x = "EC-B88 " // &
+                      "[J. Chem. Theory Comput. 12, 3662 (2016); " // &
+                      "doi: 10.1021/acs.jctc.6b00406]"
+                  c = "LYP " // &
+                      "[Chem. Phys. Lett. 157, 200 (1989); " // &
+                      "doi: 10.1016/0009-2614(89)87234-3]"
             case (XCF_XC_HCTH_93)
                   x = "HCTH-93 [J. Chem. Phys. 109, 6264 (1998)]"
                   c = x
@@ -788,47 +870,94 @@ contains
                   c = "Becke 94 [Int. J. Quantum Chem. Symp. 28, 625 (1994)]"
 
             case (XCF_XC_PW86PBE)
-                  x = "Perdew-Wang 1986 [Phys. Rev. B 33, 8800(R) (1986); doi: 10.1103/PhysRevB.33.8800]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "Perdew-Wang 1986 " // &
+                      "[Phys. Rev. B 33, 8800(R) (1986); " // &
+                      "doi: 10.1103/PhysRevB.33.8800]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_RPW86PBE)
-                  x = "Refitted Perdew-Wang 1986 [J. Chem. Theory Comput. 5, 2574 (2009); doi: 10.1021/ct900365q]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "Refitted Perdew-Wang 1986 " // &
+                      "[J. Chem. Theory Comput. 5, 2574 (2009); " // &
+                      "doi: 10.1021/ct900365q]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_HJS_PBE)
-                  x = "Henderson-Janesko-Scuseria wPBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "Henderson-Janesko-Scuseria wPBE " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_SH_HJS_PBE)
-                  x = "Screened hybrid based on the HJS exchange hole for PBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "Screened hybrid based on the HJS exchange hole for PBE " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
             case (XCF_XC_HJS_PBETPSS)
-                  x = "Henderson-Janesko-Scuseria wPBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "TPSS [Phys. Rev. Lett. 91, 146401 (2003); doi: 10.1103/PhysRevLett.91.146401]"
+                  x = "Henderson-Janesko-Scuseria wPBE " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "TPSS " // &
+                      "[Phys. Rev. Lett. 91, 146401 (2003); " // &
+                      "doi: 10.1103/PhysRevLett.91.146401]"
             case (XCF_XC_HJS_BLYP)
-                  x = "Henderson-Janesko-Scuseria wB88 [J. Chem. Theory Comput. 5, 754 (2009); doi: 10.1021/ct800530u]"
-                  c = "LYP [Chem. Phys. Lett. 157, 200 (1989); doi: 10.1016/0009-2614(89)87234-3]"
+                  x = "Henderson-Janesko-Scuseria wB88 " // &
+                      "[J. Chem. Theory Comput. 5, 754 (2009); " // &
+                      "doi: 10.1021/ct800530u]"
+                  c = "LYP " // &
+                      "[Chem. Phys. Lett. 157, 200 (1989); " // &
+                      "doi: 10.1016/0009-2614(89)87234-3]"
             case (XCF_X_HJS_B88)
-                  x = "Henderson-Janesko-Scuseria wB88 [J. Chem. Theory Comput. 5, 754 (2009); doi: 10.1021/ct800530u]"
+                  x = "Henderson-Janesko-Scuseria wB88 " // &
+                      "[J. Chem. Theory Comput. 5, 754 (2009); " // &
+                      "doi: 10.1021/ct800530u]"
                   c = "No correlation"
             case (XCF_X_HJS_PBE)
-                  x = "Henderson-Janesko-Scuseria wPBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
+                  x = "Henderson-Janesko-Scuseria wPBE " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
                   c = "No correlation"
             case (XCF_X_HJS_PBESOL)
-                  x = "Henderson-Janesko-Scuseria wPBEsol [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
+                  x = "Henderson-Janesko-Scuseria wPBEsol " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
                   c = "No correlation"
             case (XCF_XC_HJS_PBESOL)
-                  x = "Henderson-Janesko-Scuseria wPBEsol [J. Chem. Phys. 128, 194105 (2008)]"
-                  c = "PBEsol [Phys. Rev. Lett. 100, 136406 (2008); doi: 10.1103/PhysRevLett.100.136406]"
+                  x = "Henderson-Janesko-Scuseria wPBEsol " // &
+                      "[J. Chem. Phys. 128, 194105 (2008)]"
+                  c = "PBEsol " // &
+                      "[Phys. Rev. Lett. 100, 136406 (2008); " // &
+                      "doi: 10.1103/PhysRevLett.100.136406]"
             case (XCF_XC_PBESOL)
-                  x = "PBEsol [Phys. Rev. Lett. 100, 136406 (2008); doi: 10.1103/PhysRevLett.100.136406]"
+                  x = "PBEsol " // &
+                      "[Phys. Rev. Lett. 100, 136406 (2008); " // &
+                      "doi: 10.1103/PhysRevLett.100.136406]"
                   c = x
             case (XCF_XC_MCS)
-                  x = "Henderson-Janesko-Scuseria wPBEsol [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "MCS correlation [J. Chem. Theory Comput. 10, 4297 (2014); doi: 10.1021/ct500707w]"
+                  x = "Henderson-Janesko-Scuseria wPBEsol " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "MCS correlation " // &
+                      "[J. Chem. Theory Comput. 10, 4297 (2014); " // &
+                      "doi: 10.1021/ct500707w]"
             case (XCF_XC_MCSH)
-                  x = "Henderson-Janesko-Scuseria wPBEsol [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "MCS correlation [J. Chem. Theory Comput. 10, 4297 (2014); doi: 10.1021/ct500707w]"
+                  x = "Henderson-Janesko-Scuseria wPBEsol " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "MCS correlation " // &
+                      "[J. Chem. Theory Comput. 10, 4297 (2014); " // &
+                      "doi: 10.1021/ct500707w]"
             case (XCF_XC_LRCWPBEH)
-                  x = "Henderson-Janesko-Scuseria wPBE [J. Chem. Phys. 128, 194105 (2008); doi: 10.1063/1.2921797]"
-                  c = "PBE [Phys. Rev. Lett. 77, 3865 (1996); doi: 10.1103/PhysRevLett.77.3865]"
+                  x = "Henderson-Janesko-Scuseria wPBE " // &
+                      "[J. Chem. Phys. 128, 194105 (2008); " // &
+                      "doi: 10.1063/1.2921797]"
+                  c = "PBE " // &
+                      "[Phys. Rev. Lett. 77, 3865 (1996); " // &
+                      "doi: 10.1103/PhysRevLett.77.3865]"
 
             case default
                   x = "user-defined"
