@@ -770,6 +770,7 @@ contains
             ncoreel = 0
             spin_orbit = .false.
             citation = ""
+            if (len_trim(basis_path) == 0) return
             u = io_text_open(basis_path, "OLD")
             !
             ! Scroll through the text file until one of the target keys if found

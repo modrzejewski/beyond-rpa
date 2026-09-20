@@ -69,6 +69,12 @@ contains
             ncoreel = 0
             spin_orbit = .false.
             citation = ""
+            if (len_trim(basis_path) == 0) then
+                  call msg("Pseudopotential parameter file path is empty for element " // &
+                        trim(ELNAME_SHORT(element)) // &
+                        ". This is an internal error and should not happen.", MSG_ERROR)
+                  error stop
+            end if
             u = io_text_open(basis_path, "OLD")
             !
             ! Scroll through the text file until one of the target keys if found
