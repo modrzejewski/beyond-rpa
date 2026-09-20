@@ -129,42 +129,6 @@ module Pseudopotential
 
 contains
 
-      subroutine pp_ZNumbers(System, ECPFile)
-            type(TSystem), intent(inout)  :: System
-            type(TStringList), intent(in) :: ECPFile
-
-            character(:), allocatable :: param_file
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount            
-            integer :: NElements
-            integer :: i, Z
-            integer :: ngauss, lmax, ncoreel
-            logical :: spin_orbit
-            character(:), allocatable :: citation
-            integer :: NGaussSum
-            integer, dimension(KNOWN_ELEMENTS) :: CoreElectrons
-
-            if (.not. allocated(System%ZNumbersECP)) allocate(System%ZNumbersECP(System%NAtoms))
-            CoreElectrons = 0
-            NGaussSum = 0
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
-            do i = 1, NElements
-                  Z = ZList(i)
-                  param_file = ECPFile%get(Z)
-                  call pp_queryecp(param_file, Z, lmax, ngauss, ncoreel, spin_orbit, citation)
-                  if (ngauss > 0) then
-                        CoreElectrons(Z) = ncoreel
-                        NGaussSum = NGaussSum + ngauss
-                  end if
-            end do
-            System%ECPCharges = (NGaussSum > 0)
-            do i = 1, System%NAtoms
-                  Z = System%ZNumbers(i)
-                  System%ZNumbersECP(i) = Z - CoreElectrons(Z)
-            end do
-      end subroutine pp_ZNumbers
-      
-
       subroutine pp_Init(AOBasis, System, ecp_path, calcgrad, PrintOutParams)
             ! --------------------------------------------------------------
             ! Initialize ECPINT module

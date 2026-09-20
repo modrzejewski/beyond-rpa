@@ -180,6 +180,9 @@ module sys_definitions
             integer, dimension(:, :), allocatable :: SortedDistancesIdx
       contains
             procedure :: create_ecp_configs => sys_CreateECPConfigs
+            procedure :: read_xyz => sys_Read_XYZ
+            procedure :: read_embedding => sys_Read_Embedding
+            procedure :: read_ecp => sys_ReadECP
       end type TSystem
 
 contains
@@ -210,8 +213,20 @@ contains
             PathToParams = Rule%PathToParams
 
             call pp_queryecp(PathToParams, Z, lmax, ngauss, ncoreel, spin_orbit, citation)
-            if (ngauss <= 0) return
-
+            if (ngauss <= 0) then
+                  !
+                  ! No pseudopotential data for the given element
+                  ! were found in the parameter file. This is a standard
+                  ! thing that happens when we check if there is any default
+                  ! pseudopotential data associated with the chosen basis
+                  ! set in the same basis set file.
+                  !
+                  AtomConfigMap(a) = SYS_NO_PSEUDOPOTENTIAL
+                  return
+            end if
+            !
+            ! Deduplicate ECP configs
+            !
             found = .false.
             do c = 1, NConfigs
                   if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
@@ -272,12 +287,23 @@ contains
                   do a = 1, NCenters
                         Z = this%EmbeddingECP%Z(a)
                         call this%EmbeddingECP%Assignment%get_atom_rule(Rule, a, Z, found)
+                        
                         if (.not. found) then
                               call msg("No pseudopotential assigned for embedding center " // str(a) // &
                                     " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
                               error stop
                         end if
+                        !
+                        ! Check for the existence of ECP data for the given center. It is
+                        ! required that the data exist.
+                        !
                         call sys_AddECPConfig_(Configs, AtomConfigMap, NConfigs, a, Z, Rule)
+                        
+                        if (AtomConfigMap(a) == SYS_NO_PSEUDOPOTENTIAL) then
+                              call msg("No pseudopotential found for embedding center " // str(a) // &
+                                    " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+                              error stop
+                        end if
                   end do
             else
                   NCenters = this%NAtoms
@@ -285,17 +311,27 @@ contains
                   AtomConfigMap = SYS_NO_PSEUDOPOTENTIAL
                   NConfigs = 0
 
-                  if (NCenters == 0 .or. .not. this%ECP%Assignment%Initialized) then
+                  if (.not. this%ECP%Assignment%Initialized) then
                         allocate(Configs(0))
                         return
                   end if
 
                   allocate(TempConfigs(NCenters))
                   do s = 1, 2
+                        !
+                        ! We skip the ghost centers because they provide only
+                        ! basis set functions, not pseudopotentials. ECPs
+                        ! on the embedding centers are handled in EmbeddingECP.
+                        !
                         do a = this%RealAtoms(1, s), this%RealAtoms(2, s)
                               Z = this%ZNumbers(a)
                               call this%ECP%Assignment%get_atom_rule(Rule, a, Z, found)
                               if (found) then
+                                    !
+                                    ! Try to extract ECP parameters from the given
+                                    ! parameter file. AtomConfigMap will keep SYS_NO_PSEUDOPOTENTIAL
+                                    ! if no data is found.
+                                    !
                                     call sys_AddECPConfig_(TempConfigs, AtomConfigMap, NConfigs, a, Z, Rule)
                               end if
                         end do
@@ -307,6 +343,43 @@ contains
                   end do
             end if
       end subroutine sys_CreateECPConfigs
+
+
+      subroutine sys_SetEffectiveCores_(this)
+            !
+            ! Set system parameters that depend on effective core potentials.
+            !
+            class(TSystem), intent(inout) :: this
+
+            integer :: a, c
+            integer :: NConfigs
+            type(TECPConfig), allocatable :: Configs(:)
+            integer, dimension(:), allocatable :: AtomConfigMap
+            integer, dimension(:), allocatable :: EffectiveCores
+
+            call this%create_ecp_configs(Configs, AtomConfigMap, NConfigs)
+
+            allocate(EffectiveCores(this%NAtoms))
+            EffectiveCores = 0
+            do a = 1, this%NAtoms
+                  c = AtomConfigMap(a)
+                  if (c /= SYS_NO_PSEUDOPOTENTIAL) then
+                        EffectiveCores(a) = Configs(c)%NCoreEl
+                  end if
+            end do
+
+            this%ECPCharges = any(EffectiveCores > 0)
+
+            if (allocated(this%ZNumbersECP)) deallocate(this%ZNumbersECP)
+            allocate(this%ZNumbersECP(this%NAtoms))
+            this%ZNumbersECP = this%ZNumbers - EffectiveCores
+
+            if (this%SubsystemKind /= SYS_NONE) then
+                  call sys_Init(this, this%SubsystemKind)
+            else
+                  call sys_Init(this, SYS_TOTAL)
+            end if
+      end subroutine sys_SetEffectiveCores_
 
 
       subroutine sys_Init(System, i)
@@ -832,11 +905,11 @@ contains
 
       
       subroutine sys_Read_XYZ(System, FilePath, Units)
-            type(TSystem), intent(out)    :: System
+            class(TSystem), intent(out)   :: System
             character(*), intent(in)      :: FilePath
             integer, optional, intent(in) :: Units
 
-            logical :: XYZDefined, ReadingXYZBlock
+            logical :: XYZDefined, XYZCompleted, InsideXYZ
             integer :: AtomIdx
             integer :: u
             character(:), allocatable :: key, val
@@ -852,7 +925,8 @@ contains
             
             u = io_text_open(FilePath, "OLD")
             XYZDefined = .false.
-            ReadingXYZBlock = .false.
+            XYZCompleted = .false.
+            InsideXYZ = .false.
             AtomIdx = -1
             lines: do
                   call io_text_readline(line, u, eof)
@@ -866,28 +940,37 @@ contains
                   key = uppercase(key)
                   if (key == "XYZ") then
                         XYZDefined = .true.
-                        ReadingXYZBlock = .true.
+                        InsideXYZ = .true.
                         cycle lines
                   else if (key == "END") then
-                        if (ReadingXYZBlock) then
-                              call sys_Init(System, SYS_TOTAL)
-                              ReadingXYZBlock = .false.
+                        if (InsideXYZ) then
+                              XYZCompleted = .true.
+                              InsideXYZ = .false.
                               exit lines
                         else
                               cycle lines
                         end if
                   else
-                        if (ReadingXYZBlock) then
+                        if (InsideXYZ) then
                               call sys_Read_XYZ_NextLine(System, AtomIdx, line, Units0)
                         end if
                   end  if
             end do lines
+            close(u)
+            
             if (.not. XYZDefined) then
                   call msg("XYZ coordinates not defined in file " // FilePath, MSG_ERROR)
                   error stop
             end if
+
+            if (XYZDefined .and. .not. XYZCompleted) then
+                  call msg("Unexpected end of file while reading xyz coordinates. " &
+                        // "Missing END keyword.", MSG_ERROR)
+                  error stop
+            end if
+            
+            call sys_Init(System, SYS_TOTAL)
             call sys_SortDistances(System)
-            close(u)
       end subroutine sys_Read_XYZ
 
 
@@ -969,10 +1052,11 @@ contains
       end subroutine sys_Read_XYZ_NextLine
 
 
-      subroutine sys_Read_Embedding(System, FilePath, Units)
-            type(TSystem), intent(inout)  :: System
-            character(*), intent(in)      :: FilePath
-            integer, optional, intent(in) :: Units
+      subroutine sys_Read_Embedding(System, FilePath, Units, LibraryDir)
+            class(TSystem), intent(inout)      :: System
+            character(*), intent(in)           :: FilePath
+            integer, optional, intent(in)      :: Units
+            character(*), optional, intent(in) :: LibraryDir
 
             logical :: EmbeddingDefined, InsideEmbedding, EmbeddingCompleted, HeaderRead
             integer :: ChargeIdx, ECPIdx
@@ -1000,6 +1084,9 @@ contains
             if (allocated(System%PointCharges)) deallocate(System%PointCharges)
             if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
             call System%EmbeddingECP%free()
+            if (present(LibraryDir)) then
+                  call System%EmbeddingECP%Assignment%set_library_dir(LibraryDir)
+            end if
 
             lines: do
                   call io_text_readline(line, u, eof)
@@ -1249,4 +1336,79 @@ contains
                   call System%EmbeddingECP%Assignment%read_line(ecpstr)
             end if
       end subroutine sys_Read_Embedding_NextLine
+
+
+      subroutine sys_ReadECP(this, FilePath, DefaultAssign)
+            !
+            ! Read pseudopotential assignments from an input file.
+            !
+            class(TSystem), intent(inout)                 :: this
+            character(*), intent(in)                      :: FilePath
+            class(TBasisAssignment), optional, intent(in) :: DefaultAssign
+
+            logical :: ECPDefined, InsideECP, ECPCompleted
+            integer :: u
+            character(:), allocatable :: key, val
+            character(:), allocatable :: line
+            logical :: eof
+
+            if (present(DefaultAssign)) then
+                  if (DefaultAssign%Initialized) then
+                        !
+                        ! By default, we are looking for the basis set parameters
+                        ! inside the files where the primary basis set is defined.
+                        ! This is the baseline that we subsequently modify by
+                        ! ECP-specific assignment of params.
+                        !
+                        this%ECP%Assignment = DefaultAssign
+                  end if
+            end if
+
+            u = io_text_open(FilePath, "OLD")
+            ECPDefined = .false.
+            InsideECP = .false.
+            ECPCompleted = .false.
+
+            lines: do
+                  call io_text_readline(line, u, eof)
+                  if (eof) exit lines
+
+                  if (isblank(line) .or. iscomment(line)) cycle lines
+
+                  call split(line, key, val)
+                  key = uppercase(key)
+
+                  if (key == "ECP_ASSIGNMENT") then
+                        ECPDefined = .true.
+                        InsideECP = .true.
+                        cycle lines
+                  else if (key == "END") then
+                        if (InsideECP) then
+                              InsideECP = .false.
+                              ECPCompleted = .true.
+                              exit lines
+                        else
+                              cycle lines
+                        end if
+                  else
+                        if (InsideECP) then
+                              call this%ECP%Assignment%read_line(line)
+                        end if
+                  end if
+            end do lines
+            close(u)
+
+            if (ECPDefined .and. .not. ECPCompleted) then
+                  call msg("Unexpected end of file while reading ECP_ASSIGNMENT block. " &
+                        // "Missing END keyword.", MSG_ERROR)
+                  error stop
+            end if
+            !
+            ! Attempt to find ECP data in all cases, even
+            ! when no custom ECP_ASSIGNMENT block if found.
+            ! In that case, we look for the ECP data in the
+            ! AO basis set files. 
+            !
+            call sys_SetEffectiveCores_(this)
+      end subroutine sys_ReadECP
 end module sys_definitions

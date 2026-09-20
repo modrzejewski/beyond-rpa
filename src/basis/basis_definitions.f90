@@ -6,7 +6,6 @@ module basis_definitions
    use io, only: io_exists, DIRSEP
 
    implicit none
-
    !
    ! Order orbital shells by their effective orbital radius
    !
