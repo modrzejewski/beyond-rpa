@@ -1082,12 +1082,8 @@ contains
             
             System%NPointCharges = 0
             if (allocated(System%PointCharges)) deallocate(System%PointCharges)
-            allocate(System%PointCharges(0))
             if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
-            allocate(System%PointChargeCoords(3, 0))
             call System%EmbeddingECP%free()
-            allocate(System%EmbeddingECP%Coords(3, 0))
-            allocate(System%EmbeddingECP%Z(0))
             if (present(LibraryDir)) then
                   call System%EmbeddingECP%Assignment%set_library_dir(LibraryDir)
             end if
@@ -1119,20 +1115,13 @@ contains
                                     call sys_Read_Embedding_Header(System%NPointCharges, &
                                           System%EmbeddingECP%NEmbCenters, line)
 
-                                    if (allocated(System%PointCharges)) deallocate(System%PointCharges)
                                     allocate(System%PointCharges(System%NPointCharges))
-                                    if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
                                     allocate(System%PointChargeCoords(3, System%NPointCharges))
 
-                                    if (allocated(System%EmbeddingECP%Coords)) deallocate(System%EmbeddingECP%Coords)
-                                    if (allocated(System%EmbeddingECP%Z)) deallocate(System%EmbeddingECP%Z)
                                     if (System%EmbeddingECP%NEmbCenters > 0) then
                                           allocate(System%EmbeddingECP%Coords(3, System%EmbeddingECP%NEmbCenters))
                                           allocate(System%EmbeddingECP%Z(System%EmbeddingECP%NEmbCenters))
                                           System%EmbeddingECP%Initialized = .true.
-                                    else
-                                          allocate(System%EmbeddingECP%Coords(3, 0))
-                                          allocate(System%EmbeddingECP%Z(0))
                                     end if
 
                                     HeaderRead = .true.

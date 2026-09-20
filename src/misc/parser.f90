@@ -1099,7 +1099,7 @@ contains
       character(:), allocatable :: key, val
       integer :: u, linenumber, stat
       integer :: current_block
-      logical :: XYZDefined, EmbeddingDefined
+      logical :: XYZDefined
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_RhoSpher = 3
@@ -1113,7 +1113,6 @@ contains
       integer, parameter :: block_ecp_assign = 11
 
       XYZDefined = .false.
-      EmbeddingDefined = .false.
 
       open(newunit=u, file=filename, status="old", &
          access="sequential", position="rewind")
@@ -1162,7 +1161,6 @@ contains
             current_block = block_NonSCF
             cycle lines
           case ("EMBEDDING")
-            EmbeddingDefined = .true.
             current_block = block_embedding
             cycle lines
           case ("RPA")
@@ -1516,12 +1514,10 @@ contains
          FilePath=filename, &
          DefaultAssign=BasisAssign &
          )
-      if (EmbeddingDefined) then
-         call System%read_embedding( &
-            FilePath=filename, &
-            LibraryDir=BASISDIR & ! default library dir for ECPs on embedding atoms
-            )
-      end if
+      call System%read_embedding( &
+         FilePath=filename, &
+         LibraryDir=BASISDIR & ! default library dir for ECPs on embedding atoms
+         )
    end subroutine read_inputfile
 
 
