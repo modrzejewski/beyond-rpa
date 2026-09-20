@@ -142,8 +142,8 @@ module PseudopotentialData
       ! --------------------------------------------------------
       logical                                     :: ECP_ENABLED = .false.
       logical                                     :: ECP_SPIN_ORBIT = .false.
-      integer                                     :: ECP_NELEMENTS
-      integer, dimension(KNOWN_ELEMENTS)          :: ECP_IELEMENT
+      integer                                     :: ECP_NCONFIGS
+      integer, dimension(:), allocatable          :: ECP_CONFIG_MAP
       integer, dimension(:), allocatable          :: ECP_K0
       integer, dimension(:), allocatable          :: ECP_LMAX
       integer, dimension(:, :), allocatable       :: ECP_NGAUSS

@@ -26,7 +26,6 @@ module real_scf
    use thc_definitions
    use TwoStepCholesky_definitions
    use OneElectronInts
-   use Pseudopotential, only : pp_V
    use Multipoles
 !$ use omp_lib
 
@@ -950,7 +949,7 @@ contains
    subroutine scf_ConvergeOrbitals(Rho_cao, OrbEnergies, Converged, EtotDFT, EelDFT, ExcDFT, &
       Noao, Ehomo, Elumo, H_sao, C_oao, MOBasisVecsCart, MOBasisVecsSpher, NVirt, AUXOut, &
       XCModel, NonSCF, NOcc, LinDepThresh, Enucl, MaxRhoDiff, MaxOrbGrad, MaxNIters, &
-      ThreshFockJK, AUXIn, AOBasis, System, ECPFile, GridKind, GridPruning, ERI_Algorithm, &
+      ThreshFockJK, AUXIn, AOBasis, System, GridKind, GridPruning, ERI_Algorithm, &
       MaxBufferDimMB, TargetBlockDim, CholeskyVecs, CholeskyBasis, &
       THCGrid)
       !
@@ -983,7 +982,6 @@ contains
       real(F64), dimension(:, :), intent(in)                    :: AUXIn
       type(TAOBasis), intent(in)                                :: AOBasis
       type(TSystem), intent(in)                                 :: System
-      type(TStringList), intent(in)                             :: ECPFile
       integer, intent(in)                                       :: GridKind
       logical, intent(in)                                       :: GridPruning
       integer, intent(in)                                       :: ERI_Algorithm
@@ -1091,7 +1089,7 @@ contains
       ! and nuclei-electron attraction
       !
       call ints1e_OverlapMatrix(S_cao, AOBasis)
-      call ints1e_H(H_sao, AOBasis, System, ECPFile)
+      call ints1e_H(H_sao, AOBasis, System)
       !
       ! Compute the orthogonal basis vectors.
       ! Remove linear dependencies and transform vectors
@@ -1594,7 +1592,6 @@ contains
                MaxRhoDiff, MaxOrbGrad, MaxNIters, &
                SCFParams%ThreshFockJK, &
                AUXIn, AOBasis, System, &
-               SCFParams%ECPFile, &
                SCFParams%GridKind, &
                SCFParams%GridPruning, &
                SCFParams%ERI_Algorithm, &
@@ -1627,7 +1624,6 @@ contains
                MaxRhoDiff, MaxOrbGrad, MaxNIters, &
                SCFParams%ThreshFockJK, &
                AUXIn, AOBasis, System, &
-               SCFParams%ECPFile, &
                SCFParams%GridKind, &
                SCFParams%GridPruning, &
                SCFParams%ERI_Algorithm, &
@@ -1657,7 +1653,6 @@ contains
                MaxRhoDiff, MaxOrbGrad, MaxNIters, &
                SCFParams%ThreshFockJK, &
                AUXIn, AOBasis, System, &
-               SCFParams%ECPFile, &
                SCFParams%GridKind, &
                SCFParams%GridPruning, &
                SCFParams%ERI_Algorithm &
