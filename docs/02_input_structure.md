@@ -146,7 +146,7 @@ end
 
 QM/MM embedding with point charges is configured using the `embedding` block. The block specifies the total number of point charges followed by a list defining their charge and XYZ coordinates.
 
-* **Number of charges:** A single integer indicating the total number of point charges in the environment.
+* **Number of charges:** The keyword `point_charges({N})`, where `{N}` is the total number of point charges in the environment.
 * **Charge definition:** Each point charge is specified on a new line using the format `Q({charge}) {x} {y} {z}`, where `{charge}` is the partial charge, and `{x}`, `{y}`, `{z}` are its spatial coordinates in Angstroms.
 
 Example: Water dimer with 16 point charges computed at the RPA+ph level of theory.
@@ -172,7 +172,7 @@ H     -1.777037     0.777638    -0.304264
 end
 
 embedding
-16
+point_charges(16)
 Q(0.1) 4.12 -3.21 2.55
 Q(-0.1) -4.55 2.11 -3.1
 Q(0.1) 3.05 4.44 -2.15
@@ -191,3 +191,37 @@ Q(0.1) 0.0 0.0 6.0
 Q(-0.1) 0.0 0.0 -6.0
 end
 ```
+
+## Embedding with Point Charges and ECPs
+
+Some embedding centers (e.g., capped bond or core-region atoms) may additionally carry an effective core potential (ECP) that acts on the QM wavefunction. This extends the plain point-charge embedding described above.
+
+**Header line** — append `ecp_centers({M})` to declare how many of the `{N}` point charges also carry an ECP:
+
+```text
+point_charges({N}) ecp_centers({M})
+```
+
+`{M}` must satisfy `0 < M ≤ N`. Any of the `{N}` charge lines may carry an `ECP(...)` specification; exactly `{M}` of them must do so.
+
+**Charge line with ECP** — insert `ECP({element} {params_name})` between the charge and the coordinates:
+
+```text
+Q({charge}) ECP({element} {params_name}) {x} {y} {z}
+```
+
+* `{element}` — chemical symbol of the capped atom (used to look up the nuclear charge).
+* `{params_name}` — either a library pseudopotential name (resolved from the `basis-sets/` directory) or `file {path}` to use a custom file, where `{path}` is relative to the working directory.
+
+Example: Three embedding centers carry an ECP — two Cd atoms using the library pseudopotential `cc-pVDZ-PP`, and one Mg atom using a custom pseudopotential file.
+```text
+embedding
+point_charges(16) ecp_centers(3)
+Q(0.0) ECP(Cd cc-pVDZ-PP) 4.12 -3.21 2.55
+Q(0.0) ECP(Cd cc-pVDZ-PP) -4.55 2.11 -3.1
+Q(2.0) ECP(Mg file ./my-ecp/ecp.txt) 3.05 4.44 -2.15
+Q(-0.1) -2.9 -4.8 1.5
+...
+end
+```
+
