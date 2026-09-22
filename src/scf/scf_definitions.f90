@@ -180,15 +180,6 @@ module scf_definitions
             character(:), allocatable :: F12BasisName
             character(:), allocatable :: AtomicGuessDir
             ! -----------------------------------------------------
-            !                PSEUDOPOTENTIAL
-            ! -----------------------------------------------------
-            !
-            ! Path to text files containting pseudopotential
-            ! parameters. Using a TStringList structure to allow
-            ! for a different set of params for each element.
-            !
-            type(TStringList) :: ECPFile
-            ! -----------------------------------------------------
             !    EXCHANGE-CORRELATION MODEL (INCL. HARTREE-FOCK)
             ! -----------------------------------------------------
             integer :: xcfunc = XCF_XC_NONE

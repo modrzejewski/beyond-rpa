@@ -8,7 +8,6 @@ module PostSCF
       use real_scf
       use Fock
       use clock
-      use Pseudopotential, only: pp_V
 
       implicit none
       
@@ -424,7 +423,6 @@ contains
             ThisImage = this_image()
             call clock_start(timer_F)
             associate ( &
-                  ECPFile => SCFParams%ECPFile, &
                   SpherAO => AOBasis%SpherAO, &
                   NAOCart => AOBasis%NAOCart, &
                   NAOSpher => AOBasis%NAOSpher, &
@@ -435,7 +433,7 @@ contains
                   ! One-electron part of the hamiltonian
                   !
                   allocate(H_sao(NAOSpher, NAOSpher))
-                  call ints1e_H(H_sao, AOBasis, System, ECPFile)
+                  call ints1e_H(H_sao, AOBasis, System)
                   call scf_BufferDim(DimTxc, DimJK, DimRho1D, NThreads, AOBasis)
                   allocate(BufferK(DimJK))
                   allocate(BufferJ(DimJK))

@@ -104,7 +104,7 @@ contains
 
             ! Extract rule for this element from the parent system
             i = minloc(System%ZNumbers, dim=1, mask=(System%ZNumbers == ZNumber))
-            GlobalRule = BasisAssign%get_atom_rule(i, ZNumber)
+            call BasisAssign%get_atom_rule(GlobalRule, i, ZNumber)
             GlobalRule%id = 0
 
             if (GlobalRule%FromLibrary) call HirshBasisAssign%set_library_dir(BasisAssign%LibraryDir)

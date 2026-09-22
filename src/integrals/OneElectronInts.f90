@@ -1002,7 +1002,7 @@ contains
       end subroutine ints1e_SpherAOTransf
 
 
-      subroutine ints1e_H(H, AOBasis, System, ECPFile)
+      subroutine ints1e_H(H, AOBasis, System)
             !
             ! One-electron hamiltonian matrix in the spherical Gaussian
             ! in the basis of spherical Gaussian atomic orbitals.
@@ -1014,7 +1014,6 @@ contains
             real(F64), dimension(:, :), intent(out) :: H
             type(TAOBasis), intent(in)              :: AOBasis
             type(TSystem), intent(in)               :: System
-            type(TStringList), intent(in)           :: ECPFile
 
             real(F64), dimension(:, :), allocatable :: H_cao
             real(F64), dimension(:, :), allocatable :: Ts_cao
@@ -1028,7 +1027,7 @@ contains
             
             call ints1e_Kinetic(Ts_cao, AOBasis)
             call ints1e_Coulomb(Vne_cao, AOBasis, System)
-            call pp_V(Vne_cao, AOBasis, System, ECPFile)
+            call pp_V(Vne_cao, AOBasis, System)
             
             H_cao = Ts_cao + Vne_cao
             

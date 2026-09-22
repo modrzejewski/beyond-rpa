@@ -123,48 +123,13 @@ module Pseudopotential
       use basis_sets
       use sys_definitions
       use PseudopotentialData
+      use ecp_definitions
       
       implicit none
 
 contains
 
-      subroutine pp_ZNumbers(System, ECPFile)
-            type(TSystem), intent(inout)  :: System
-            type(TStringList), intent(in) :: ECPFile
-
-            character(:), allocatable :: param_file
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount            
-            integer :: NElements
-            integer :: i, Z
-            integer :: ngauss, lmax, ncoreel
-            logical :: spin_orbit
-            character(:), allocatable :: citation
-            integer :: NGaussSum
-            integer, dimension(KNOWN_ELEMENTS) :: CoreElectrons
-
-            if (.not. allocated(System%ZNumbersECP)) allocate(System%ZNumbersECP(System%NAtoms))
-            CoreElectrons = 0
-            NGaussSum = 0
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
-            do i = 1, NElements
-                  Z = ZList(i)
-                  param_file = ECPFile%get(Z)
-                  call pp_queryecp(param_file, Z, lmax, ngauss, ncoreel, spin_orbit, citation)
-                  if (ngauss > 0) then
-                        CoreElectrons(Z) = ncoreel
-                        NGaussSum = NGaussSum + ngauss
-                  end if
-            end do
-            System%ECPCharges = (NGaussSum > 0)
-            do i = 1, System%NAtoms
-                  Z = System%ZNumbers(i)
-                  System%ZNumbersECP(i) = Z - CoreElectrons(Z)
-            end do
-      end subroutine pp_ZNumbers
-      
-
-      subroutine pp_Init(AOBasis, System, ecp_path, calcgrad, PrintOutParams)
+      subroutine pp_Init(AOBasis, System, calcgrad, PrintOutParams)
             ! --------------------------------------------------------------
             ! Initialize ECPINT module
             ! --------------------------------------------------------------
@@ -176,21 +141,19 @@ contains
             !
             type(TAOBasis), intent(in)        :: AOBasis
             type(TSystem), intent(in)         :: System
-            type(tstringlist), intent(in)     :: ecp_path
             logical, intent(in)               :: calcgrad
             logical, intent(in)               :: PrintOutParams
 
             integer :: alpha, alpx, alpy, alpz
             integer :: incl1, lambda, mu, i1, i2, i3
-            integer :: idx, k0
+            integer :: k0
             integer :: pp_lmax
-            integer :: ngauss, ngausstot
-            integer :: ncoreel
-            integer :: lmax
+            integer :: ngausstot
             integer :: lambdamax
             integer :: l, m, mm
             integer :: pos
-            integer :: n, i, j, j0, znum
+            integer :: n, i, j, j0
+            integer :: a
             integer :: lambda0, lambda1
             real(F64) :: c, s, jac, x, w, r
             integer :: gto_lmax
@@ -198,15 +161,10 @@ contains
             integer :: lx, ly, lz
             integer :: gto_max_nfunc
             real(F64), dimension(:), allocatable :: xyzwork
-            logical :: spin_orbit
-            character(:), allocatable :: param_file
-            character(:), allocatable :: citation
-            type(tstringlist) :: citations
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount
-            integer :: NElements
+            integer :: NConfigs
+            type(TECPConfig), allocatable :: Configs(:)
+            integer, dimension(:), allocatable :: AtomConfigMap
 
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_REAL_ATOMS)
             if (calcgrad) then
                   !
                   ! The subroutine for calculating gradient of the pseudopotential
@@ -235,115 +193,98 @@ contains
                               i = i + 1
                         end do
                   end do
-            end do            
-            ECP_SPIN_ORBIT = .false.
-            ECP_IELEMENT = 0
-            pp_lmax = -1
-            ECP_NELEMENTS = 0
-            ngausstot = 0
-            do i = 1, NElements
-                  znum = ZList(i)
-                  param_file = ecp_path%get(znum)
-                  call pp_queryecp(param_file, znum, lmax, ngauss, ncoreel, spin_orbit, citation)
-                  if (citation .ne. "") call citations%update(citation, znum)
-                  if (ngauss > 0) then
-                        ECP_NELEMENTS = ECP_NELEMENTS + 1
-                        pp_lmax = max(pp_lmax, lmax)
-                        ECP_IELEMENT(znum) = ECP_NELEMENTS
-                        ngausstot = ngausstot + ngauss
-                        if (ECP_SPIN_ORBIT .and. .not. spin_orbit) then
-                              call msg("Spin-orbit ECP parameters not provided for Z=" // str(znum), MSG_ERROR)
-                              error stop
-                        else
-                              ECP_SPIN_ORBIT = spin_orbit
-                        end if
-                  end if
             end do
+            !
+            ! Configurations are generated only for real (non-dummy) atoms
+            !
+            call System%create_ecp_configs(Configs, AtomConfigMap, NConfigs)
 
-            allocate(ECP_INUCLZ(System%NAtoms))
-            ECP_INUCLZ(1:System%NAtoms) = System%ZNumbers(1:System%NAtoms)
-
-            if (ngausstot > 0) then
-                  ECP_ENABLED = .true.
-            else
+            if (NConfigs == 0) then
                   ECP_ENABLED = .false.
                   ECP_NATOM = 0
                   return
             end if
 
-            allocate(ECP_K0(ECP_NELEMENTS))
-            allocate(ECP_LMAX(ECP_NELEMENTS))
-            allocate(ECP_NGAUSS(pp_lmax+2, ECP_NELEMENTS))
+            ECP_NCONFIGS = NConfigs
+            call move_alloc(from=AtomConfigMap, to=ECP_CONFIG_MAP)
+
+            ngausstot = 0
+            pp_lmax = -1
+            do i = 1, NConfigs
+                  ngausstot = ngausstot + Configs(i)%NGauss
+                  pp_lmax = max(pp_lmax, Configs(i)%Lmax)
+            end do
+            if (ngausstot == 0) then
+                  ECP_ENABLED = .false.
+                  ECP_NATOM = 0
+                  return
+            end if
+
+            ECP_ENABLED = .true.
+
+            ECP_SPIN_ORBIT = Configs(1)%SpinOrbit
+            do i = 2, NConfigs
+                  if (Configs(i)%SpinOrbit .neqv. ECP_SPIN_ORBIT) then
+                        call msg("Spin-orbit ECP parameters not provided for Z=" // str(Configs(i)%Z), MSG_ERROR)
+                        error stop
+                  end if
+            end do
+
+            allocate(ECP_K0(ECP_NCONFIGS))
+            allocate(ECP_LMAX(ECP_NCONFIGS))
+            allocate(ECP_NGAUSS(pp_lmax+2, ECP_NCONFIGS))
             allocate(ECP_NKL(ngausstot))
-            allocate(ECP_NCORE(ECP_NELEMENTS))
+            allocate(ECP_NCORE(ECP_NCONFIGS))
             allocate(ECP_COEFF(ngausstot))
             allocate(ECP_SO_COEFF(ngausstot))
             allocate(ECP_EXPN(ngausstot))
-            allocate(ECP_ZNUM(ECP_NELEMENTS))
-            allocate(ECP_LOCALPP(ECP_NELEMENTS))
+            allocate(ECP_ZNUM(ECP_NCONFIGS))
+            allocate(ECP_LOCALPP(ECP_NCONFIGS))
 
             k0 = 1
-            do i = 1, NElements
-                  znum = ZList(i)
-                  if (pp_isecp(znum)) then
-                        idx = ECP_IELEMENT(znum)
-                        ECP_ZNUM(idx) = znum
-                        ECP_K0(idx) = k0
-                        param_file = ecp_path%get(znum)
-                        call pp_getecp(param_file, znum, ECP_LMAX(idx), ECP_NGAUSS(:, idx), &
-                              ECP_NCORE(idx), ECP_COEFF(k0:), ECP_SO_COEFF(k0:), &
-                              ECP_EXPN(k0:), ECP_NKL(k0:))
-                        k0 = k0 + sum(ECP_NGAUSS(1:ECP_LMAX(idx)+2,idx))
-                  end if
+            do i = 1, ECP_NCONFIGS
+                  ECP_ZNUM(i) = Configs(i)%Z
+                  ECP_K0(i)   = k0
+                  call pp_getecp(Configs(i)%PathToParams, Configs(i)%Z, ECP_LMAX(i), &
+                        ECP_NGAUSS(:, i), ECP_NCORE(i), ECP_COEFF(k0:), &
+                        ECP_SO_COEFF(k0:), ECP_EXPN(k0:), ECP_NKL(k0:))
+                  k0 = k0 + sum(ECP_NGAUSS(1:ECP_LMAX(i)+2, i))
             end do
             !
             ! Check if the local part of the scalar pseudopotential is present
             !
-            do i = 1, ECP_NELEMENTS
-                  idx = i
-                  ECP_LOCALPP(idx) = .true.
-                  if (ECP_NGAUSS(1, idx) == 1) then
-                        k0 = ECP_K0(idx)
+            do i = 1, ECP_NCONFIGS
+                  ECP_LOCALPP(i) = .true.
+                  if (ECP_NGAUSS(1, i) == 1) then
+                        k0 = ECP_K0(i)
                         if (abs(ECP_COEFF(k0)) < 1.0E-12_F64) then
-                              ECP_LOCALPP(idx) = .false.
+                              ECP_LOCALPP(i) = .false.
                         end if
                   end if
             end do
+
             if (PrintOutParams) then
                   !
                   ! Display ECP parameters
                   !
                   call pp_displayheader(ECP_SPIN_ORBIT)
-                  do i = 1, ECP_NELEMENTS
-                        citation = citations%get(ECP_ZNUM(i))
-                        call pp_displayparams(ECP_ZNUM(i), ECP_SPIN_ORBIT, ecp_path%get(ECP_ZNUM(i)), citation)
+                  do i = 1, ECP_NCONFIGS
+                        call pp_displayparams(i, Configs(i)%PathToParams, Configs(i)%Citation)
                   end do
             end if
-            !
-            ! Count the atoms on which pseudopotentials reside.
-            ! Do not count in the ghost atoms which otherwise would
-            ! have a pseudopotential centered on them.
-            !
-            ECP_NATOM = 0
-            do j = 1, 2
-                  do i = System%RealAtoms(1, j), System%RealAtoms(2, j)
-                        znum = System%ZNumbers(i)
-                        if (pp_isecp(znum)) then
-                              ECP_NATOM = ECP_NATOM + 1
-                        end if
-                  end do
-            end do
+
+            ECP_NATOM = count(ECP_CONFIG_MAP(1:System%NAtoms) /= SYS_NO_PSEUDOPOTENTIAL)
             allocate(ECP_ATOM(ECP_NATOM))
+            allocate(ECP_INUCLZ(System%NAtoms))
+            ECP_INUCLZ(1:System%NAtoms) = System%ZNumbers(1:System%NAtoms)
             n = 1
-            do j = 1, 2
-                  do i = System%RealAtoms(1, j), System%RealAtoms(2, j)
-                        znum = System%ZNumbers(i)
-                        if (pp_isecp(znum)) then
-                              ECP_ATOM(n) = i
-                              ECP_INUCLZ(i) = znum - ECP_NCORE(ECP_IELEMENT(znum))
-                              n = n + 1
-                        end if
-                  end do
+            do a = 1, System%NAtoms
+                  i = ECP_CONFIG_MAP(a)
+                  if (i /= SYS_NO_PSEUDOPOTENTIAL) then
+                        ECP_ATOM(n) = a
+                        ECP_INUCLZ(a) = System%ZNumbers(a) - ECP_NCORE(i)
+                        n = n + 1
+                  end if
             end do
             ECP_TCC = pp_lmax + 2
             ECP_TAB = [pp_lmax+gto_lmax, pp_lmax+gto_lmax, pp_lmax, 2*gto_lmax]
@@ -477,7 +418,6 @@ contains
             end if
 
             call pp_spherbessel_tabulate(gto_lmax, pp_lmax)
-            call citations%free()
       end subroutine pp_Init
 
 
@@ -580,6 +520,7 @@ contains
 
 
       subroutine pp_Free()
+            if (allocated(ECP_CONFIG_MAP)) deallocate(ECP_CONFIG_MAP)
             if (allocated(ECP_U)) deallocate(ECP_U)
             if (allocated(CHEB_W1)) deallocate(CHEB_W1)
             if (allocated(CHEB_X1)) deallocate(CHEB_X1)
@@ -614,315 +555,6 @@ contains
       end subroutine pp_Free
 
 
-      subroutine pp_queryecp(basis_path, element, lmax, ngauss, ncoreel, spin_orbit, citation)
-            character(*), intent(in) :: basis_path
-            integer, intent(in)      :: element
-            integer, intent(out)     :: lmax
-            integer, intent(out)     :: ngauss
-            integer, intent(out)     :: ncoreel
-            logical, intent(out)     :: spin_orbit
-            character(:), allocatable, intent(out) :: citation
-            
-            character(:), allocatable :: line
-            character(:), allocatable :: key, val
-            character(:), allocatable :: keyup
-            character(:), allocatable :: targetkey1, targetkey2
-            character(:), allocatable :: s1, s23, s2, s3
-            integer :: u
-            logical :: eof, foundelement
-            integer :: l, ngaussl
-            integer :: k
-            logical :: comment, blank
-
-            lmax = -1
-            ngauss = 0
-            ncoreel = 0
-            spin_orbit = .false.
-            citation = ""
-            u = io_text_open(basis_path, "OLD")
-            !
-            ! Scroll through the text file until one of the target keys if found
-            !
-            targetkey1 = trim(ELNAME_SHORT(element)) // "-ECP"
-            targetkey2 = trim(ELNAME_SHORT(element)) // "-SPIN-ORBIT-ECP"
-            !
-            ! Scroll to the header of the ECP section
-            !
-            call io_text_readline(line, u, eof)
-            scroll1: do while (.not. eof)
-                  comment = iscomment(line)
-                  blank = isblank(line)
-                  if (.not. (comment .or. blank)) then
-                        call split(line, key, val)
-                        if (uppercase(key) == "$ECP") then
-                              exit scroll1
-                        end if
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do scroll1
-
-            if (eof) then
-                  !
-                  ! No ECP section found
-                  !
-                  close(u)
-                  return
-            end if
-            !
-            ! Search for the requested elment in the ECP section
-            !
-            foundelement = .false.
-            call io_text_readline(line, u, eof)
-            scroll2: do while (.not. eof)
-                  comment = iscomment(line)
-                  blank = isblank(line)
-                  if (.not. (comment .or. blank)) then
-                        call split(line, key, val)
-                        keyup = uppercase(key)
-                        if (keyup == targetkey1) then
-                              foundelement = .true.
-                              exit scroll2
-                        else if (keyup == targetkey2) then
-                              foundelement = .true.
-                              spin_orbit = .true.
-                              exit scroll2
-                        end if
-
-                        if (keyup == "$END") then
-                              exit scroll2
-                        end if
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do scroll2
-            
-            if (.not. foundelement) then
-                  close(u)
-                  return
-            else
-                  !
-                  ! Read the number of electrons represented by the PP and
-                  ! lmax. The line might contain an optional comment string.
-                  !
-                  ! --optional-string-- NCoreElectrons LMAX+1
-                  !
-                  call split(val, s1, s23)
-                  call split(s23, s2, s3)
-                  if (s3 == "") then
-                        read(s1, *) ncoreel
-                        read(s2, *) lmax
-                  else
-                        read(s2, *) ncoreel
-                        read(s3, *) lmax
-                  end if
-            end if
-            lmax = lmax - 1
-
-            if (lmax < 0) then
-                  call msg("Invalid ECP parameters for " // ELNAME_LONG(element), MSG_ERROR)
-                  call imsg("Invalid max angular momentum: " // str(lmax), MSG_ERROR)
-                  stop
-            end if
-
-            if (ncoreel < 0) then
-                  call msg("Invalid ECP parameters for " // ELNAME_LONG(element), MSG_ERROR)
-                  call msg("Invalid number of core electrons: " // str(ncoreel), MSG_ERROR)
-                  error stop
-            end if
-
-            if (spin_orbit) then
-                  !
-                  ! The parameters of the local part of the PP are not a part of the input format
-                  ! for spin-orbit ECPs. However, for compatibility with the scalar PP subroutines,
-                  ! we will keep in memory an extra entry for 0.0000 * Exp(-1.0000 * r^2).
-                  !
-                  ngauss = 1
-                  l = 1
-            else
-                  ngauss = 0
-                  l = 0
-            end if
-            call io_text_readline(line, u, eof)
-            do while (l < lmax+2 .and. .not. eof)
-                  call split(line, key, val)
-                  if (.not. iscomment(line) .and. .not. isblank(line)) then
-                        if (isinteger(key)) then
-                              l = l + 1
-                              read(key, *) ngaussl
-                              ngauss = ngauss + ngaussl
-                              !
-                              ! Scroll to the next angular momentum projector
-                              !
-                              do k = 1, ngaussl
-                                    call io_text_readline(line, u, eof)
-                              end do
-                        end if
-                  else if (uppercase(key) == "!@CITATION") then
-                        citation = val
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do
-
-            if (l .ne. lmax+2) then
-                  call msg("Invalid ECP parameters for " // ELNAME_LONG(element), priority=MSG_ERROR)
-                  error stop
-            end if
-
-            close(u)
-      end subroutine pp_queryecp
-
-
-      subroutine pp_getecp(basis_path, element, lmax, ngauss, ncoreel, coeff, so_coeff, expn, nkl)
-            !
-            ! Read pseudopotential parameters from a text file.
-            !
-            character(*), intent(in)             :: basis_path
-            integer, intent(in)                  :: element
-            integer, intent(out)                 :: lmax
-            integer, dimension(:), intent(out)   :: ngauss
-            integer, intent(out)                 :: ncoreel
-            real(F64), dimension(:), intent(out) :: coeff
-            real(F64), dimension(:), intent(out) :: so_coeff
-            real(F64), dimension(:), intent(out) :: expn
-            integer, dimension(:), intent(out)   :: nkl
-            
-            character(:), allocatable :: line
-            character(:), allocatable :: key, val
-            character(:), allocatable :: s23, s1, s2, s3
-            character(:), allocatable :: targetkey1, targetkey2
-            integer :: u
-            logical :: eof
-            integer :: l, i
-            integer :: k
-            integer :: n_angular_parts
-            logical :: comment
-            logical :: blank
-            logical :: spin_orbit
-
-            u = io_text_open(basis_path, "OLD")
-            spin_orbit = .false.
-            !
-            ! Scroll through the text file until one of the target keys appears
-            !
-            targetkey1 = trim(ELNAME_SHORT(element)) // "-ECP"
-            targetkey2 = trim(ELNAME_SHORT(element)) // "-SPIN-ORBIT-ECP"
-            !
-            ! Scroll to ECP section
-            !
-            call io_text_readline(line, u, eof)
-            scroll1: do while (.not. eof)
-                  comment = iscomment(line)
-                  blank = isblank(line)
-                  if (.not. (comment .or. blank)) then
-                        call split(line, key, val)
-                        if (uppercase(key) == "$ECP") then
-                              exit scroll1
-                        end if
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do scroll1
-            !
-            ! Search for the target element within the ECP section
-            !
-            call io_text_readline(line, u, eof)
-            scroll2: do while (.not. eof)
-                  comment = iscomment(line)
-                  blank = isblank(line)
-                  if (.not. (comment .or. blank)) then
-                        call split(line, key, val)
-                        if (uppercase(key) == targetkey1) then
-                              exit scroll2
-                        else if (uppercase(key) == targetkey2) then
-                              spin_orbit = .true.
-                              exit scroll2
-                        end if
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do scroll2
-            !
-            ! Read the number of electrons represented by the PP and
-            ! lmax. The line may contain an optional comment string.
-            !
-            ! --optional-string-- NCoreElectrons LMAX+1
-            !
-            call split(val, s1, s23)
-            call split(s23, s2, s3)
-            if (s3 == "") then
-                  read(s1, *) ncoreel
-                  read(s2, *) lmax
-            else
-                  read(s2, *) ncoreel
-                  read(s3, *) lmax
-            end if
-            lmax = lmax - 1
-            !
-            ! Read the linear coeffs of scalar and spin-orbit PPs, n_{kl} exponents, 
-            ! and Alpha_{kl} exponents
-            !
-            if (spin_orbit) then
-                  !
-                  ! The parameters of the local part of the PP are not a part of the input format
-                  ! for spin-orbit ECPs. However, for compatibility with the scalar PP subroutines,
-                  ! we will keep in memory an extra entry for 0.0000 * Exp(-1.0000 * r^2).
-                  !
-                  l = 1
-                  i = 1
-                  coeff(i) = ZERO
-                  so_coeff(i) = ZERO
-                  nkl(i) = 2
-                  expn(i) = ONE
-                  ngauss(l) = 1
-            else
-                  l = 0
-                  i = 0
-            end if
-            n_angular_parts = lmax + 2
-            call io_text_readline(line, u, eof)
-            do while (l < n_angular_parts .and. .not. eof)
-                  comment = iscomment(line)
-                  blank = isblank(line)
-                  if (.not. (comment .or. blank)) then
-                        call split(line, key, val)
-                        if (isinteger(key)) then
-                              l = l + 1
-                              read(key, *) ngauss(l)
-                              do k = 1, ngauss(l)
-                                    i = i + 1
-                                    call io_text_readline(line, u, eof)
-                                    if (spin_orbit) then
-                                          if (l > 2) then
-                                                read(line, *) coeff(i), so_coeff(i), nkl(i), expn(i)
-                                          else
-                                                !
-                                                ! The input format does not include SO coefficients for the angular
-                                                ! momentum S
-                                                !
-                                                read(line, *) coeff(i), nkl(i), expn(i)
-                                                so_coeff(i) = ZERO
-                                          end if
-                                    else
-                                          read(line, *) coeff(i), nkl(i), expn(i)
-                                          so_coeff(i) = ZERO
-                                    end if
-                              end do
-                        end if
-                  end if
-                  call io_text_readline(line, u, eof)
-            end do
-            
-            if (maxval(nkl(1:i)) > 2 .or. minval(nkl(1:i)) < 0) then
-                  call msg("Invalid ECP parameter: R^N exponent outside of the allowed range 0..2", MSG_ERROR)
-                  error stop
-            end if
-            
-            if (minval(expn(1:i)) < ZERO) then
-                  call msg("Invalid ECP parameter: negative exponent", MSG_ERROR)
-                  error stop
-            end if
-            
-            close(u)
-      end subroutine pp_getecp
-
-
       subroutine pp_displayheader(spin_orbit)
             logical, intent(in) :: spin_orbit
             
@@ -936,29 +568,28 @@ contains
       end subroutine pp_displayheader
       
 
-      subroutine pp_displayparams(z, spin_orbit, ecp_path, citation)
-            integer, intent(in) :: z
-            logical, intent(in) :: spin_orbit
+      subroutine pp_displayparams(idx, ecp_path, citation)
+            integer, intent(in)      :: idx
             character(*), intent(in) :: ecp_path
             character(*), intent(in) :: citation
             
             character(len=DEFLEN) :: line
-            integer :: idx, k0, k
+            integer :: k0, k, z
             integer :: lmax, l
             integer :: ngauss
             integer :: igauss
 
-            idx = ECP_IELEMENT(z)
+            z = ECP_ZNUM(idx)
             k0 = ECP_K0(idx)
             lmax = ECP_LMAX(idx)
             call msg(ELNAME_LONG(z))
             call msg("Parameters file: " // ecp_path)
-            if (citation .ne. "") then
+            if (citation /= "") then
                   call msg("Reference: " // citation)
             end if
             call msg("ECP accounts for " // str(ECP_NCORE(idx)) // " core electrons")
             call blankline()
-            if (spin_orbit) then
+            if (ECP_SPIN_ORBIT) then
                   write(line, "(4X,A15,4X,A15,4X,A3,4X,A15)") cfield("Coeff", 15), cfield("Coeff(SO)", 15), &
                         "R^n", cfield("Exponent", 15)
             else
@@ -974,7 +605,7 @@ contains
                   call msg("(Local part not present)")
             end if
             do k = 1, ngauss
-                  if (spin_orbit) then
+                  if (ECP_SPIN_ORBIT) then
                         write(line, "(4X,F15.8,4X,15X,4X,I3,4X,F15.8)") &
                               ECP_COEFF(igauss), ECP_NKL(igauss), ECP_EXPN(igauss)
                   else
@@ -991,7 +622,7 @@ contains
                   call blankline()
                   ngauss = ECP_NGAUSS(2+l, idx)
                   do k = 1, ngauss
-                        if (spin_orbit) then
+                        if (ECP_SPIN_ORBIT) then
                               if (l > 0) then
                                     write(line, "(4X,F15.8,4X,F15.8,4X,I3,4X,F15.8)") &
                                           ECP_COEFF(igauss), ECP_SO_COEFF(igauss), &
@@ -1008,6 +639,7 @@ contains
                         igauss = igauss + 1
                   end do
             end do
+            call blankline()
       end subroutine pp_displayparams
 
 
@@ -1057,18 +689,14 @@ contains
       end subroutine pp_loadgto_grad
 
 
-      pure function pp_isecp(z)
+      pure function pp_isecp(a)
             !
-            ! Is ECP potential enabled for the element of the atomic number Z?
+            ! Is ECP potential enabled for atom index A?
             !
             logical             :: pp_isecp
-            integer, intent(in) :: z
+            integer, intent(in) :: a
             
-            if (ECP_IELEMENT(z) > 0) then
-                  pp_isecp = .true.
-            else
-                  pp_isecp = .false.
-            end if
+            pp_isecp = (ECP_CONFIG_MAP(a) /= SYS_NO_PSEUDOPOTENTIAL)
       end function pp_isecp
 
 
@@ -1218,21 +846,15 @@ contains
       end subroutine pp_decode_pq
       
 
-      subroutine pp_Vgrad(Vx, Vy, Vz, c, AOBasis, System, ECPFile)
+      subroutine pp_Vgrad(Vx, Vy, Vz, c, AOBasis, System)
             real(F64), dimension(:, :), intent(inout) :: Vx
             real(F64), dimension(:, :), intent(inout) :: Vy
             real(F64), dimension(:, :), intent(inout) :: Vz
             integer, intent(in)                       :: c
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
-            type(TStringList), intent(in)             :: ECPFile
 
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount
-            integer :: NElements
-
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_REAL_ATOMS)
-            call pp_Init(AOBasis, System, ECPFile, .true., .false.)
+            call pp_Init(AOBasis, System, .true., .false.)
             call pp_Vgrad_2(Vx, Vy, Vz, c, AOBasis, System)
             call pp_Free()
       end subroutine pp_Vgrad
@@ -1305,10 +927,8 @@ contains
             ! Return if no pseudopotential is centered at the atom C.
             ! Note that pseudopotentials are not present on ghost atoms.
             !
-            if (.not. pp_isecp(System%ZNumbers(c))) then
-                  if (sys_IsDummyAtom(System, c))then
-                        return
-                  end if                  
+            if (.not. pp_isecp(c)) then
+                  return
             end if
             associate ( &
                   ShellCenters => AOBasis%ShellCenters, &
@@ -1399,18 +1019,12 @@ contains
       end subroutine pp_Vgrad_2
 
 
-      subroutine pp_V(V, AOBasis, System, ECPFile)
+      subroutine pp_V(V, AOBasis, System)
             real(F64), dimension(:, :), intent(inout) :: V
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
-            type(TStringList), intent(in)             :: ECPFile
 
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount
-            integer :: NElements
-
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_REAL_ATOMS)
-            call pp_Init(AOBasis, System, ECPFile, .false., (System%SubsystemKind==SYS_TOTAL))
+            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL))
             call pp_V_2(V, AOBasis, System)
             call pp_Free()
       end subroutine pp_V
@@ -1685,7 +1299,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
             lmax = ECP_LMAX(ecpcenter)
@@ -1919,7 +1533,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
 
@@ -2033,7 +1647,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
 
@@ -2169,7 +1783,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
             nint = nfunca * nfuncb

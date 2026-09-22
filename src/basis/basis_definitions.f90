@@ -6,7 +6,6 @@ module basis_definitions
    use io, only: io_exists, DIRSEP
 
    implicit none
-
    !
    ! Order orbital shells by their effective orbital radius
    !
@@ -90,6 +89,9 @@ module basis_definitions
       procedure :: get_atom_rule => basis_get_atom_rule
       generic :: assignment(=) => assign
    end type TBasisAssignment
+
+   type, extends(TBasisAssignment) :: TECPAssignment
+   end type TECPAssignment
 
    type TAOBasis
       !
@@ -334,6 +336,7 @@ contains
       end if
    end subroutine basis_set_guess_dir
 
+
    subroutine basis_add_global_fallback(BasisAssign, Rule)
       class(TBasisAssignment), intent(inout) :: BasisAssign
       type(TBasisRule), intent(in)           :: Rule
@@ -448,7 +451,7 @@ contains
    end function basis_is_uniform
 
 
-   function basis_get_atom_rule(this, atom_idx, Z)
+   subroutine basis_get_atom_rule(this, Rule, atom_idx, Z, found)
       !
       ! Extract basis rule for atom.
       !
@@ -461,39 +464,59 @@ contains
       ! assigned to the entire system, which corresponds to the global
       ! fallback without any other atom-specific or element-specific exceptions.
       !
-      type(TBasisRule)                    :: basis_get_atom_rule
       class(TBasisAssignment), intent(in) :: this
+      type(TBasisRule), intent(out)       :: Rule
       integer, intent(in)                 :: atom_idx
       integer, intent(in)                 :: Z
-      integer                             :: c
+      logical, optional, intent(out)      :: found
+
+      integer :: c
+      logical :: found_
+
+      found_ = .false.
 
       if (.not. this%Initialized) then
+         if (present(found)) then
+            found = .false.
+            return
+         end if
          call msg("basis_get_atom_rule: TBasisAssignment is not initialized.", MSG_ERROR)
          error stop
       end if
 
       do c = 1, this%NAtomRules
          if (this%AtomRules(c)%id == atom_idx) then
-            basis_get_atom_rule = this%AtomRules(c)
-            return
+            Rule = this%AtomRules(c)
+            found_ = .true.
+            exit
          end if
       end do
 
-      do c = 1, this%NElementRules
-         if (this%ElementRules(c)%id == Z) then
-            basis_get_atom_rule = this%ElementRules(c)
-            return
-         end if
-      end do
-
-      if (this%FallbackAvailable) then
-         basis_get_atom_rule = this%GlobalFallback
-      else
-         call msg("No basis set assigned for atom " // str(atom_idx) // &
-            " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
-         error stop
+      if (.not. found_) then
+         do c = 1, this%NElementRules
+            if (this%ElementRules(c)%id == Z) then
+               Rule = this%ElementRules(c)
+               found_ = .true.
+               exit
+            end if
+         end do
       end if
-   end function basis_get_atom_rule
+
+      if (.not. found_ .and. this%FallbackAvailable) then
+         Rule = this%GlobalFallback
+         found_ = .true.
+      end if
+
+      if (present(found)) found = found_
+
+      if (.not. found_) then
+         if (.not. present(found)) then
+            call msg("No basis set assigned for atom " // str(atom_idx) // &
+               " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+            error stop
+         end if
+      end if
+   end subroutine basis_get_atom_rule
 
 
    subroutine basis_ResolvePath(Rule, BasisAssign, ValString)
@@ -715,8 +738,14 @@ contains
           case ("CRENBL")
             p = "crenbl"
             n = "CRENBL"
+          case ("SMALL-CORE-RELATIVISTIC")
+            p = "small-core-relativistic"
+            n = "small-core-relativistic"
+          case ("SMALL-CORE-SR", "SR-SMALL")
+            p = "sr-small"
+            n = "sr-small"
           case default
-            call msg("Unknown basis set", MSG_ERROR)
+            call msg("Unknown basis set or pseudopotential: " // trim(ValString), MSG_ERROR)
             error stop
          end select
 

@@ -178,20 +178,14 @@ module SOPseudopotential
 
 contains
 
-      subroutine sop_V(Vx, Vy, Vz, AOBasis, System, ECPFile)
+      subroutine sop_V(Vx, Vy, Vz, AOBasis, System)
             real(F64), dimension(:, :), intent(out)   :: Vx
             real(F64), dimension(:, :), intent(out)   :: Vy
             real(F64), dimension(:, :), intent(out)   :: Vz
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
-            type(TStringList), intent(in)             :: ECPFile
 
-            integer, dimension(:), allocatable :: ZList, AtomElementMap, ZCount
-            integer :: NElements
-
-            allocate(AtomElementMap(System%NAtoms))
-            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_REAL_ATOMS)
-            call pp_Init(AOBasis, System, ECPFile, .false., (System%SubsystemKind==SYS_TOTAL))
+            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL))
             call sop_V_2(Vx, Vy, Vz, AOBasis, System)
             call pp_Free()
       end subroutine sop_V
@@ -397,7 +391,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
             nint = nfunca * nfuncb
@@ -560,7 +554,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
 
@@ -652,7 +646,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
 
@@ -786,7 +780,7 @@ contains
             la = phia%l
             lb = phib%l
 
-            ecpcenter = ECP_IELEMENT(System%ZNumbers(c))
+            ecpcenter = ECP_CONFIG_MAP(c)
             nfunca = basis_NAngFuncCart(la)
             nfuncb = basis_NAngFuncCart(lb)
             lmax = ECP_LMAX(ecpcenter)

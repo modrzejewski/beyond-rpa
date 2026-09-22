@@ -310,7 +310,6 @@ contains
             integer :: NElements
             integer :: gto_lmax
             integer :: nopenela, nopenelb
-            integer :: ecpdiff
             real(F64) :: msum
 
             allocate(AtomElementMap(System%NAtoms))
@@ -379,19 +378,15 @@ contains
                   SEPKSCONTRIB = .false.
             end if
             !
-            ! ECP parameters
+            ! Effective nuclear charges
             !
-            call ecp_init(gto_lmax, ELEMENT, NELEMENT, ECP_PARAMS_PATH, ECP_GRAD)
-            !
-            ! Remove electrons represented by ECP
-            !
-            do t = 1, 2
-                  do i = REAL_ATOMS(1, t), REAL_ATOMS(2, t)
-                        ecpdiff = ECP_INUCLZ(i) - INUCLZ(i)
-                        NE = NE + ecpdiff
-                        ROKS_NE = ROKS_NE + ROKS_NEUNIT * ecpdiff
-                  end do
-            end do
+            if (allocated(ECP_INUCLZ)) deallocate(ECP_INUCLZ)
+            allocate(ECP_INUCLZ(NATOM))
+            if (System%ECPCharges) then
+                  ECP_INUCLZ = System%ZNumbersECP
+            else
+                  ECP_INUCLZ = System%ZNumbers
+            end if
             !
             ! Determine maximum angular momentum for
             ! each atom in the loaded basis set
