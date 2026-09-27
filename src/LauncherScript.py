@@ -171,7 +171,10 @@ environ["MKL_DISABLE_FAST_MM"] = "1"
 # Execute the main Fortran program
 #
 {COMMAND_DEF}
-os.setpgrp()
+try:
+    os.setpgrp()
+except (PermissionError, OSError):
+    pass
 try:
     process = subprocess.Popen(cmdlist, stderr=subprocess.STDOUT, bufsize=1,
                                universal_newlines=True, stdout=sys.stdout)

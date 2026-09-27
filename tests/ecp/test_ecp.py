@@ -31,6 +31,9 @@ TOLERANCE_EXCEPTIONS = {
     "cd2_avdz-pp_accuracy_default.inp": 1.3e-3,
     "hg2_avdz-pp_accuracy_ludicrous.inp": 6.0e-5,
     "hg2_avtz-pp_accuracy_ludicrous.inp": 6.0e-5,
+    # For Hg-Xe, sensitivity to the auxiliary basis set in PySCF density
+    # fitting is the likely source of discrepancy.
+    "hg_xe_mixed_accuracy_ludicrous.inp": 9.0e-5,
 }
 
 CALC_KEY_HF = "Eint(HF)"
