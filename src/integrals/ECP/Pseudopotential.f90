@@ -129,7 +129,7 @@ module Pseudopotential
 
 contains
 
-      subroutine pp_Init(AOBasis, System, calcgrad, PrintOutParams)
+      subroutine pp_Init(AOBasis, System, calcgrad, PrintOutParams, embedding)
             ! --------------------------------------------------------------
             ! Initialize pseudopotential parameters and mapping structures
             ! for quantum-mechanical atoms and embedding centers.
@@ -140,10 +140,11 @@ contains
             ! 2. McMurchie, L. E., and Davidson, E. R., Calculation of Integrals
             !    over ab initio Pseudopotentials, J. Comp. Phys. 44, 289 (1981)
             !
-            type(TAOBasis), intent(in)        :: AOBasis
-            type(TSystem), intent(in)         :: System
-            logical, intent(in)               :: calcgrad
-            logical, intent(in)               :: PrintOutParams
+            type(TAOBasis), intent(in) :: AOBasis
+            type(TSystem), intent(in)  :: System
+            logical, intent(in)        :: calcgrad
+            logical, intent(in)        :: PrintOutParams
+            logical, intent(in)        :: embedding
 
             integer :: alpha, alpx, alpy, alpz
             integer :: incl1, lambda, mu, i1, i2, i3
@@ -153,7 +154,7 @@ contains
             integer :: lambdamax
             integer :: l, m, mm
             integer :: pos
-            integer :: n, i, j, j0
+            integer :: n, i, j, j0, k
             integer :: a
             integer :: lambda0, lambda1
             real(F64) :: c, s, jac, x, w, r
@@ -164,7 +165,6 @@ contains
             real(F64), dimension(:), allocatable :: xyzwork
             integer :: NConfigs
             type(TECPConfig), allocatable :: Configs(:)
-            integer, dimension(:), allocatable :: AtomConfigMap
 
             if (calcgrad) then
                   !
@@ -196,9 +196,13 @@ contains
                   end do
             end do
             !
-            ! Configurations are generated only for real (non-dummy) atoms
+            ! Extract configurations for QM atoms and (if requested) embedding centers
             !
-            call System%create_ecp_configs(Configs, AtomConfigMap, NConfigs)
+            if (embedding) then
+                  call pp_merge_configs(Configs, ECP_CONFIG_MAP, NConfigs, System)
+            else
+                  call System%create_ecp_configs(Configs, ECP_CONFIG_MAP, NConfigs, embedding=.false.)
+            end if
 
             if (NConfigs == 0) then
                   ECP_ENABLED = .false.
@@ -207,7 +211,6 @@ contains
             end if
 
             ECP_NCONFIGS = NConfigs
-            call move_alloc(from=AtomConfigMap, to=ECP_CONFIG_MAP)
 
             ngausstot = 0
             pp_lmax = -1
@@ -230,6 +233,11 @@ contains
                         error stop
                   end if
             end do
+
+            if (ECP_SPIN_ORBIT .and. embedding) then
+                  call msg("Spin-orbit pseudopotentials are not supported with embedding", MSG_ERROR)
+                  error stop
+            end if
 
             allocate(ECP_K0(ECP_NCONFIGS))
             allocate(ECP_LMAX(ECP_NCONFIGS))
@@ -274,8 +282,9 @@ contains
                   end do
             end if
 
-            ECP_NATOM = count(ECP_CONFIG_MAP(1:System%NAtoms) /= SYS_NO_PSEUDOPOTENTIAL)
+            ECP_NATOM = count(ECP_CONFIG_MAP /= SYS_NO_PSEUDOPOTENTIAL)
             allocate(ECP_ATOM(ECP_NATOM))
+            allocate(ECP_CENTER_COORDS(3, ECP_NATOM))
             allocate(ECP_INUCLZ(System%NAtoms))
             ECP_INUCLZ(1:System%NAtoms) = System%ZNumbers(1:System%NAtoms)
             n = 1
@@ -283,10 +292,21 @@ contains
                   i = ECP_CONFIG_MAP(a)
                   if (i /= SYS_NO_PSEUDOPOTENTIAL) then
                         ECP_ATOM(n) = a
+                        ECP_CENTER_COORDS(:, n) = System%AtomCoords(:, a)
                         ECP_INUCLZ(a) = System%ZNumbers(a) - ECP_NCORE(i)
                         n = n + 1
                   end if
             end do
+            if (embedding) then
+                  do k = 1, System%EmbeddingECP%NEmbCenters
+                        i = ECP_CONFIG_MAP(System%NAtoms + k)
+                        if (i /= SYS_NO_PSEUDOPOTENTIAL) then
+                              ECP_ATOM(n) = System%NAtoms + k
+                              ECP_CENTER_COORDS(:, n) = System%EmbeddingECP%Coords(:, k)
+                              n = n + 1
+                        end if
+                  end do
+            end if
             ECP_TCC = pp_lmax + 2
             ECP_TAB = [pp_lmax+gto_lmax, pp_lmax+gto_lmax, pp_lmax, 2*gto_lmax]
             ECP_TAC = [pp_lmax+gto_lmax, pp_lmax, 2*gto_lmax]
@@ -422,6 +442,45 @@ contains
       end subroutine pp_Init
 
 
+      subroutine pp_merge_configs(Configs, ConfigMap, NConfigs, System)
+            !
+            ! Extract and merge pseudopotential configurations and mapping arrays
+            ! for quantum-mechanical atoms and embedding centers.
+            !
+            type(TECPConfig), allocatable, intent(out)      :: Configs(:)
+            integer, dimension(:), allocatable, intent(out) :: ConfigMap(:)
+            integer, intent(out)                            :: NConfigs
+            type(TSystem), intent(in)                       :: System
+
+            integer :: a, i, k, NCentersTotal
+            integer :: NQMConfigs, NEmbConfigs
+            type(TECPConfig), allocatable :: QMConfigs(:), EmbConfigs(:)
+            integer, dimension(:), allocatable :: QMMap, EmbMap
+
+            call System%create_ecp_configs(QMConfigs, QMMap, NQMConfigs, embedding=.false.)
+            call System%create_ecp_configs(EmbConfigs, EmbMap, NEmbConfigs, embedding=.true.)
+
+            NCentersTotal = System%NAtoms + System%EmbeddingECP%NEmbCenters
+            allocate(ConfigMap(NCentersTotal))
+            ConfigMap = SYS_NO_PSEUDOPOTENTIAL
+
+            NConfigs = NQMConfigs + NEmbConfigs
+            allocate(Configs(NConfigs))
+            do i = 1, NQMConfigs
+                  Configs(i) = QMConfigs(i)
+                  do a = 1, System%NAtoms
+                        if (QMMap(a) == i) ConfigMap(a) = i
+                  end do
+            end do
+            do i = 1, NEmbConfigs
+                  Configs(NQMConfigs + i) = EmbConfigs(i)
+                  do k = 1, System%EmbeddingECP%NEmbCenters
+                        if (EmbMap(k) == i) ConfigMap(System%NAtoms + k) = NQMConfigs + i
+                  end do
+            end do
+      end subroutine pp_merge_configs
+
+
       subroutine pp_spherbessel_tabulate(gto_lmax, pp_lmax)
             ! ------------------------------------------------------------------------
             ! Set up the Chebyshev interpolation and asymptotic expansion of modified
@@ -538,6 +597,7 @@ contains
             if (allocated(ECP_SO_COEFF)) deallocate(ECP_SO_COEFF)
             if (allocated(ECP_EXPN)) deallocate(ECP_EXPN)
             if (allocated(ECP_ATOM)) deallocate(ECP_ATOM)
+            if (allocated(ECP_CENTER_COORDS)) deallocate(ECP_CENTER_COORDS)
             if (allocated(ECP_OMEGA)) deallocate(ECP_OMEGA)
             if (allocated(ECP_LOCALPP)) deallocate(ECP_LOCALPP)
             if (allocated(ECP_BINOM)) deallocate(ECP_BINOM)
@@ -847,15 +907,21 @@ contains
       end subroutine pp_decode_pq
       
 
-      subroutine pp_Vgrad(Vx, Vy, Vz, c, AOBasis, System)
+      subroutine pp_Vgrad(Vx, Vy, Vz, c, AOBasis, System, embedding)
             real(F64), dimension(:, :), intent(inout) :: Vx
             real(F64), dimension(:, :), intent(inout) :: Vy
             real(F64), dimension(:, :), intent(inout) :: Vz
             integer, intent(in)                       :: c
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
+            logical, optional, intent(in)             :: embedding
 
-            call pp_Init(AOBasis, System, .true., .false.)
+            logical :: embedding_
+
+            embedding_ = (System%EmbeddingECP%NEmbCenters > 0)
+            if (present(embedding)) embedding_ = (embedding_ .and. embedding)
+
+            call pp_Init(AOBasis, System, .true., .false., embedding_)
             call pp_Vgrad_2(Vx, Vy, Vz, c, AOBasis, System)
             call pp_Free()
       end subroutine pp_Vgrad
@@ -901,6 +967,7 @@ contains
             type(tgtodef) :: phia, phib
             real(F64), dimension(ECP_GTO_MAX_NFUNC**2) :: gab_a_lo, gab_a_hi
             real(F64), dimension(ECP_GTO_MAX_NFUNC**2) :: gab_b_lo, gab_b_hi
+            real(F64), dimension(3) :: Rc
 
             real(F64), dimension(:), allocatable :: tcc
             real(F64), dimension(:, :, :, :), allocatable :: tab
@@ -927,15 +994,17 @@ contains
             !
             ! Return if no pseudopotential is centered at the atom C.
             ! Note that pseudopotentials are not present on ghost atoms.
+            ! Gradients with respect to embedding ECP center positions
+            ! are not computed: c is restricted to 1..NAtoms.
             !
             if (.not. pp_isecp(c)) then
                   return
             end if
+            Rc = System%AtomCoords(:, c)
             associate ( &
                   ShellCenters => AOBasis%ShellCenters, &
                   NShells => AOBasis%NShells &
                   )
-                  
                   shellab_max = ((NShells + 1) * NShells) / 2
                   !$omp parallel &
                   !$omp default(shared) &
@@ -963,13 +1032,13 @@ contains
                         gab_b_lo = ZERO
                         gab_b_hi = ZERO
                         if ((a .ne. c) .and. (b .ne. c)) then
-                              if (phia%l > 0) call pp_ecpab(gab_a_lo, a, b, c, phia_lo, phib, &
+                              if (phia%l > 0) call pp_ecpab(gab_a_lo, a, b, c, Rc, phia_lo, phib, &
                                     slma, slmb, slmk, tab, tchiab, xyzwork, System)
-                              call pp_ecpab(gab_a_hi, a, b, c, phia_hi, phib, &
+                              call pp_ecpab(gab_a_hi, a, b, c, Rc, phia_hi, phib, &
                                     slma, slmb, slmk, tab, tchiab, xyzwork, System)
-                              if (phib%l > 0) call pp_ecpab(gab_b_lo, a, b, c, phia, phib_lo, &
+                              if (phib%l > 0) call pp_ecpab(gab_b_lo, a, b, c, Rc, phia, phib_lo, &
                                     slma, slmb, slmk, tab, tchiab, xyzwork, System)
-                              call pp_ecpab(gab_b_hi, a, b, c, phia, phib_hi, &
+                              call pp_ecpab(gab_b_hi, a, b, c, Rc, phia, phib_hi, &
                                     slma, slmb, slmk, tab, tchiab, xyzwork, System)
                         else if ((a .ne. c) .and. (b .eq. c)) then
                               if (phia%l > 0) call pp_ecpac(gab_a_lo, a, c, phia_lo, phib, &
@@ -1020,7 +1089,7 @@ contains
       end subroutine pp_Vgrad_2
 
 
-      subroutine pp_V(V, AOBasis, System)
+      subroutine pp_V(V, AOBasis, System, embedding)
             !
             ! Add pseudopotential potential energy contributions from QM atoms
             ! and embedding centers to the one-electron potential matrix.
@@ -1028,14 +1097,20 @@ contains
             real(F64), dimension(:, :), intent(inout) :: V
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
+            logical, optional, intent(in)             :: embedding
 
-            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL))
-            call pp_V_2(V, AOBasis, System)
+            logical :: embedding_
+
+            embedding_ = (System%EmbeddingECP%NEmbCenters > 0)
+            if (present(embedding)) embedding_ = (embedding_ .and. embedding)
+
+            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL), embedding_)
+            call pp_V_(V, AOBasis, System)
             call pp_Free()
       end subroutine pp_V
       
       
-      subroutine pp_V_2(vmat, AOBasis, System)
+      subroutine pp_V_(vmat, AOBasis, System)
             real(F64), dimension(:, :), intent(inout) :: vmat
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System
@@ -1045,6 +1120,7 @@ contains
             integer :: shellab, shellab_max
             type(tgtodef) :: phia, phib
             real(F64), dimension(MAX_NFUNC**2) :: gab
+            real(F64), dimension(3) :: Rc
             real(F64), dimension(:), allocatable :: tcc
             real(F64), dimension(:, :, :, :), allocatable :: tab
             real(F64), dimension(:, :, :), allocatable :: tac
@@ -1066,7 +1142,7 @@ contains
                   !$omp parallel &
                   !$omp default(shared) &
                   !$omp private(tcc, tab, tac, tchiac, tchiab, slma, slmb, slmk, xyzwork) &
-                  !$omp private(gab, a, b, c, cc, shella, shellb) &
+                  !$omp private(gab, a, b, c, cc, shella, shellb, Rc) &
                   !$omp private(phia, phib) &
                   !$omp shared(vmat)
 
@@ -1088,8 +1164,9 @@ contains
                         gab = ZERO
                         do cc = 1, ECP_NATOM
                               c = ECP_ATOM(cc)
+                              Rc = ECP_CENTER_COORDS(:, cc)
                               if ((a .ne. c) .and. (b .ne. c)) then
-                                    call pp_ecpab(gab, a, b, c, phia, phib, &
+                                    call pp_ecpab(gab, a, b, c, Rc, phia, phib, &
                                           slma, slmb, slmk, tab, tchiab, xyzwork, System)
                               else if ((a .ne. c) .and. (b .eq. c)) then
                                     call pp_ecpac(gab, a, c, phia, phib, slma, tac, tchiac, xyzwork, System)
@@ -1120,7 +1197,7 @@ contains
                   deallocate(xyzwork)
                   !$omp end parallel
             end associate
-      end subroutine pp_V_2
+      end subroutine pp_V_
 
 
       pure subroutine pp_vxyzmat_update(vxmat, vymat, vzmat, gab_a_lo, gab_a_hi, &
@@ -1737,22 +1814,23 @@ contains
       end subroutine pp_ecpbc
 
 
-      subroutine pp_ecpab(gab, a, b, c, phia, phib, &
+      subroutine pp_ecpab(gab, a, b, c, Rc, phia, phib, &
             slma, slmb, slmk, tab, tchiab, xyzwork, System)
             
-            real(F64), dimension(:), intent(inout) :: gab
-            integer, intent(in)                  :: a
-            integer, intent(in)                  :: b
-            integer, intent(in)                  :: c
-            type(tgtodef), intent(in)            :: phia
-            type(tgtodef), intent(in)            :: phib
-            real(F64), dimension(:), intent(out) :: slma
-            real(F64), dimension(:), intent(out) :: slmb
-            real(F64), dimension(:), intent(out) :: slmk
-            real(F64), dimension(0:, 0:, 0:, 0:), intent(out) :: tab
-            real(F64), dimension(0:, 0:), intent(out) :: tchiab
-            real(F64), dimension(:), intent(out)  :: xyzwork
-            type(TSystem), intent(in)            :: System
+            real(F64), dimension(:), intent(inout)             :: gab
+            integer, intent(in)                                :: a
+            integer, intent(in)                                :: b
+            integer, intent(in)                                :: c
+            real(F64), dimension(3), intent(in)                :: Rc
+            type(tgtodef), intent(in)                          :: phia
+            type(tgtodef), intent(in)                          :: phib
+            real(F64), dimension(:), intent(out)               :: slma
+            real(F64), dimension(:), intent(out)               :: slmb
+            real(F64), dimension(:), intent(out)               :: slmk
+            real(F64), dimension(0:, 0:, 0:, 0:), intent(out)  :: tab
+            real(F64), dimension(0:, 0:), intent(out)          :: tchiab
+            real(F64), dimension(:), intent(out)               :: xyzwork
+            type(TSystem), intent(in)                          :: System
 
             real(F64), dimension(0:max(2,ECP_GTO_MAXL)) :: ax, ay, az
             real(F64) :: axn, ayn, azn
@@ -1794,15 +1872,15 @@ contains
             nint = nfunca * nfuncb
 
             ax(0) = ONE
-            ax(1) = System%AtomCoords(1, a) - System%AtomCoords(1, c)
+            ax(1) = System%AtomCoords(1, a) - Rc(1)
             ax(2) = ax(1)**2
 
             ay(0) = ONE
-            ay(1) = System%AtomCoords(2, a) - System%AtomCoords(2, c)
+            ay(1) = System%AtomCoords(2, a) - Rc(2)
             ay(2) = ay(1)**2
 
             az(0) = ONE
-            az(1) = System%AtomCoords(3, a) - System%AtomCoords(3, c)
+            az(1) = System%AtomCoords(3, a) - Rc(3)
             az(2) = az(1)**2
 
             do i = 3, la
@@ -1817,15 +1895,15 @@ contains
             azn = az(1) / lena
 
             bx(0) = ONE
-            bx(1) = System%AtomCoords(1, b) - System%AtomCoords(1, c)
+            bx(1) = System%AtomCoords(1, b) - Rc(1)
             bx(2) = bx(1)**2
 
             by(0) = ONE
-            by(1) = System%AtomCoords(2, b) - System%AtomCoords(2, c)
+            by(1) = System%AtomCoords(2, b) - Rc(2)
             by(2) = by(1)**2
 
             bz(0) = ONE
-            bz(1) = System%AtomCoords(3, b) - System%AtomCoords(3, c)
+            bz(1) = System%AtomCoords(3, b) - Rc(3)
             bz(2) = bz(1)**2
             
             do i = 3, lb

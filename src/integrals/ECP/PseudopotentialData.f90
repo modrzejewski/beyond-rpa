@@ -164,6 +164,7 @@ module PseudopotentialData
       ! --------------------------------------------------------
       integer                                     :: ECP_NATOM = 0
       integer, dimension(:), allocatable          :: ECP_ATOM
+      real(F64), dimension(:, :), allocatable     :: ECP_CENTER_COORDS
       integer, dimension(:), allocatable          :: ECP_INUCLZ
       logical, dimension(:), allocatable          :: ECP_LOCALPP
 

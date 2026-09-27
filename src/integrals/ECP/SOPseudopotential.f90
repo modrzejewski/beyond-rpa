@@ -178,14 +178,20 @@ module SOPseudopotential
 
 contains
 
-      subroutine sop_V(Vx, Vy, Vz, AOBasis, System)
-            real(F64), dimension(:, :), intent(out)   :: Vx
-            real(F64), dimension(:, :), intent(out)   :: Vy
-            real(F64), dimension(:, :), intent(out)   :: Vz
-            type(TAOBasis), intent(in)                :: AOBasis
-            type(TSystem), intent(in)                 :: System
+      subroutine sop_V(Vx, Vy, Vz, AOBasis, System, embedding)
+            real(F64), dimension(:, :), intent(out) :: Vx
+            real(F64), dimension(:, :), intent(out) :: Vy
+            real(F64), dimension(:, :), intent(out) :: Vz
+            type(TAOBasis), intent(in)              :: AOBasis
+            type(TSystem), intent(in)               :: System
+            logical, optional, intent(in)           :: embedding
 
-            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL))
+            logical :: embedding_
+
+            embedding_ = (System%EmbeddingECP%NEmbCenters > 0)
+            if (present(embedding)) embedding_ = (embedding_ .and. embedding)
+
+            call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL), embedding_)
             call sop_V_2(Vx, Vy, Vz, AOBasis, System)
             call pp_Free()
       end subroutine sop_V
