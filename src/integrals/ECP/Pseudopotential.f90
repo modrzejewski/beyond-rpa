@@ -131,7 +131,8 @@ contains
 
       subroutine pp_Init(AOBasis, System, calcgrad, PrintOutParams)
             ! --------------------------------------------------------------
-            ! Initialize ECPINT module
+            ! Initialize pseudopotential parameters and mapping structures
+            ! for quantum-mechanical atoms and embedding centers.
             ! --------------------------------------------------------------
             ! 1. Moreno-Flores, R., Alvarez-Mendez, R., Vela, A., and
             !    Koster, A.M., Half-Numerical Evaluation of Pseudopotential
@@ -1020,6 +1021,10 @@ contains
 
 
       subroutine pp_V(V, AOBasis, System)
+            !
+            ! Add pseudopotential potential energy contributions from QM atoms
+            ! and embedding centers to the one-electron potential matrix.
+            !
             real(F64), dimension(:, :), intent(inout) :: V
             type(TAOBasis), intent(in)                :: AOBasis
             type(TSystem), intent(in)                 :: System

@@ -51,31 +51,33 @@ module sys_definitions
 
       type TECPParams
             !
-            ! True if this ECP subsystem has been initialized with parameters
+            ! Pseudopotential subsystem configuration and spatial parameters.
+            ! ---
+            !
+            ! True if this pseudopotential subsystem has been configured with parameters.
             !
             logical :: Initialized = .false.
             !
-            ! Number of embedding centers carrying an ECP.
-            ! For the QM part of the system, this is 0 and
-            ! attributes of TSystem (e.g. NAtoms) shall be used instead.
+            ! Number of embedding centers carrying an effective core potential.
+            ! For quantum-mechanical atoms, this is zero and system attributes
+            ! (e.g., NAtoms) define the centers.
             !
             integer :: NEmbCenters = 0
             !
-            ! Cartesian coordinates of ECP centers in bohr (3, NEmbCenters).
-            ! Allocated only if TECPParams describes ECPs on embedding centers.
-            ! For the QM part of the system, this array is unallocated
-            ! and System%AtomCoords shall be used instead.
+            ! Cartesian coordinates of embedding pseudopotential centers in bohr (3, NEmbCenters).
+            ! Unallocated for quantum-mechanical atoms, where AtomCoords is used instead.
             !
             real(F64), dimension(:, :), allocatable :: Coords
             !
-            ! Atomic numbers which identify the ECP centers (NEmbCenters).
-            ! Allocated only if TECPParams describes ECPs on embedding centers.
-            ! For the QM part of the system, this array is unallocated
-            ! and System%ZNumbers shall be used instead.
+            ! Physical atomic numbers identifying the elements of embedding pseudopotential centers.
+            ! Unallocated for quantum-mechanical atoms, where ZNumbers is used instead.
             !
             integer, dimension(:), allocatable :: Z
             !
-            ! Pseudopotential assignment rules inherited from TBasisAssignment
+            ! Pseudopotential assignment rules. For the QM region, rules are
+            ! inherited from the AO basis assignment and updated by the
+            ! ecp_assignment block. For embedding centers, rules are defined
+            ! from scratch within the embedding block.
             !
             type(TECPAssignment) :: Assignment
       contains
@@ -115,9 +117,17 @@ module sys_definitions
             real(F64), dimension(:), allocatable :: PointCharges
             real(F64), dimension(:, :), allocatable :: PointChargeCoords
             !
-            ! Pseudopotential parameters for quantum chemical and embedding regions
+            ! Effective core potentials for quantum-mechanical atoms. Replaces core
+            ! electrons with effective charges ZNumbersECP and introduces one-electron
+            ! projector operators into the core hamiltonian.
             !
             type(TECPParams) :: ECP
+            !
+            ! Effective core potentials on embedding centers. Introduces non-local
+            ! core projectors at environment positions to prevent electron spill-out,
+            ! without introducing basis functions or extra valence electrons into
+            ! the SCF solver.
+            !
             type(TECPParams) :: EmbeddingECP
             !
             ! Spin multiplicity of the system (1 for singlet, 2 for doublet, etc.). This 
@@ -252,8 +262,8 @@ contains
 
       subroutine sys_CreateECPConfigs(this, Configs, AtomConfigMap, NConfigs, embedding)
             !
-            ! Generate unique pseudopotential configurations and mapping array for
-            ! QM atoms or embedding centers.
+            ! Extract unique pseudopotential configurations and mapping array for
+            ! quantum-mechanical atoms or embedding centers.
             !
             class(TSystem), intent(in)                      :: this
             type(TECPConfig), allocatable, intent(out)      :: Configs(:)
@@ -347,7 +357,8 @@ contains
 
       subroutine sys_SetEffectiveCores_(this)
             !
-            ! Set system parameters that depend on effective core potentials.
+            ! Determine effective core charges ZNumbersECP = ZNumbers - NCore for
+            ! quantum-mechanical atoms and re-initialize subsystem valence electron counts.
             !
             class(TSystem), intent(inout) :: this
 

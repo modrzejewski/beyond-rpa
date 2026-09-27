@@ -1024,7 +1024,10 @@ contains
             allocate(H_cao(NAOCart, NAOCart))
             allocate(Ts_cao(NAOCart, NAOCart))
             allocate(Vne_cao(NAOCart, NAOCart))
-            
+            !
+            ! Assemble one-electron core hamiltonian matrix:
+            ! H = T + V_ne(QM) + V_pc(embedding) + V_ecp(QM) + V_ecp(embedding).
+            !
             call ints1e_Kinetic(Ts_cao, AOBasis)
             call ints1e_Coulomb(Vne_cao, AOBasis, System)
             call pp_V(Vne_cao, AOBasis, System)
