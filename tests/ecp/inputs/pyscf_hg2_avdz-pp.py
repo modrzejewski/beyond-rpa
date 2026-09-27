@@ -1,20 +1,32 @@
-from pyscf import gto, scf, mp
+import numpy as np
+import scipy.linalg
+from pyscf import gto, scf, ao2mo, df
 from pyscf.gw import rpa
+
 
 def calculate_energies(geometry: str, basis: str, ecp: dict[str, str], frozen_orbitals: int) -> tuple[float, float]:
     """
-    Calculate SCF and MP2 correlation energies.
+    Calculate SCF and dRPA correlation energies.
     """
-    molecule = gto.M(atom=geometry, basis=basis, ecp=ecp, verbose=3)
+    molecule = gto.M(atom=geometry, basis=basis, ecp=ecp, verbose=0)
     mean_field = scf.RHF(molecule)
     mean_field.conv_tol = 1e-12
     mean_field.direct_scf_tol = 1e-14
     energy_hf = mean_field.kernel()
+
+    # Exact 4-center Cholesky decomposition of 2-electron integrals
+    eri_s4 = molecule.intor("int2e_sph", aosym="s4")
+    eri_s2 = ao2mo.restore(4, eri_s4, molecule.nao)
+    w, v = scipy.linalg.eigh(eri_s2)
+    idx = w > 1e-12
+    cderi = (v[:, idx] * np.sqrt(w[idx])).T
+
+    mean_field.with_df = df.DF(molecule)
     rpa_model = rpa.dRPA(mean_field)
     rpa_model.frozen = frozen_orbitals
-    rpa_model.with_df.auxbasis = 'def2-universal-jkfit'
+    rpa_model.with_df._cderi = cderi
     energy_rpa_correlation = rpa_model.kernel(nw=200)
-    
+
     return energy_hf, energy_rpa_correlation
 
 if __name__ == "__main__":
