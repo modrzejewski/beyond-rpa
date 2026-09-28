@@ -1,3 +1,6 @@
+"""
+Reference generation for Hg-Xe dimer with distinct ECPs on Hg and Xe.
+"""
 import numpy as np
 import scipy.linalg
 from pyscf import gto, scf, ao2mo, df
@@ -32,21 +35,21 @@ def calculate_energies(geometry: str, basis: str, ecp: dict[str, str], frozen_or
 if __name__ == "__main__":
     geometry_ab = """
     Hg  0.000000  0.000000  0.000000
-    Hg  0.000000  0.000000  3.630000
+    Xe  0.000000  0.000000  4.100000
     """
     
     geometry_a_ghost_b = """
     Hg    0.000000  0.000000  0.000000
-    X-Hg  0.000000  0.000000  3.630000
+    X-Xe  0.000000  0.000000  4.100000
     """
     
     geometry_b_ghost_a = """
     X-Hg  0.000000  0.000000  0.000000
-    Hg    0.000000  0.000000  3.630000
+    Xe    0.000000  0.000000  4.100000
     """
     
-    basis = "aug-cc-pvdz-pp"
-    ecp = {"Hg": "cc-pvdz-pp"}
+    basis = "def2-tzvp"
+    ecp = {"Hg": "cc-pvdz-pp", "Xe": "def2-tzvp"}
     
     energy_hf_ab, energy_rpa_correlation_ab = calculate_energies(geometry_ab, basis, ecp, 8)
     energy_hf_a, energy_rpa_correlation_a = calculate_energies(geometry_a_ghost_b, basis, ecp, 4)

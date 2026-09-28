@@ -16,7 +16,6 @@ module parser
    use rpa_definitions
    use thc_definitions
    use TwoStepCholesky_definitions
-   use Pseudopotential, only: pp_ZNumbers
    use grid_definitions
 
    implicit none
@@ -1096,18 +1095,13 @@ contains
       type(TBasisAssignment), intent(out) :: BasisAssign
       character(len=*), intent(in)        :: filename
 
-      integer :: OldXYZFormat
       character(len=DEFLEN) :: line
       character(:), allocatable :: key, val
-      character(:), allocatable :: ecp_path
       integer :: u, linenumber, stat
       integer :: current_block
-      integer :: k, z
-      integer :: AtomIdx, ChargeIdx
-      logical :: XYZDefined, EmbeddingDefined
+      logical :: XYZDefined
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
-      integer, parameter :: block_ECP = 2
       integer, parameter :: block_RhoSpher = 3
       integer, parameter :: block_RhoDiff = 4
       integer, parameter :: block_NonSCF = 5
@@ -1116,9 +1110,9 @@ contains
       integer, parameter :: block_XYZ = 8
       integer, parameter :: block_SCF = 9
       integer, parameter :: block_basis_assign = 10
+      integer, parameter :: block_ecp_assign = 11
 
       XYZDefined = .false.
-      EmbeddingDefined = .false.
 
       open(newunit=u, file=filename, status="old", &
          access="sequential", position="rewind")
@@ -1127,9 +1121,6 @@ contains
       call msg("LOADED INPUT FILE")
       call msg(filename)
       call midrule()
-      OldXYZFormat = -1
-      AtomIdx = -1
-      ChargeIdx = -1
       linenumber = 0
       current_block = block_none
 
@@ -1155,8 +1146,8 @@ contains
                current_block = block_auxint
                cycle lines
             end if
-          case ("ECP")
-            current_block = block_ECP
+          case ("ECP_ASSIGNMENT")
+            current_block = block_ecp_assign
             cycle lines
           case ("RHOSPHER")
             current_block = block_RhoSpher
@@ -1170,7 +1161,6 @@ contains
             current_block = block_NonSCF
             cycle lines
           case ("EMBEDDING")
-            EmbeddingDefined = .true.
             current_block = block_embedding
             cycle lines
           case ("RPA")
@@ -1188,38 +1178,18 @@ contains
             current_block = block_basis_assign
             cycle lines
           case ("XYZ")
-            if (JOBTYPE == JOB_REAL_UKS_RPA .or. JOBTYPE == JOB_REAL_UKS_SP &
-               .or. JOBTYPE == JOB_REAL_UKS_INT .or. JOBTYPE == JOB_UNKNOWN) then
-               XYZDefined = .true.
-               current_block = block_XYZ
-               cycle lines
-            end if
+            XYZDefined = .true.
+            current_block = block_XYZ
+            cycle lines
           case ("END")
             if (current_block /= block_none) then
-               if (current_block == block_XYZ) then
-                  call sys_Init(System, SYS_TOTAL)
-               end if
                current_block = block_none
                cycle lines
             end if
          end select
 
-         if (current_block == block_ECP) then
-            if (key == "*") then
-               call read_ecp_path(ecp_path, val)
-               call ECP_PARAMS_PATH%set_default(ecp_path)
-               call SCFParams%ECPFile%set_default(ecp_path)
-            else
-               z = znumber_short(key)
-               if (z > 0) then
-                  call read_ecp_path(ecp_path, val)
-                  call ECP_PARAMS_PATH%update(ecp_path, z)
-                  call SCFParams%ECPFile%update(ecp_path, z)
-               else
-                  call msg("Unknown element specified in the ECP block", MSG_ERROR)
-                  error stop
-               end if
-            end if
+         if (current_block == block_ecp_assign) then
+            cycle lines
          else if (current_block == block_auxint) then
             call read_block_auxint(SCFParams, line)
          else if (current_block == block_RhoSpher) then
@@ -1237,7 +1207,7 @@ contains
          else if (current_block == block_basis_assign) then
             call BasisAssign%read_line(line)
          else if (current_block == block_XYZ) then
-            call read_block_XYZ(System, AtomIdx, line)
+            cycle lines
          else
             select case (uppercase(key))
              case ("BASIS")
@@ -1252,12 +1222,6 @@ contains
                call read_xcmodel(line)
              case ("AUXINT")
                call read_auxint_name(line)
-             case ("XYZ")
-               !
-               ! Compatibility mode
-               !
-               OldXYZFormat = linenumber + 1
-               call read_geomfile(u, line, linenumber)
              case ("REPORT")
                call read_report(line)
              case ("UNITS")
@@ -1507,43 +1471,6 @@ contains
          stop
       end if
 
-      if (.not. XYZDefined) then
-         if (OldXYZFormat > -1) then
-            call msg("Reading xyz data using compatibility mode with the old SCF module")
-            ! --------------------------------------------------------------------------------
-            ! define system in case old scf is requested (for compatibility with old versions)
-            ! --------------------------------------------------------------------------------
-            open(newunit=u, file=filename, status="old", access="sequential")
-            call msg("OLDXYZFORMAT="//str(OldXYZFormat))
-            call scroll(u, OldXYZFormat)
-            do
-               read(u, "(A)", iostat=stat) line
-               call msg(">>>>>" // line)
-               if (stat .eq. iostat_end) then
-                  exit
-               end if
-               if (isblank(line) .or. iscomment(line)) then
-                  cycle
-               end if
-
-               call split(line, key, val)
-               key = uppercase(key)
-
-               if (key == "END") then
-                  !
-                  ! End of xyz block
-                  !
-                  call sys_Init(System, SYS_TOTAL)
-                  exit
-               else
-                  call read_block_XYZ(System, AtomIdx, line)
-               end if
-            end do
-            close(u)
-            XYZDefined = .true.
-         end if
-      end if
-
       if (BasisAssign%FallbackAvailable) then
          ! DEPRECATED: This code block is marked for future removal
          ! as we are transitioning to code without global parameters.
@@ -1557,65 +1484,41 @@ contains
 
       if (.not. allocated(BASIS_SET_PATH)) then
          call msg("NO BASIS SET SPECIFIED", MSG_ERROR)
-         stop
+         error stop
       end if
 
       if (JOBTYPE == JOB_RTTDDFT_POLAR) then
          if (.not. allocated(RTTDDFT_POLAR_OMEGA)) then
             call msg("NO ANGULAR FREQUENCIES SPECIFIED", MSG_ERROR)
-            stop
+            error stop
          end if
-      end if
-      !
-      ! Default path for ECP parameters will be the file of the basis set parameters
-      !
-      if (ECP_PARAMS_PATH%get_default() == "") then
-         call ECP_PARAMS_PATH%set_default(BASIS_SET_PATH)
-      end if
-      !
-      ! Default path for ECP parameters will be the file of the basis set parameters
-      !
-      ! DEPRECATED AND SUBJECT TO CHANGE once we figure out how to pass the information on ECPSs.
-      if (SCFParams%ECPFile%get_default() == "") then
-         call SCFParams%ECPFile%set_default(BASIS_SET_PATH) ! Replaced SCFParams%AOBasisPath
       end if
       !
       ! Configure the internal algorithm and orbital settings based
       ! on the specified TheoryLevel.
       !
       call rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params)
+
+      if (.not. XYZDefined) then
+         call msg("No xyz coordinates specified", MSG_ERROR)
+         error stop
+      end if
+      !
+      call System%read_xyz(filename)
       !
       ! Update effective nuclear charges if a pseudopotential is defined
-      ! The ECP nuclear charges will be the same as physical charges if there's no pseudopotential
-      ! on any of the atoms
+      ! The ECP nuclear charges will be the same as physical charges
+      ! if there's no pseudopotential on any of the atoms.
       !
-      if (XYZDefined) then
-         call pp_ZNumbers(System, SCFParams%ECPFile)
-         call sys_SortDistances(System)
-      end if
-      
-      if (EmbeddingDefined) then
-         call sys_Read_Embedding(System, filename)
-      end if
+      call System%read_ecp( &
+         FilePath=filename, &
+         DefaultAssign=BasisAssign &
+         )
+      call System%read_embedding( &
+         FilePath=filename, &
+         LibraryDir=BASISDIR & ! default library dir for ECPs on embedding atoms
+         )
    end subroutine read_inputfile
-
-
-   subroutine read_ecp_path(path, s)
-      character(:), allocatable, intent(out) :: path
-      character(*), intent(in) :: s
-      character(:), allocatable :: a
-
-      a = uppercase(s)
-      select case (a)
-       case ("SMALL-CORE-RELATIVISTIC")
-         path = ECPDIR // "small-core-relativistic.txt"
-       case ("SMALL-CORE-SR")
-         path = ECPDIR // "sr-small.txt"
-       case default
-         call msg("Unknown pseudopotential requested", MSG_ERROR)
-         error stop
-      end select
-   end subroutine read_ecp_path
 
 
    subroutine read_F12BasisPath(line, SCFParams)
@@ -3801,81 +3704,6 @@ contains
          call msg("Invalid keyword: " // key)
       end select
    end subroutine read_block_SCF
-
-
-   subroutine read_block_XYZ(System, AtomIdx, line)
-      type(TSystem), intent(inout) :: System
-      integer, intent(inout)       :: AtomIdx
-      character(*), intent(in)     :: line
-
-      character(:), allocatable :: key, val
-      character(:), allocatable :: element, coords
-      integer :: k, z
-      integer :: NSubsystems
-
-      call split(line, key, val)
-      key = uppercase(key)
-      if (System%SystemKind == SYS_NONE) then
-         NSubsystems = IntListLength(line)
-         select case (NSubsystems)
-          case (1)
-            System%SystemKind = SYS_MOLECULE
-          case (2)
-            System%SystemKind = SYS_DIMER
-          case (3)
-            System%SystemKind = SYS_TRIMER
-          case (4)
-            System%SystemKind = SYS_TETRAMER
-          case default
-            call msg("First line of the XYZ block has an invalid format", MSG_ERROR)
-            stop
-         end select
-         AtomIdx = 0
-         read(line, *) (System%SubsystemAtoms(k), k=1,System%SystemKind)
-         System%NAtoms = sum(System%SubsystemAtoms)
-         System%RealAtoms(:, 1) = [1, System%NAtoms]
-         System%RealAtoms(:, 2) = [1, 0]
-         allocate(System%AtomCoords(3, System%NAtoms))
-         allocate(System%ZNumbers(System%NAtoms))
-      else if (key == "CHARGE" .or. key == "CHARGES") then
-         read(val, *) (System%SubsystemCharges(k), k=1,System%SystemKind)
-         System%Charge = sum(System%SubsystemCharges)
-      else if (key == "MULT" .or. key == "MULTIPLICITY") then
-         if (System%SystemKind==SYS_MOLECULE) then
-            read(val, *) System%SubsystemMult(1)
-         else if (System%SystemKind==SYS_DIMER) then
-            read(val, *) (System%SubsystemMult(k), k=1,3)
-         else if (System%SystemKind==SYS_TRIMER) then
-            read(val, *) (System%SubsystemMult(k), k=1,7)
-         else ! Multiplicities of subsystems in a tetramer
-            read(val, *) (System%SubsystemMult(k), k=1,15)
-         end if
-         System%Mult = System%SubsystemMult(1)
-      else
-         if (AtomIdx > -1) then
-            AtomIdx = AtomIdx + 1
-            if (AtomIdx <= System%NAtoms) then
-               element = key
-               coords = val
-               z = znumber_short(element)
-               if (z > 0) then
-                  System%ZNumbers(AtomIdx) = z
-                  read(coords, *) (System%AtomCoords(k, AtomIdx), k=1,3)
-                  System%AtomCoords(:, AtomIdx) = tobohr(System%AtomCoords(:, AtomIdx))
-               else
-                  call msg("Unknown element: " // element, MSG_ERROR)
-                  stop
-               end if
-            else
-               call msg("Inconsistent number of atoms specified", MSG_ERROR)
-               stop
-            end if
-         else
-            call msg("Unspecified number of atoms", MSG_ERROR)
-            stop
-         end if
-      end if
-   end subroutine read_block_XYZ
 
 
    subroutine read_block_NonSCF(SCFParams, line)

@@ -171,7 +171,6 @@ environ["MKL_DISABLE_FAST_MM"] = "1"
 # Execute the main Fortran program
 #
 {COMMAND_DEF}
-os.setpgrp()
 try:
     process = subprocess.Popen(cmdlist, stderr=subprocess.STDOUT, bufsize=1,
                                universal_newlines=True, stdout=sys.stdout)
@@ -186,8 +185,8 @@ except KeyboardInterrupt:
     # script is killed.
     #
     try:
-        os.killpg(process.pid, signal.SIGKILL)  # Kill only the spawned process group
-    except ProcessLookupError:
+        process.kill()
+    except (ProcessLookupError, OSError):
         pass  # Ignore if the process is already terminated
     sys.exit(1)
 #

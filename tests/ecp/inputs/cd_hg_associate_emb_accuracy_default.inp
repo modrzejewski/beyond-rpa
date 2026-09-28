@@ -1,0 +1,48 @@
+! reference values from pyscf
+! HF single point AB (a.u.):           -319.39724635
+! dRPA single point AB (a.u.):           -0.55700572
+! HF single point A (a.u.):            -166.84882539
+! dRPA single point A (a.u.):            -0.27136800
+! HF single point B (a.u.):            -152.55044567
+! dRPA single point B (a.u.):            -0.28405293
+! HF interaction A...B (kcal/mol):          1.270524
+! dRPA interaction A...B (kcal/mol):       -0.994468
+
+basis def2-svp
+
+scf
+  xcfunc hf
+end
+
+rpa
+  TheoryLevel RPA+ph
+  accuracy custom
+  ! Decomposition threshold of Pi(u) is the bottleneck for accuracy
+  TargetErrorRandom 1.0E-7
+end
+
+xyz
+1 1
+Cd 0.0 0.0 -1.85
+Hg 0.0 0.0  1.85
+end
+
+embedding
+point_charges(16) ecp_centers(4) associate_with(A)
+Q(0.1) 4.12 -3.21 2.55
+Q(-0.1) -4.55 2.11 -3.10
+Q(0.1) 3.05 4.44 -2.15
+Q(-0.1) -2.90 -4.80 1.50
+Q(0.1) ECP(Xe def2-SVP) 5.10 0.25 0.85
+Q(-0.1) ECP(Xe def2-SVP) -5.20 -0.15 -1.25
+Q(0.1) 0.85 5.50 3.20
+Q(-0.1) -0.75 -5.60 -2.80
+Q(0.1) 2.20 -2.30 4.90
+Q(-0.1) -1.80 3.40 -4.50
+Q(0.1) ECP(Xe def2-SVP) 4.80 2.90 1.10
+Q(-0.1) ECP(Xe def2-SVP) -3.70 -2.50 -1.70
+Q(0.1) 1.50 -4.10 5.50
+Q(-0.1) -1.10 5.20 -5.10
+Q(0.1) 0.00 0.00 6.00
+Q(-0.1) 0.00 0.00 -6.00
+end

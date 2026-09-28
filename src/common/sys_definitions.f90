@@ -5,6 +5,8 @@ module sys_definitions
       use sort
       use display
       use io
+      use basis_definitions
+      use ecp_definitions
       
       implicit none
       !
@@ -45,6 +47,43 @@ module sys_definitions
       integer, parameter :: SYS_REAL_ATOMS = 2
       integer, parameter :: SYS_GHOST_ATOMS = 3
 
+      integer, parameter :: SYS_NO_PSEUDOPOTENTIAL = 0
+
+      type TECPParams
+            !
+            ! Pseudopotential subsystem configuration and spatial parameters.
+            ! ---
+            !
+            ! True if this pseudopotential subsystem has been configured with parameters.
+            !
+            logical :: Initialized = .false.
+            !
+            ! Number of embedding centers carrying an effective core potential.
+            ! For quantum-mechanical atoms, this is zero and system attributes
+            ! (e.g., NAtoms) define the centers.
+            !
+            integer :: NEmbCenters = 0
+            !
+            ! Cartesian coordinates of embedding pseudopotential centers in bohr (3, NEmbCenters).
+            ! Unallocated for quantum-mechanical atoms, where AtomCoords is used instead.
+            !
+            real(F64), dimension(:, :), allocatable :: Coords
+            !
+            ! Physical atomic numbers identifying the elements of embedding pseudopotential centers.
+            ! Unallocated for quantum-mechanical atoms, where ZNumbers is used instead.
+            !
+            integer, dimension(:), allocatable :: Z
+            !
+            ! Pseudopotential assignment rules. For the QM region, rules are
+            ! inherited from the AO basis assignment and updated by the
+            ! ecp_assignment block. For embedding centers, rules are defined
+            ! from scratch within the embedding block.
+            !
+            type(TECPAssignment) :: Assignment
+      contains
+            procedure :: free => ecp_params_free
+      end type TECPParams
+
       type TSystem
             !
             ! Molecular or atomic system properties and configuration.
@@ -77,6 +116,31 @@ module sys_definitions
             integer :: NPointCharges = 0
             real(F64), dimension(:), allocatable :: PointCharges
             real(F64), dimension(:, :), allocatable :: PointChargeCoords
+            !
+            ! Effective core potentials for quantum-mechanical atoms. Replaces core
+            ! electrons with effective charges ZNumbersECP and introduces one-electron
+            ! projector operators into the core hamiltonian.
+            !
+            type(TECPParams) :: ECP
+            !
+            ! Effective core potentials on embedding centers. Introduces non-local
+            ! core projectors at environment positions to prevent electron spill-out,
+            ! without introducing basis functions or extra valence electrons into
+            ! the SCF solver.
+            !
+            type(TECPParams) :: EmbeddingECP
+            !
+            ! Flags indicating which monomer fragments (1-4 for A-D) own the classical 
+            ! embedding environment (point charges and ECPs). Used in surface-adsorbate 
+            ! modeling to restrict the embedding field to subsystems containing the surface 
+            ! fragment. The embedding is excluded from isolated adsorbate clusters, where 
+            ! only the ghost atomic orbitals on the surface are visible.
+            !
+            logical, dimension(4) :: EmbeddingAssociatedMonomers = [.true., .true., .true., .true.]
+            !
+            ! True if embedding is active in the current subsystem.
+            !
+            logical :: EmbeddingActive = .true.
             !
             ! Spin multiplicity of the system (1 for singlet, 2 for doublet, etc.). This 
             ! variable is updated to the active subsystem's multiplicity when sys_Init is called
@@ -136,9 +200,211 @@ module sys_definitions
             ! m-th closest atom to center j, which can be used to access AtomCoords
             !
             integer, dimension(:, :), allocatable :: SortedDistancesIdx
+      contains
+            procedure :: create_ecp_configs => sys_CreateECPConfigs
+            procedure :: read_xyz => sys_Read_XYZ
+            procedure :: read_embedding => sys_Read_Embedding
+            procedure :: read_ecp => sys_ReadECP
+            procedure :: is_monomer_real => sys_IsMonomerReal
       end type TSystem
 
 contains
+
+      subroutine ecp_params_free(this)
+            !
+            ! Deallocate ECP parameter arrays and reset counters.
+            !
+            class(TECPParams), intent(out) :: this
+      end subroutine ecp_params_free
+
+
+      subroutine sys_AddECPConfig_(Configs, AtomConfigMap, NConfigs, a, Z, Rule)
+            !
+            ! Query and deduplicate pseudopotential configuration for center a.
+            !
+            type(TECPConfig), intent(inout)                 :: Configs(:)
+            integer, dimension(:), intent(inout)            :: AtomConfigMap
+            integer, intent(inout)                          :: NConfigs
+            integer, intent(in)                             :: a
+            integer, intent(in)                             :: Z
+            type(TBasisRule), intent(in)                    :: Rule
+
+            logical :: found, spin_orbit
+            integer :: c, lmax, ngauss, ncoreel
+            character(:), allocatable :: PathToParams, citation
+
+            PathToParams = Rule%PathToParams
+
+            call pp_queryecp(PathToParams, Z, lmax, ngauss, ncoreel, spin_orbit, citation)
+            if (ngauss <= 0) then
+                  !
+                  ! No pseudopotential data for the given element
+                  ! were found in the parameter file. This is a standard
+                  ! thing that happens when we check if there is any default
+                  ! pseudopotential data associated with the chosen basis
+                  ! set in the same basis set file.
+                  !
+                  AtomConfigMap(a) = SYS_NO_PSEUDOPOTENTIAL
+                  return
+            end if
+            !
+            ! Deduplicate ECP configs
+            !
+            found = .false.
+            do c = 1, NConfigs
+                  if (Configs(c)%Z == Z .and. Configs(c)%PathToParams == PathToParams) then
+                        AtomConfigMap(a) = c
+                        found = .true.
+                        exit
+                  end if
+            end do
+
+            if (.not. found) then
+                  NConfigs = NConfigs + 1
+                  Configs(NConfigs)%Z = Z
+                  Configs(NConfigs)%PathToParams = PathToParams
+                  Configs(NConfigs)%NCoreEl = ncoreel
+                  Configs(NConfigs)%Lmax = lmax
+                  Configs(NConfigs)%NGauss = ngauss
+                  Configs(NConfigs)%SpinOrbit = spin_orbit
+                  Configs(NConfigs)%Citation = citation
+                  AtomConfigMap(a) = NConfigs
+            end if
+      end subroutine sys_AddECPConfig_
+
+
+      subroutine sys_CreateECPConfigs(this, Configs, AtomConfigMap, NConfigs, embedding)
+            !
+            ! Extract unique pseudopotential configurations and mapping array for
+            ! quantum-mechanical atoms or embedding centers.
+            !
+            class(TSystem), intent(in)                      :: this
+            type(TECPConfig), allocatable, intent(out)      :: Configs(:)
+            integer, dimension(:), allocatable, intent(out) :: AtomConfigMap
+            integer, intent(out)                            :: NConfigs
+            logical, optional, intent(in)                   :: embedding
+
+            logical :: embedding_, found
+            integer :: a, c, s, Z, NCenters
+            type(TBasisRule) :: Rule
+            type(TECPConfig), allocatable :: TempConfigs(:)
+
+            if (present(embedding)) then
+                  embedding_ = embedding
+            else
+                  embedding_ = .false.
+            end if
+
+            if (embedding_) then
+                  NCenters = this%EmbeddingECP%NEmbCenters
+                  allocate(AtomConfigMap(NCenters))
+                  AtomConfigMap = SYS_NO_PSEUDOPOTENTIAL
+                  NConfigs = 0
+
+                  if (NCenters == 0 .or. .not. this%EmbeddingECP%Assignment%Initialized) then
+                        allocate(Configs(0))
+                        return
+                  end if
+
+                  allocate(Configs(NCenters))
+                  do a = 1, NCenters
+                        Z = this%EmbeddingECP%Z(a)
+                        call this%EmbeddingECP%Assignment%get_atom_rule(Rule, a, Z, found)
+                        
+                        if (.not. found) then
+                              call msg("No pseudopotential assigned for embedding center " // str(a) // &
+                                    " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+                              error stop
+                        end if
+                        !
+                        ! Check for the existence of ECP data for the given center. It is
+                        ! required that the data exist.
+                        !
+                        call sys_AddECPConfig_(Configs, AtomConfigMap, NConfigs, a, Z, Rule)
+                        
+                        if (AtomConfigMap(a) == SYS_NO_PSEUDOPOTENTIAL) then
+                              call msg("No pseudopotential found for embedding center " // str(a) // &
+                                    " (" // trim(ELNAME_SHORT(Z)) // ")", MSG_ERROR)
+                              error stop
+                        end if
+                  end do
+            else
+                  NCenters = this%NAtoms
+                  allocate(AtomConfigMap(NCenters))
+                  AtomConfigMap = SYS_NO_PSEUDOPOTENTIAL
+                  NConfigs = 0
+
+                  if (.not. this%ECP%Assignment%Initialized) then
+                        allocate(Configs(0))
+                        return
+                  end if
+
+                  allocate(TempConfigs(NCenters))
+                  do s = 1, 2
+                        !
+                        ! We skip the ghost centers because they provide only
+                        ! basis set functions, not pseudopotentials. ECPs
+                        ! on the embedding centers are handled in EmbeddingECP.
+                        !
+                        do a = this%RealAtoms(1, s), this%RealAtoms(2, s)
+                              Z = this%ZNumbers(a)
+                              call this%ECP%Assignment%get_atom_rule(Rule, a, Z, found)
+                              if (found) then
+                                    !
+                                    ! Try to extract ECP parameters from the given
+                                    ! parameter file. AtomConfigMap will keep SYS_NO_PSEUDOPOTENTIAL
+                                    ! if no data is found.
+                                    !
+                                    call sys_AddECPConfig_(TempConfigs, AtomConfigMap, NConfigs, a, Z, Rule)
+                              end if
+                        end do
+                  end do
+
+                  allocate(Configs(NConfigs))
+                  do c = 1, NConfigs
+                        Configs(c) = TempConfigs(c)
+                  end do
+            end if
+      end subroutine sys_CreateECPConfigs
+
+
+      subroutine sys_SetEffectiveCores_(this)
+            !
+            ! Determine effective core charges ZNumbersECP = ZNumbers - NCore for
+            ! quantum-mechanical atoms and re-initialize subsystem valence electron counts.
+            !
+            class(TSystem), intent(inout) :: this
+
+            integer :: a, c
+            integer :: NConfigs
+            type(TECPConfig), allocatable :: Configs(:)
+            integer, dimension(:), allocatable :: AtomConfigMap
+            integer, dimension(:), allocatable :: EffectiveCores
+
+            call this%create_ecp_configs(Configs, AtomConfigMap, NConfigs)
+
+            allocate(EffectiveCores(this%NAtoms))
+            EffectiveCores = 0
+            do a = 1, this%NAtoms
+                  c = AtomConfigMap(a)
+                  if (c /= SYS_NO_PSEUDOPOTENTIAL) then
+                        EffectiveCores(a) = Configs(c)%NCoreEl
+                  end if
+            end do
+
+            this%ECPCharges = any(EffectiveCores > 0)
+
+            if (allocated(this%ZNumbersECP)) deallocate(this%ZNumbersECP)
+            allocate(this%ZNumbersECP(this%NAtoms))
+            this%ZNumbersECP = this%ZNumbers - EffectiveCores
+
+            if (this%SubsystemKind /= SYS_NONE) then
+                  call sys_Init(this, this%SubsystemKind)
+            else
+                  call sys_Init(this, SYS_TOTAL)
+            end if
+      end subroutine sys_SetEffectiveCores_
+
 
       subroutine sys_Init(System, i)
             type(TSystem), intent(inout) :: System
@@ -305,9 +571,52 @@ contains
                   NElectrons = NElectrons - Charge
                   Mult = SubsystemMult(i)
             end associate
+
+            if (System%NPointCharges > 0 .or. System%EmbeddingECP%NEmbCenters > 0) then
+                  System%EmbeddingActive = any(System%EmbeddingAssociatedMonomers(1:4) .and. &
+                        [System%is_monomer_real(1), &
+                         System%is_monomer_real(2), &
+                         System%is_monomer_real(3), &
+                         System%is_monomer_real(4)])
+            else
+                  System%EmbeddingActive = .false.
+            end if
       end subroutine sys_Init
 
-      
+
+      pure function sys_IsMonomerReal(System, MonomerIdx)
+            !
+            ! Return true if the specified monomer fragment (1-4 for A-D)
+            ! is physically present as real atoms (non-dummy atoms) in the 
+            ! active subsystem.
+            !
+            logical                    :: sys_IsMonomerReal
+            class(TSystem), intent(in) :: System
+            integer, intent(in)        :: MonomerIdx
+
+            integer :: first_atom, last_atom, s
+
+            sys_IsMonomerReal = .false.
+            if (MonomerIdx < 1 .or. MonomerIdx > 4) return
+            if (System%SubsystemAtoms(MonomerIdx) <= 0) return
+
+            if (MonomerIdx == 1) then
+                  first_atom = 1
+            else
+                  first_atom = sum(System%SubsystemAtoms(1:MonomerIdx - 1)) + 1
+            end if
+            last_atom = first_atom + System%SubsystemAtoms(MonomerIdx) - 1
+
+            do s = 1, 2
+                  if (first_atom >= System%RealAtoms(1, s) .and. &
+                      last_atom <= System%RealAtoms(2, s)) then
+                        sys_IsMonomerReal = .true.
+                        return
+                  end if
+            end do
+      end function sys_IsMonomerReal
+
+
       subroutine sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, AtomsType)
             integer, dimension(:), allocatable, intent(out) :: ZList
             integer, dimension(:), allocatable, intent(out) :: ZCount
@@ -566,7 +875,7 @@ contains
                               !
                               ! Atom - point charge interaction (QM-MM)
                               !
-                              if (System%NPointCharges > 0) then
+                              if (System%EmbeddingActive .and. System%NPointCharges > 0) then
                                     associate ( &
                                           NPointCharges => System%NPointCharges, &
                                           PointCharges => System%PointCharges, &
@@ -663,11 +972,11 @@ contains
 
       
       subroutine sys_Read_XYZ(System, FilePath, Units)
-            type(TSystem), intent(out)    :: System
+            class(TSystem), intent(out)   :: System
             character(*), intent(in)      :: FilePath
             integer, optional, intent(in) :: Units
 
-            logical :: XYZDefined, ReadingXYZBlock
+            logical :: XYZDefined, XYZCompleted, InsideXYZ
             integer :: AtomIdx
             integer :: u
             character(:), allocatable :: key, val
@@ -683,7 +992,8 @@ contains
             
             u = io_text_open(FilePath, "OLD")
             XYZDefined = .false.
-            ReadingXYZBlock = .false.
+            XYZCompleted = .false.
+            InsideXYZ = .false.
             AtomIdx = -1
             lines: do
                   call io_text_readline(line, u, eof)
@@ -697,28 +1007,37 @@ contains
                   key = uppercase(key)
                   if (key == "XYZ") then
                         XYZDefined = .true.
-                        ReadingXYZBlock = .true.
+                        InsideXYZ = .true.
                         cycle lines
                   else if (key == "END") then
-                        if (ReadingXYZBlock) then
-                              call sys_Init(System, SYS_TOTAL)
-                              ReadingXYZBlock = .false.
+                        if (InsideXYZ) then
+                              XYZCompleted = .true.
+                              InsideXYZ = .false.
                               exit lines
                         else
                               cycle lines
                         end if
                   else
-                        if (ReadingXYZBlock) then
+                        if (InsideXYZ) then
                               call sys_Read_XYZ_NextLine(System, AtomIdx, line, Units0)
                         end if
                   end  if
             end do lines
+            close(u)
+            
             if (.not. XYZDefined) then
                   call msg("XYZ coordinates not defined in file " // FilePath, MSG_ERROR)
                   error stop
             end if
+
+            if (XYZDefined .and. .not. XYZCompleted) then
+                  call msg("Unexpected end of file while reading xyz coordinates. " &
+                        // "Missing END keyword.", MSG_ERROR)
+                  error stop
+            end if
+            
+            call sys_Init(System, SYS_TOTAL)
             call sys_SortDistances(System)
-            close(u)
       end subroutine sys_Read_XYZ
 
 
@@ -800,13 +1119,14 @@ contains
       end subroutine sys_Read_XYZ_NextLine
 
 
-      subroutine sys_Read_Embedding(System, FilePath, Units)
-            type(TSystem), intent(inout)  :: System
-            character(*), intent(in)      :: FilePath
-            integer, optional, intent(in) :: Units
+      subroutine sys_Read_Embedding(System, FilePath, Units, LibraryDir)
+            class(TSystem), intent(inout)      :: System
+            character(*), intent(in)           :: FilePath
+            integer, optional, intent(in)      :: Units
+            character(*), optional, intent(in) :: LibraryDir
 
-            logical :: EmbeddingDefined, InsideEmbedding, EmbeddingCompleted
-            integer :: ChargeIdx
+            logical :: EmbeddingDefined, InsideEmbedding, EmbeddingCompleted, HeaderRead
+            integer :: ChargeIdx, ECPIdx
             integer :: u
             character(:), allocatable :: key, val
             character(:), allocatable :: line
@@ -823,11 +1143,19 @@ contains
             EmbeddingDefined = .false.
             InsideEmbedding = .false.
             EmbeddingCompleted = .false.
-            ChargeIdx = -1
+            HeaderRead = .false.
+            ChargeIdx = 0
+            ECPIdx = 0
             
             System%NPointCharges = 0
             if (allocated(System%PointCharges)) deallocate(System%PointCharges)
             if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
+            call System%EmbeddingECP%free()
+            System%EmbeddingAssociatedMonomers(:) = .true.
+            System%EmbeddingActive = .true.
+            if (present(LibraryDir)) then
+                  call System%EmbeddingECP%Assignment%set_library_dir(LibraryDir)
+            end if
 
             lines: do
                   call io_text_readline(line, u, eof)
@@ -852,7 +1180,22 @@ contains
                         end if
                   else
                         if (InsideEmbedding) then
-                              call sys_Read_Embedding_NextLine(System, ChargeIdx, line, Units_)
+                              if (.not. HeaderRead) then
+                                    call sys_Read_Embedding_Header(System, line)
+
+                                    allocate(System%PointCharges(System%NPointCharges))
+                                    allocate(System%PointChargeCoords(3, System%NPointCharges))
+
+                                    if (System%EmbeddingECP%NEmbCenters > 0) then
+                                          allocate(System%EmbeddingECP%Coords(3, System%EmbeddingECP%NEmbCenters))
+                                          allocate(System%EmbeddingECP%Z(System%EmbeddingECP%NEmbCenters))
+                                          System%EmbeddingECP%Initialized = .true.
+                                    end if
+
+                                    HeaderRead = .true.
+                              else
+                                    call sys_Read_Embedding_NextLine(System, ChargeIdx, ECPIdx, line, Units_)
+                              end if
                         end if
                   end if
             end do lines
@@ -870,58 +1213,297 @@ contains
                               // "specified number.", MSG_ERROR)
                         error stop
                   end if
+
+                  if (ECPIdx /= System%EmbeddingECP%NEmbCenters) then
+                        call msg("Number of ECP centers read does not match the " &
+                              // "specified number in ecp_centers keyword.", MSG_ERROR)
+                        error stop
+                  end if
             end if
       end subroutine sys_Read_Embedding
 
 
-      subroutine sys_Read_Embedding_NextLine(System, ChargeIdx, line, Units)
+      subroutine sys_Read_Embedding_Header(System, line)
+            !
+            ! Read the number of point charges, ECP centers, and optional
+            ! fragment association from the embedding header.
+            !
+            type(TSystem), intent(inout) :: System
+            character(*), intent(in)     :: line
+
+            integer :: i1, i2, target_monomer
+            character(:), allocatable :: val, line_upper
+
+            line_upper = uppercase(line)
+            System%NPointCharges = 0
+            System%EmbeddingECP%NEmbCenters = 0
+
+            call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "POINT_CHARGES")
+            if (i1 > 0) then
+                  read(val, *) System%NPointCharges
+            end if
+
+            call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "ECP_CENTERS")
+            if (i1 > 0) then
+                  read(val, *) System%EmbeddingECP%NEmbCenters
+            end if
+
+            call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "ASSOCIATE_WITH")
+            if (i1 > 0) then
+                  val = adjustl(trim(uppercase(val)))
+                  select case (val)
+                  case ("A")
+                        target_monomer = 1
+                  case ("B")
+                        target_monomer = 2
+                  case ("C")
+                        target_monomer = 3
+                  case ("D")
+                        target_monomer = 4
+                  case default
+                        call msg("Invalid monomer in associate_with: " // trim(val) &
+                              // ". Allowed values: A, B, C, D.", MSG_ERROR)
+                        error stop
+                  end select
+
+                  if (System%SystemKind /= SYS_NONE .and. target_monomer > System%SystemKind) then
+                        call msg("Associated monomer " // trim(val) // " exceeds system size.", MSG_ERROR)
+                        error stop
+                  end if
+
+                  System%EmbeddingAssociatedMonomers = .false.
+                  System%EmbeddingAssociatedMonomers(target_monomer) = .true.
+            end if
+
+            if (System%NPointCharges <= 0) then
+                  call msg("Missing or invalid point_charges(N) in EMBEDDING header: " &
+                        // trim(line), MSG_ERROR)
+                  error stop
+            end if
+
+            if (System%EmbeddingECP%NEmbCenters < 0) then
+                  call msg("Invalid number of ECP centers in EMBEDDING block. " &
+                        // "Must be non-negative.", MSG_ERROR)
+                  error stop
+            end if
+
+            if (System%EmbeddingECP%NEmbCenters > System%NPointCharges) then
+                  call msg("Number of ECP centers cannot exceed number of point charges.", MSG_ERROR)
+                  error stop
+            end if
+      end subroutine sys_Read_Embedding_Header
+
+
+      subroutine sys_ExtractKeyVal_(val, i1, i2, s, s_upper, key)
+            !
+            ! Extract value and boundaries from KEY(VAL) within string S.
+            !
+            character(:), allocatable, intent(out) :: val
+            integer, intent(out)                   :: i1
+            integer, intent(out)                   :: i2
+            character(*), intent(in)               :: s
+            character(*), intent(in)               :: s_upper
+            character(*), intent(in)               :: key
+
+            integer :: k2
+            character(:), allocatable :: key_tag
+
+            val = ""
+            i1 = 0
+            i2 = 0
+
+            key_tag = key // "("
+
+            i1 = index(s_upper, key_tag)
+            if (i1 == 0) return
+
+            k2 = index(s(i1:), ")")
+            if (k2 > 0) then
+                  i2 = i1 + k2 - 1
+            else
+                  call msg("Missing closing ')' for " // key &
+                        // " in EMBEDDING line: " // trim(s), MSG_ERROR)
+                  error stop
+            end if
+
+            val = trim(adjustl(s(i1 + len(key_tag) : i2 - 1)))
+            if (len_trim(val) == 0) then
+                  call msg("Empty " // key // " specification in EMBEDDING line: " &
+                        // trim(s), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine sys_ExtractKeyVal_
+
+
+      subroutine sys_SplitEmbeddingLine(QPart, ECPPart, HasECP, CoordsPart, line)
+            !
+            ! Split an embedding line into charge, optional pseudopotential, and coordinates parts.
+            !
+            character(:), allocatable, intent(out) :: QPart
+            character(:), allocatable, intent(out) :: ECPPart
+            logical, intent(out)                   :: HasECP
+            character(:), allocatable, intent(out) :: CoordsPart
+            character(*), intent(in)               :: line
+
+            integer :: iq1, iq2, iecp1, iecp2, last_close
+            character(:), allocatable :: line_upper
+
+            line_upper = uppercase(line)
+
+            call sys_ExtractKeyVal_(QPart, iq1, iq2, line, line_upper, "Q")
+            if (iq1 == 0) then
+                  call msg("Missing Q(charge) in EMBEDDING line: " // trim(line), MSG_ERROR)
+                  error stop
+            end if
+
+            call sys_ExtractKeyVal_(ECPPart, iecp1, iecp2, line, line_upper, "ECP")
+            HasECP = (iecp1 > 0)
+
+            if (HasECP) then
+                  last_close = max(iq2, iecp2)
+            else
+                  last_close = iq2
+            end if
+
+            CoordsPart = adjustl(line(last_close+1:))
+            if (len_trim(CoordsPart) == 0) then
+                  call msg("Missing coordinates in EMBEDDING line: " // trim(line), MSG_ERROR)
+                  error stop
+            end if
+      end subroutine sys_SplitEmbeddingLine
+
+
+      subroutine sys_Read_Embedding_NextLine(System, ChargeIdx, ECPIdx, line, Units)
+            !
+            ! Read a single point-charge line and store coordinates and optional ECP.
+            !
             type(TSystem), intent(inout) :: System
             integer, intent(inout)       :: ChargeIdx
+            integer, intent(inout)       :: ECPIdx
             character(*), intent(in)     :: line
             integer, intent(in)          :: Units
             
-            integer :: k, i1, i2
-            character(:), allocatable :: qstr, coords, line_upper
+            integer :: k, Z
+            character(:), allocatable :: qstr, ecpstr, coords
+            character(:), allocatable :: elem_key, params_name
+            logical :: has_ecp
+
+            if (ChargeIdx >= System%NPointCharges) then
+                  call msg("Inconsistent number of point charges specified " &
+                        // "in EMBEDDING block", MSG_ERROR)
+                  error stop
+            end if
+
+            ChargeIdx = ChargeIdx + 1
+            call sys_SplitEmbeddingLine(qstr, ecpstr, has_ecp, coords, line)
+            read(qstr, *) System%PointCharges(ChargeIdx)
+            read(coords, *) (System%PointChargeCoords(k, ChargeIdx), k=1,3)
             
-            line_upper = uppercase(line)
+            if (Units == SYS_UNITS_ANGSTROM) then
+                  System%PointChargeCoords(:, ChargeIdx) = tobohr(System%PointChargeCoords(:, ChargeIdx))
+            end if
             
-            if (ChargeIdx == -1) then
-                  ! First line of the block should be the number of charges
-                  read(line, *) System%NPointCharges
-                  if (System%NPointCharges > 0) then
-                        allocate(System%PointCharges(System%NPointCharges))
-                        allocate(System%PointChargeCoords(3, System%NPointCharges))
-                  else
-                        call msg("Invalid number of point charges in EMBEDDING block. " &
-                              // "Must be positive.", MSG_ERROR)
+            if (has_ecp) then
+                  ECPIdx = ECPIdx + 1
+                  if (ECPIdx > System%EmbeddingECP%NEmbCenters) then
+                        call msg("More ECP centers found than specified in ecp_centers keyword: " &
+                              // trim(line), MSG_ERROR)
                         error stop
                   end if
-                  ChargeIdx = 0
-            else
-                  if (ChargeIdx < System%NPointCharges) then
-                        ChargeIdx = ChargeIdx + 1
-                        ! Expected Format: Q(charge) x y z
-                        i1 = index(line_upper, "Q(")
-                        i2 = index(line_upper, ")")
-                        if (i1 > 0 .and. i2 > i1) then
-                              qstr = line(i1+2:i2-1)
-                              coords = line(i2+1:)
-                              read(qstr, *) System%PointCharges(ChargeIdx)
-                              read(coords, *) (System%PointChargeCoords(k, ChargeIdx), k=1,3)
-                              
-                              if (Units == SYS_UNITS_ANGSTROM) then
-                                    System%PointChargeCoords(:, ChargeIdx) = tobohr(System%PointChargeCoords(:, ChargeIdx))
-                              end if
-                        else
-                              call msg("Invalid format in EMBEDDING block. " &
-                                    // "Expected Q(charge) x y z", MSG_ERROR)
-                              error stop
-                        end if
-                  else
-                        call msg("Inconsistent number of point charges specified " &
-                              // "in EMBEDDING block", MSG_ERROR)
+
+                  call split(ecpstr, elem_key, params_name)
+                  if (len_trim(params_name) == 0) then
+                        call msg("Missing pseudopotential name in ECP(...) specification: " &
+                              // trim(line), MSG_ERROR)
                         error stop
                   end if
+
+                  Z = znumber_short(elem_key)
+                  if (Z <= 0) then
+                        call msg("Unknown element symbol '" // elem_key // "' in ECP(...): " &
+                              // trim(line), MSG_ERROR)
+                        error stop
+                  end if
+
+                  System%EmbeddingECP%Coords(:, ECPIdx) = System%PointChargeCoords(:, ChargeIdx)
+                  System%EmbeddingECP%Z(ECPIdx) = Z
+
+                  call System%EmbeddingECP%Assignment%read_line(ecpstr)
             end if
       end subroutine sys_Read_Embedding_NextLine
+
+
+      subroutine sys_ReadECP(this, FilePath, DefaultAssign)
+            !
+            ! Read pseudopotential assignments from an input file.
+            !
+            class(TSystem), intent(inout)                 :: this
+            character(*), intent(in)                      :: FilePath
+            class(TBasisAssignment), optional, intent(in) :: DefaultAssign
+
+            logical :: ECPDefined, InsideECP, ECPCompleted
+            integer :: u
+            character(:), allocatable :: key, val
+            character(:), allocatable :: line
+            logical :: eof
+
+            if (present(DefaultAssign)) then
+                  if (DefaultAssign%Initialized) then
+                        !
+                        ! By default, we are looking for the basis set parameters
+                        ! inside the files where the primary basis set is defined.
+                        ! This is the baseline that we subsequently modify by
+                        ! ECP-specific assignment of params.
+                        !
+                        this%ECP%Assignment = DefaultAssign
+                  end if
+            end if
+
+            u = io_text_open(FilePath, "OLD")
+            ECPDefined = .false.
+            InsideECP = .false.
+            ECPCompleted = .false.
+
+            lines: do
+                  call io_text_readline(line, u, eof)
+                  if (eof) exit lines
+
+                  if (isblank(line) .or. iscomment(line)) cycle lines
+
+                  call split(line, key, val)
+                  key = uppercase(key)
+
+                  if (key == "ECP_ASSIGNMENT") then
+                        ECPDefined = .true.
+                        InsideECP = .true.
+                        cycle lines
+                  else if (key == "END") then
+                        if (InsideECP) then
+                              InsideECP = .false.
+                              ECPCompleted = .true.
+                              exit lines
+                        else
+                              cycle lines
+                        end if
+                  else
+                        if (InsideECP) then
+                              call this%ECP%Assignment%read_line(line)
+                        end if
+                  end if
+            end do lines
+            close(u)
+
+            if (ECPDefined .and. .not. ECPCompleted) then
+                  call msg("Unexpected end of file while reading ECP_ASSIGNMENT block. " &
+                        // "Missing END keyword.", MSG_ERROR)
+                  error stop
+            end if
+            !
+            ! Attempt to find ECP data in all cases, even
+            ! when no custom ECP_ASSIGNMENT block if found.
+            ! In that case, we look for the ECP data in the
+            ! AO basis set files. 
+            !
+            call sys_SetEffectiveCores_(this)
+      end subroutine sys_ReadECP
 end module sys_definitions

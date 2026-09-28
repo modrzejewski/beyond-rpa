@@ -70,7 +70,7 @@ contains
          PathToGuess = ""
          GuessAvailable = .false.
 
-         Rule = BasisAssign%get_atom_rule(a, Z)
+         call BasisAssign%get_atom_rule(Rule, a, Z)
          PathToParams = Rule%PathToParams
 
          if (Rule%GuessAvailable) then

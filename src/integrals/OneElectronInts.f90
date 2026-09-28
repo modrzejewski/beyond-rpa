@@ -692,14 +692,16 @@ contains
                                           end do
                                     end do
                                     
-                                    do l = 1, NPointCharges
-                                          Rc = PointChargeCoords(:, l)
-                                          Qc = PointCharges(l)
-                                          Rpc = Rp - Rc
-                                          x = AlphaAB * dot_product(Rpc, Rpc)
-                                          call ints1e_Coulomb_core(Rtuv, RtuvC, fmarray, x, Qc, &
-                                                Lab, AlphaAB, Rpc, Auto2eRtuv, Auto2eBoys)
-                                    end do
+                                    if (System%EmbeddingActive) then
+                                          do l = 1, NPointCharges
+                                                Rc = PointChargeCoords(:, l)
+                                                Qc = PointCharges(l)
+                                                Rpc = Rp - Rc
+                                                x = AlphaAB * dot_product(Rpc, Rpc)
+                                                call ints1e_Coulomb_core(Rtuv, RtuvC, fmarray, x, Qc, &
+                                                      Lab, AlphaAB, Rpc, Auto2eRtuv, Auto2eBoys)
+                                          end do
+                                    end if
 
                                     call ints1e_HermiteTransf(Vab, Rtuv, La, Lb, Na, Nb, ExAB, EyAB, EzAB, &
                                           Prefactor, NormFactors(:, ShellParamsA), NormFactors(:, ShellParamsB), &
@@ -1002,7 +1004,7 @@ contains
       end subroutine ints1e_SpherAOTransf
 
 
-      subroutine ints1e_H(H, AOBasis, System, ECPFile)
+      subroutine ints1e_H(H, AOBasis, System)
             !
             ! One-electron hamiltonian matrix in the spherical Gaussian
             ! in the basis of spherical Gaussian atomic orbitals.
@@ -1014,7 +1016,6 @@ contains
             real(F64), dimension(:, :), intent(out) :: H
             type(TAOBasis), intent(in)              :: AOBasis
             type(TSystem), intent(in)               :: System
-            type(TStringList), intent(in)           :: ECPFile
 
             real(F64), dimension(:, :), allocatable :: H_cao
             real(F64), dimension(:, :), allocatable :: Ts_cao
@@ -1025,10 +1026,13 @@ contains
             allocate(H_cao(NAOCart, NAOCart))
             allocate(Ts_cao(NAOCart, NAOCart))
             allocate(Vne_cao(NAOCart, NAOCart))
-            
+            !
+            ! Assemble one-electron core hamiltonian matrix:
+            ! H = T + V_ne(QM) + V_pc(embedding) + V_ecp(QM) + V_ecp(embedding).
+            !
             call ints1e_Kinetic(Ts_cao, AOBasis)
             call ints1e_Coulomb(Vne_cao, AOBasis, System)
-            call pp_V(Vne_cao, AOBasis, System, ECPFile)
+            call pp_V(Vne_cao, AOBasis, System)
             
             H_cao = Ts_cao + Vne_cao
             
