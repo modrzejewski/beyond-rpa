@@ -1,9 +1,9 @@
 ! reference values from pyscf
-! HF single point AB (a.u.):           -319.33497741
+! HF single point AB (a.u.):           -319.39724635
 ! dRPA single point AB (a.u.):           -0.55700572
-! HF single point A (a.u.):            -167.84746868
+! HF single point A (a.u.):            -166.84882539
 ! dRPA single point A (a.u.):            -0.27136800
-! HF single point B (a.u.):            -151.49102110
+! HF single point B (a.u.):            -152.55193333
 ! dRPA single point B (a.u.):            -0.28377627
 ! HF interaction A...B (kcal/mol):          2.204047
 ! dRPA interaction A...B (kcal/mol):       -1.168075

@@ -16,7 +16,9 @@ end
 
 rpa
  TheoryLevel RPA+ph
- accuracy default
+ accuracy custom
+ ! Decomposition threshold of Pi(u) is the bottleneck for accuracy
+ TargetErrorRandom 1.0E-7
 end
 
 xyz

@@ -4,6 +4,7 @@ Reference generation for water dimer with embedding Xe ECP centers and point cha
 import numpy as np
 import scipy.linalg
 from pyscf import gto, scf, ao2mo, qmmm
+from pyscf.data.nist import BOHR
 from pyscf.gw import rpa
 
 
@@ -17,14 +18,17 @@ def calculate_energies(geometry: str, basis: dict, ecp_definition: dict,
     mean_field = scf.RHF(molecule)
     mean_field = qmmm.mm_charge(mean_field, mm_coords, mm_charges)
 
+    # PySCF's default mm_charge gives 0*inf = NaN for ghost atoms co-located with MM coords.
+    # Custom energy_nuc bypasses ghost atoms and computes correct nuclear-MM attraction in Bohr.
     orig_energy_nuc = molecule.energy_nuc
+    mm_coords_bohr = mm_coords / BOHR
 
     def custom_energy_nuc():
         nuc = orig_energy_nuc()
         for j in range(molecule.natm):
             q2 = molecule.atom_charge(j)
             if q2 > 0:
-                r = np.linalg.norm(mm_coords - molecule.atom_coord(j), axis=1)
+                r = np.linalg.norm(mm_coords_bohr - molecule.atom_coord(j), axis=1)
                 nuc += q2 * np.sum(mm_charges / r)
         return nuc
 

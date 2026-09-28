@@ -130,6 +130,18 @@ module sys_definitions
             !
             type(TECPParams) :: EmbeddingECP
             !
+            ! Flags indicating which monomer fragments (1-4 for A-D) own the classical 
+            ! embedding environment (point charges and ECPs). Used in surface-adsorbate 
+            ! modeling to restrict the embedding field to subsystems containing the surface 
+            ! fragment. The embedding is excluded from isolated adsorbate clusters, where 
+            ! only the ghost atomic orbitals on the surface are visible.
+            !
+            logical, dimension(4) :: EmbeddingAssociatedMonomers = [.true., .true., .true., .true.]
+            !
+            ! True if embedding is active in the current subsystem.
+            !
+            logical :: EmbeddingActive = .true.
+            !
             ! Spin multiplicity of the system (1 for singlet, 2 for doublet, etc.). This 
             ! variable is updated to the active subsystem's multiplicity when sys_Init is called
             !
@@ -193,6 +205,7 @@ module sys_definitions
             procedure :: read_xyz => sys_Read_XYZ
             procedure :: read_embedding => sys_Read_Embedding
             procedure :: read_ecp => sys_ReadECP
+            procedure :: is_monomer_real => sys_IsMonomerReal
       end type TSystem
 
 contains
@@ -558,9 +571,52 @@ contains
                   NElectrons = NElectrons - Charge
                   Mult = SubsystemMult(i)
             end associate
+
+            if (System%NPointCharges > 0 .or. System%EmbeddingECP%NEmbCenters > 0) then
+                  System%EmbeddingActive = any(System%EmbeddingAssociatedMonomers(1:4) .and. &
+                        [System%is_monomer_real(1), &
+                         System%is_monomer_real(2), &
+                         System%is_monomer_real(3), &
+                         System%is_monomer_real(4)])
+            else
+                  System%EmbeddingActive = .false.
+            end if
       end subroutine sys_Init
 
-      
+
+      pure function sys_IsMonomerReal(System, MonomerIdx)
+            !
+            ! Return true if the specified monomer fragment (1-4 for A-D)
+            ! is physically present as real atoms (non-dummy atoms) in the 
+            ! active subsystem.
+            !
+            logical                    :: sys_IsMonomerReal
+            class(TSystem), intent(in) :: System
+            integer, intent(in)        :: MonomerIdx
+
+            integer :: first_atom, last_atom, s
+
+            sys_IsMonomerReal = .false.
+            if (MonomerIdx < 1 .or. MonomerIdx > 4) return
+            if (System%SubsystemAtoms(MonomerIdx) <= 0) return
+
+            if (MonomerIdx == 1) then
+                  first_atom = 1
+            else
+                  first_atom = sum(System%SubsystemAtoms(1:MonomerIdx - 1)) + 1
+            end if
+            last_atom = first_atom + System%SubsystemAtoms(MonomerIdx) - 1
+
+            do s = 1, 2
+                  if (first_atom >= System%RealAtoms(1, s) .and. &
+                      last_atom <= System%RealAtoms(2, s)) then
+                        sys_IsMonomerReal = .true.
+                        return
+                  end if
+            end do
+      end function sys_IsMonomerReal
+
+
       subroutine sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, AtomsType)
             integer, dimension(:), allocatable, intent(out) :: ZList
             integer, dimension(:), allocatable, intent(out) :: ZCount
@@ -819,7 +875,7 @@ contains
                               !
                               ! Atom - point charge interaction (QM-MM)
                               !
-                              if (System%NPointCharges > 0) then
+                              if (System%EmbeddingActive .and. System%NPointCharges > 0) then
                                     associate ( &
                                           NPointCharges => System%NPointCharges, &
                                           PointCharges => System%PointCharges, &
@@ -1095,6 +1151,8 @@ contains
             if (allocated(System%PointCharges)) deallocate(System%PointCharges)
             if (allocated(System%PointChargeCoords)) deallocate(System%PointChargeCoords)
             call System%EmbeddingECP%free()
+            System%EmbeddingAssociatedMonomers(:) = .true.
+            System%EmbeddingActive = .true.
             if (present(LibraryDir)) then
                   call System%EmbeddingECP%Assignment%set_library_dir(LibraryDir)
             end if
@@ -1123,8 +1181,7 @@ contains
                   else
                         if (InsideEmbedding) then
                               if (.not. HeaderRead) then
-                                    call sys_Read_Embedding_Header(System%NPointCharges, &
-                                          System%EmbeddingECP%NEmbCenters, line)
+                                    call sys_Read_Embedding_Header(System, line)
 
                                     allocate(System%PointCharges(System%NPointCharges))
                                     allocate(System%PointChargeCoords(3, System%NPointCharges))
@@ -1166,44 +1223,71 @@ contains
       end subroutine sys_Read_Embedding
 
 
-      subroutine sys_Read_Embedding_Header(NPointCharges, NECPCenters, line)
+      subroutine sys_Read_Embedding_Header(System, line)
             !
-            ! Read the number of point charges and ECP centers from the embedding header.
+            ! Read the number of point charges, ECP centers, and optional
+            ! fragment association from the embedding header.
             !
-            integer, intent(out)     :: NPointCharges
-            integer, intent(out)     :: NECPCenters
-            character(*), intent(in) :: line
+            type(TSystem), intent(inout) :: System
+            character(*), intent(in)     :: line
 
-            integer :: i1, i2
+            integer :: i1, i2, target_monomer
             character(:), allocatable :: val, line_upper
 
             line_upper = uppercase(line)
-            NPointCharges = 0
-            NECPCenters = 0
+            System%NPointCharges = 0
+            System%EmbeddingECP%NEmbCenters = 0
 
             call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "POINT_CHARGES")
             if (i1 > 0) then
-                  read(val, *) NPointCharges
+                  read(val, *) System%NPointCharges
             end if
 
             call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "ECP_CENTERS")
             if (i1 > 0) then
-                  read(val, *) NECPCenters
+                  read(val, *) System%EmbeddingECP%NEmbCenters
             end if
 
-            if (NPointCharges <= 0) then
+            call sys_ExtractKeyVal_(val, i1, i2, line, line_upper, "ASSOCIATE_WITH")
+            if (i1 > 0) then
+                  val = adjustl(trim(uppercase(val)))
+                  select case (val)
+                  case ("A")
+                        target_monomer = 1
+                  case ("B")
+                        target_monomer = 2
+                  case ("C")
+                        target_monomer = 3
+                  case ("D")
+                        target_monomer = 4
+                  case default
+                        call msg("Invalid monomer in associate_with: " // trim(val) &
+                              // ". Allowed values: A, B, C, D.", MSG_ERROR)
+                        error stop
+                  end select
+
+                  if (System%SystemKind /= SYS_NONE .and. target_monomer > System%SystemKind) then
+                        call msg("Associated monomer " // trim(val) // " exceeds system size.", MSG_ERROR)
+                        error stop
+                  end if
+
+                  System%EmbeddingAssociatedMonomers = .false.
+                  System%EmbeddingAssociatedMonomers(target_monomer) = .true.
+            end if
+
+            if (System%NPointCharges <= 0) then
                   call msg("Missing or invalid point_charges(N) in EMBEDDING header: " &
                         // trim(line), MSG_ERROR)
                   error stop
             end if
 
-            if (NECPCenters < 0) then
+            if (System%EmbeddingECP%NEmbCenters < 0) then
                   call msg("Invalid number of ECP centers in EMBEDDING block. " &
                         // "Must be non-negative.", MSG_ERROR)
                   error stop
             end if
 
-            if (NECPCenters > NPointCharges) then
+            if (System%EmbeddingECP%NEmbCenters > System%NPointCharges) then
                   call msg("Number of ECP centers cannot exceed number of point charges.", MSG_ERROR)
                   error stop
             end if

@@ -692,14 +692,16 @@ contains
                                           end do
                                     end do
                                     
-                                    do l = 1, NPointCharges
-                                          Rc = PointChargeCoords(:, l)
-                                          Qc = PointCharges(l)
-                                          Rpc = Rp - Rc
-                                          x = AlphaAB * dot_product(Rpc, Rpc)
-                                          call ints1e_Coulomb_core(Rtuv, RtuvC, fmarray, x, Qc, &
-                                                Lab, AlphaAB, Rpc, Auto2eRtuv, Auto2eBoys)
-                                    end do
+                                    if (System%EmbeddingActive) then
+                                          do l = 1, NPointCharges
+                                                Rc = PointChargeCoords(:, l)
+                                                Qc = PointCharges(l)
+                                                Rpc = Rp - Rc
+                                                x = AlphaAB * dot_product(Rpc, Rpc)
+                                                call ints1e_Coulomb_core(Rtuv, RtuvC, fmarray, x, Qc, &
+                                                      Lab, AlphaAB, Rpc, Auto2eRtuv, Auto2eBoys)
+                                          end do
+                                    end if
 
                                     call ints1e_HermiteTransf(Vab, Rtuv, La, Lb, Na, Nb, ExAB, EyAB, EzAB, &
                                           Prefactor, NormFactors(:, ShellParamsA), NormFactors(:, ShellParamsB), &

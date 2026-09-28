@@ -23,16 +23,6 @@ INPUTS_DIR = Path(__file__).parent / "inputs"
 TOLERANCE_INTERACTION_DEFAULT = 5.0e-4  # kcal/mol
 TOLERANCE_INTERACTION_LUDICROUS = 5.0e-5  # kcal/mol
 
-TOLERANCE_EXCEPTIONS = {
-    # The poorer numerical accuracy for cd2 is well explained by the numerical error
-    # estimates provided at the end of the RPA+ph output (e.g., errors due to the T2
-    # diagonalization threshold and other numerical approximations). This means that
-    # the user is aware of the sensitivity of this system to numerical thresholds.
-    "cd2_avdz-pp_accuracy_default.inp": 1.3e-3,
-    "water_dimer_xe_emb_accuracy_default.inp": 8.0e-4,
-    "water_dimer_xe_emb_accuracy_ludicrous.inp": 6.5e-5,
-}
-
 CALC_KEY_HF = "Eint(HF)"
 CALC_KEY_1RDM_LIN = "Eint(1-RDM linear)"
 CALC_KEY_1RDM_QUAD = "Eint(1-RDM quadratic)"
@@ -77,8 +67,6 @@ def extract_calc_energies(text: str) -> dict:
     return energies
 
 def get_tolerance(filepath: Path) -> float:
-    if filepath.name in TOLERANCE_EXCEPTIONS:
-        return TOLERANCE_EXCEPTIONS[filepath.name]
     if "_ludicrous" in filepath.name:
         return TOLERANCE_INTERACTION_LUDICROUS
     return TOLERANCE_INTERACTION_DEFAULT
@@ -119,10 +107,6 @@ def _display_tolerances():
     print("\nTolerances:")
     print(f"  interaction energy (default accuracy):   {TOLERANCE_INTERACTION_DEFAULT:.1e} kcal/mol")
     print(f"  interaction energy (ludicrous accuracy): {TOLERANCE_INTERACTION_LUDICROUS:.1e} kcal/mol")
-    if TOLERANCE_EXCEPTIONS:
-        print("  exceptions:")
-        for fname, tol in TOLERANCE_EXCEPTIONS.items():
-            print(f"    - {fname}: {tol:.1e} kcal/mol")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ECP tests.")

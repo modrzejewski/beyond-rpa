@@ -918,7 +918,7 @@ contains
 
             logical :: embedding_
 
-            embedding_ = (System%EmbeddingECP%NEmbCenters > 0)
+            embedding_ = System%EmbeddingActive .and. (System%EmbeddingECP%NEmbCenters > 0)
             if (present(embedding)) embedding_ = (embedding_ .and. embedding)
 
             call pp_Init(AOBasis, System, .true., .false., embedding_)
@@ -1101,7 +1101,7 @@ contains
 
             logical :: embedding_
 
-            embedding_ = (System%EmbeddingECP%NEmbCenters > 0)
+            embedding_ = System%EmbeddingActive .and. (System%EmbeddingECP%NEmbCenters > 0)
             if (present(embedding)) embedding_ = (embedding_ .and. embedding)
 
             call pp_Init(AOBasis, System, .false., (System%SubsystemKind == SYS_TOTAL), embedding_)

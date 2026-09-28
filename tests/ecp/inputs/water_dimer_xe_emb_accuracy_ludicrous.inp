@@ -1,9 +1,9 @@
 ! reference values from pyscf
-! HF single point AB (a.u.):           -151.94070536
+! HF single point AB (a.u.):           -151.93937544
 ! dRPA single point AB (a.u.):           -0.45785432
-! HF single point A (a.u.):            -75.47096447
+! HF single point A (a.u.):            -75.95981338
 ! dRPA single point A (a.u.):            -0.22873456
-! HF single point B (a.u.):            -76.46164845
+! HF single point B (a.u.):            -75.97146962
 ! dRPA single point B (a.u.):            -0.22936633
 ! HF interaction A...B (kcal/mol):          -5.078087
 ! dRPA interaction A...B (kcal/mol):          0.154726
@@ -12,11 +12,23 @@ basis def2-SVP
 
 scf
   xcfunc hf
+  algorithm cholesky
 end
 
 rpa
   TheoryLevel RPA+ph
-  accuracy ludicrous
+  accuracy custom
+  ! The decomposition threshold of Pi(u) is the bottleneck for accuracy;
+  ! we perturb the ludicrous baseline to make it tighter.
+  TargetErrorRandom 1.0E-7
+  T2CutoffThresh 1.0E-6
+  T2AuxNOCutoffThresh 1.0E-11
+  CutoffThreshPNO 1.0E-7
+  LocalizedOrbitals boys
+  CutoffThreshVabij 0.0
+  T2AdaptiveCutoffTargetKcal 0.0005
+  THC_QRThresh 1.0E-4
+  CholeskyTauThresh 1.0E-7
 end
 
 xyz
