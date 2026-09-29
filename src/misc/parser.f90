@@ -227,14 +227,14 @@ contains
       integer, intent(in)    :: u
       integer, intent(inout) :: linenumber
 
-      character(len=DEFLEN) :: line
+      character(:), allocatable :: line
       character(:), allocatable :: lup
-      integer :: stat
+      logical :: eof
 
       lines: do
          linenumber = linenumber + 1
-         read(u, "(A)", iostat=stat) line
-         if (stat .eq. iostat_end) then
+         call io_text_readline(line, u, eof)
+         if (eof .and. len(line) == 0) then
             call msg("PARSER ERROR: TEXTFILE ENDED UNEXPECTEDLY", &
                priority=MSG_ERROR)
             stop
@@ -1095,11 +1095,15 @@ contains
       type(TBasisAssignment), intent(out) :: BasisAssign
       character(len=*), intent(in)        :: filename
 
-      character(len=DEFLEN) :: line
+      character(:), allocatable :: line
       character(:), allocatable :: key, val
-      integer :: u, linenumber, stat
+      integer :: u, linenumber
       integer :: current_block
       logical :: XYZDefined
+      logical :: eof
+      integer :: a
+      logical :: found
+      type(TBasisRule) :: Rule
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_RhoSpher = 3
@@ -1129,10 +1133,8 @@ contains
 
       lines: do
          linenumber = linenumber + 1
-         read(u, "(A)", iostat=stat) line
-         if (stat .eq. iostat_end) then
-            exit lines
-         end if
+         call io_text_readline(line, u, eof)
+         if (eof .and. len(line) == 0) exit lines
          call echo(line)
          if (isblank(line) .or. iscomment(line)) then
             cycle lines
@@ -1482,10 +1484,21 @@ contains
          end if
       end if
 
-      if (.not. allocated(BASIS_SET_PATH)) then
-         call msg("NO BASIS SET SPECIFIED", MSG_ERROR)
+      if (.not. BasisAssign%Initialized) then
+         call msg("No basis set specified. Define a global basis set " // &
+            "using the 'basis' keyword or assign basis sets in the " // &
+            "'basis_assignment' block.", MSG_ERROR)
          error stop
       end if
+
+      do a = 1, System%NAtoms
+         call BasisAssign%get_atom_rule(Rule, a, System%ZNumbers(a), found=found)
+         if (.not. found) then
+            call msg("No basis set assigned for atom " // str(a) // &
+               " (" // trim(ELNAME_SHORT(System%ZNumbers(a))) // ")", MSG_ERROR)
+            error stop
+         end if
+      end do
 
       if (JOBTYPE == JOB_RTTDDFT_POLAR) then
          if (.not. allocated(RTTDDFT_POLAR_OMEGA)) then
