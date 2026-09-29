@@ -1103,7 +1103,9 @@ contains
       logical :: eof
       integer :: a
       logical :: found
+      integer :: n_echoed_emb, n_omitted_emb
       type(TBasisRule) :: Rule
+      integer, parameter :: embedding_echo_lines = 10 ! header + first 9 charge lines
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_RhoSpher = 3
@@ -1127,6 +1129,8 @@ contains
       call midrule()
       linenumber = 0
       current_block = block_none
+      n_echoed_emb = 0
+      n_omitted_emb = 0
 
       call BasisAssign%set_library_dir(BASISDIR)
       call BasisAssign%set_guess_dir(GUESSDIR // "electron-densities" // DIRSEP // "rohf" // DIRSEP)
@@ -1135,13 +1139,30 @@ contains
          linenumber = linenumber + 1
          call io_text_readline(line, u, eof)
          if (eof .and. len(line) == 0) exit lines
-         call echo(line)
          if (isblank(line) .or. iscomment(line)) then
             cycle lines
          end if
 
          call split(line, key, val)
          key = uppercase(key)
+         if (current_block == block_embedding .and. key /= "END") then
+            !
+            ! The EMBEDDING block can hold 10^4+ point charges.
+            ! Echo only its head.
+            !
+            if (n_echoed_emb < embedding_echo_lines) then
+               n_echoed_emb = n_echoed_emb + 1
+               call echo(line)
+            else
+               n_omitted_emb = n_omitted_emb + 1
+            end if
+         else
+            if (n_omitted_emb > 0) then
+               call msg("... " // str(n_omitted_emb) // " more lines of the EMBEDDING block not echoed")
+               n_omitted_emb = 0
+            end if
+            call echo(line)
+         end if
          select case (key)
           case ("AUXINT")
             if (val == "") then
@@ -1164,6 +1185,7 @@ contains
             cycle lines
           case ("EMBEDDING")
             current_block = block_embedding
+            n_echoed_emb = 0
             cycle lines
           case ("RPA")
             if (JOBTYPE /= JOB_REAL_UKS_RPA .and. JOBTYPE /= JOB_UNKNOWN) then
