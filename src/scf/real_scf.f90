@@ -494,13 +494,19 @@ contains
    end subroutine scf_BufferDim
 
 
-   subroutine scf_IdempotentGuess(Rho_ao, Cocc_ao, NOcc, BasisVecs_ao, OccNumber)
+   subroutine scf_IdempotentGuess(Rho_ao, Cocc_ao, NOcc, BasisVecs_ao, S_ao, OccNumber)
       !
       ! Transform guess density matrix into an idempotent matrix using
       ! NOcc eigenvectors corresponding to the largest occupation numbers.
       !
-      ! (1) Transform the AO density matrix to the ortogonalized AO basis (OAO)
-      ! (2) Diagonalize Rho_oao to obtain OAO eigenvectors
+      ! (1) Transform the AO density matrix to the ortogonalized AO basis (OAO):
+      !     Rho_oao = V**T S Rho_ao S V, where V = BasisVecs_ao. The unit matrix
+      !     in V**T S V = 1 has the dimension of the space of non-redundant
+      !     orbitals (NOAO), because V is rectangular. (V**T A V transforms a
+      !     Fock-like matrix. A density matrix is contravariant and needs the
+      !     overlap matrix, see basis_OAO.)
+      ! (2) Diagonalize Rho_oao to obtain OAO eigenvectors. The eigenvalues
+      !     are the occupation numbers of the guess density matrix.
       ! (3) Compute AO occupied orbitals from NOcc OAO eigenvectors corresponding
       !     to the largest occupation numbers of the guess density matrix
       ! (4) Build idempotent AO density matrix from NOcc occupied AO orbitals
@@ -509,9 +515,11 @@ contains
       real(F64), dimension(:, :, :), intent(out)   :: Cocc_ao
       integer, dimension(:), intent(in)            :: NOcc
       real(F64), dimension(:, :), intent(in)       :: BasisVecs_ao
+      real(F64), dimension(:, :), intent(in)       :: S_ao
       real(F64), intent(in)                        :: OccNumber
 
       real(F64), dimension(:, :), allocatable :: Rho_oao
+      real(F64), dimension(:, :), allocatable :: SV
       real(F64), dimension(:, :), allocatable :: W
       real(F64), dimension(:), allocatable :: Eigenvals
       integer :: NOAO, NAO
@@ -524,14 +532,19 @@ contains
          NAO = size(BasisVecs_ao, dim=1)
          NOAO = size(BasisVecs_ao, dim=2)
          NSpins = size(Rho_ao, dim=3)
+         allocate(SV(NAO, NOAO))
          allocate(W(NAO, NOAO))
          allocate(Rho_oao(NOAO, NOAO))
          allocate(Eigenvals(NOAO))
          Cocc_ao = ZERO
+         !
+         ! S V does not depend on spin
+         !
+         call real_ab(SV, S_ao, BasisVecs_ao)
          do s = 1, NSpins
             if (NOcc(s) > 0) then
-               call real_ab(W, Rho_ao(:, :, s), BasisVecs_ao)
-               call real_aTb(Rho_oao, BasisVecs_ao, W)
+               call real_ab(W, Rho_ao(:, :, s), SV)
+               call real_aTb(Rho_oao, SV, W)
                Rho_oao = -Rho_oao
                call symmetric_eigenproblem(Eigenvals, Rho_oao, NOAO, .true.)
                call real_ab(Cocc_ao(:, 1:NOcc(s), s), BasisVecs_ao, Rho_oao(:, 1:NOcc(s)))
@@ -1131,7 +1144,13 @@ contains
       end if
       RhoK_cao = Rho_cao
       if (GenerateGuessOrbitals) then
-         call scf_IdempotentGuess(RhoK_cao, Cocc_cao, NOcc, BasisVecs_cao, OccNumber)
+         call scf_IdempotentGuess( &
+            RhoK_cao, &
+            Cocc_cao, &
+            NOcc, &
+            BasisVecs_cao, &
+            S_cao, &
+            OccNumber)
       end if
       if (SpherAO) then
          do s = 1, NSpins
