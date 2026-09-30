@@ -461,7 +461,7 @@ module gparam
       !
       ! Default SCF convergence threshold (max orbital gradient norm)
       !
-      real(F64), parameter :: SCF_THRESH_GRADIENT_DEFAULT = 2.0E-5_F64
+      real(F64), parameter :: SCF_THRESH_GRADIENT_DEFAULT = 1.0E-6_F64
       !
       ! The orbital gradient value (max norm) below which the orbital
       ! energy shift is disabled
