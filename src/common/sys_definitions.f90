@@ -759,9 +759,9 @@ contains
                         end if
                   end do
             end if
-            if (System%Charge > 0 .and. System%Mult > 1) then
+            if (System%Charge /= 0 .and. System%Mult > 1) then
                   s1 = s1 // " (charge=" // str(System%Charge) // ", 2S+1=" // str(System%Mult) // ")"
-            else if (System%Charge > 0) then
+            else if (System%Charge /= 0) then
                   s1 = s1 // " (charge=" // str(System%Charge) // ")"
             else if (System%Mult > 1) then
                   s1 = s1 // " (2S+1=" // str(System%Mult) // ")"

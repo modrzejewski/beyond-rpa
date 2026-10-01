@@ -1,0 +1,24 @@
+! reference from pyscf: traceless quadrupole (Debye*Angs)
+! Qxx = -0.185655
+! Qyy = 0.865570
+! Qzz = -0.679915
+! Qxy = -1.582032
+! Qxz = 0.091125
+! Qyz = 1.577636
+jobtype uks sp
+basis cc-pVTZ
+
+basis_assignment
+* cc-pVTZ
+end
+
+scf
+ xcfunc HF
+end
+
+xyz
+3
+O      0.0000000000     0.0000000000     0.0000000000
+H     -0.7803829999     0.5464428779    -0.0989405667
+H     -0.0884499812    -0.6696303953    -0.6790864566
+end

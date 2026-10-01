@@ -333,22 +333,24 @@ contains
             ELEMENT(1:NELEMENT) = ZList(1:NELEMENT)
             nshell = 0
             nushell = 0
-            do i = 1, NELEMENT
-                  call querybasis(BASIS_SET_PATH, ZList(i), atomshell(i), maxl(i))
-                  nshell = nshell + ZCount(i) * atomshell(i)
-                  nushell = nushell + atomshell(i)
-            end do
-            gto_lmax = maxval(maxl(1:NELEMENT))
-            max_atomnshell = maxval(atomshell(1:NElements))
-            allocate(shtype(nushell))
-            allocate(nprm(nushell))
-            allocate(expn(max_nprm, nushell))
-            allocate(CNTR(max_nprm, nushell))
-            allocate(CNTRNORM(nfunc(gto_lmax), NUSHELL))
-            allocate(nrml(max_nfunc, max_nprm, nushell))
-            allocate(shpos(nshell + 1))
-            allocate(sh(nshell))
-            allocate(r2max(nushell))
+            if (allocated(BASIS_SET_PATH)) then
+               do i = 1, NELEMENT
+                     call querybasis(BASIS_SET_PATH, ZList(i), atomshell(i), maxl(i))
+                     nshell = nshell + ZCount(i) * atomshell(i)
+                     nushell = nushell + atomshell(i)
+               end do
+               gto_lmax = maxval(maxl(1:NELEMENT))
+               max_atomnshell = maxval(atomshell(1:NElements))
+               allocate(shtype(nushell))
+               allocate(nprm(nushell))
+               allocate(expn(max_nprm, nushell))
+               allocate(CNTR(max_nprm, nushell))
+               allocate(CNTRNORM(nfunc(gto_lmax), NUSHELL))
+               allocate(nrml(max_nfunc, max_nprm, nushell))
+               allocate(shpos(nshell + 1))
+               allocate(sh(nshell))
+               allocate(r2max(nushell))
+            end if
 
             INUCLZ = System%ZNumbers
             ATOMR = System%AtomCoords
@@ -393,12 +395,14 @@ contains
             !
             do i = 1, NATOM
                   dnuclz(i) = dble(inuclz(i))
-                  atomtypes: do j = 1, NElements
-                        if (ZList(j) .eq. inuclz(i)) then
-                              atoml(i) = maxl(j)
-                              exit atomtypes
-                        end if
-                  end do atomtypes
+                  if (allocated(BASIS_SET_PATH)) then
+                     atomtypes: do j = 1, NElements
+                           if (ZList(j) .eq. inuclz(i)) then
+                                 atoml(i) = maxl(j)
+                                 exit atomtypes
+                           end if
+                     end do atomtypes
+                  end if
             end do
 
             allocate(ELEMENT_IDX(NATOM))
@@ -408,65 +412,67 @@ contains
                   call cartpoly(i, ll(:, i), mm(:, i), nn(:, i))
             end do
 
-            sh0(1) = 1
-            do i = 1, NATOM
-                  atomtypes2: do j = 1, NElements
-                        if (ZList(j) .eq. inuclz(i)) then
-                              sh0(i + 1) = sh0(i) + atomshell(j)
-                              exit atomtypes2
-                        end if
-                  end do atomtypes2
-            end do
+            if (allocated(BASIS_SET_PATH)) then
+               sh0(1) = 1
+               do i = 1, NATOM
+                     atomtypes2: do j = 1, NElements
+                           if (ZList(j) .eq. inuclz(i)) then
+                                 sh0(i + 1) = sh0(i) + atomshell(j)
+                                 exit atomtypes2
+                           end if
+                     end do atomtypes2
+               end do
 
-            j = 1
-            do i = 1, NElements
-                  call getbasis(BASIS_SET_PATH, ZList(i), cntr(:, j:), &
-                        expn(:, j:), shtype(j:), nprm(j:), atomshell(i))
-                  do k = 1, NATOM
-                        if (inuclz(k) .eq. ZList(i)) then
-                              do l = 0, atomshell(i) - 1
-                                    sh(sh0(k) + l) = j + l
-                              end do
-                        end if
-                  end do
+               j = 1
+               do i = 1, NElements
+                     call getbasis(BASIS_SET_PATH, ZList(i), cntr(:, j:), &
+                           expn(:, j:), shtype(j:), nprm(j:), atomshell(i))
+                     do k = 1, NATOM
+                           if (inuclz(k) .eq. ZList(i)) then
+                                 do l = 0, atomshell(i) - 1
+                                       sh(sh0(k) + l) = j + l
+                                 end do
+                           end if
+                     end do
 
-                  j = j + atomshell(i)
-            end do
+                     j = j + atomshell(i)
+               end do
 
-            do i = 1, nushell
-                  call normalize(i)
-            end do
-            !
-            ! Calculate sqares of radii where orbitals are non-negligible
-            !
-            call gridscreen(r2max)
-            !
-            ! Sort shell indices for every atom according to R2MAX,
-            ! in decreasing order. Sorting is performed only within
-            ! atomic orbitals belonging to one atom at a time
-            !
-            allocate(shradius(max_atomnshell))
-            do i = 1, NATOM
-                n = sh0(i + 1) - sh0(i)
-                k = sh0(i)
-                do j = k, sh0(i + 1) - 1
-                    s = sh(j)
-                    shradius(j - k + 1) = -r2max(s)
-                end do
-                call dsort(shradius, sh(k:), n)
-            end do
-            deallocate(shradius)
+               do i = 1, nushell
+                     call normalize(i)
+               end do
+               !
+               ! Calculate sqares of radii where orbitals are non-negligible
+               !
+               call gridscreen(r2max)
+               !
+               ! Sort shell indices for every atom according to R2MAX,
+               ! in decreasing order. Sorting is performed only within
+               ! atomic orbitals belonging to one atom at a time
+               !
+               allocate(shradius(max_atomnshell))
+               do i = 1, NATOM
+                   n = sh0(i + 1) - sh0(i)
+                   k = sh0(i)
+                   do j = k, sh0(i + 1) - 1
+                       s = sh(j)
+                       shradius(j - k + 1) = -r2max(s)
+                   end do
+                   call dsort(shradius, sh(k:), n)
+               end do
+               deallocate(shradius)
 
-            NORB = 0
-            do i = 1, NATOM
-                  idx(i) = NORB + 1
-                  do s = sh0(i), sh0(i + 1) - 1
-                        shpos(s) = NORB + 1
-                        NORB = NORB + nfunc(shtype(sh(s)))
-                  end do
-            end do
-            shpos(nshell + 1) = NORB + 1
-            idx(NATOM + 1) = NORB + 1
+               NORB = 0
+               do i = 1, NATOM
+                     idx(i) = NORB + 1
+                     do s = sh0(i), sh0(i + 1) - 1
+                           shpos(s) = NORB + 1
+                           NORB = NORB + nfunc(shtype(sh(s)))
+                     end do
+               end do
+               shpos(nshell + 1) = NORB + 1
+               idx(NATOM + 1) = NORB + 1
+            end if
 
             if (NATOM .gt. 1) then
                   do i = 1, NATOM
@@ -587,12 +593,14 @@ contains
             ! Store shell centers to simplify loops over
             ! two-electron integrals
             !
-            allocate(SHATOM(NSHELL))
-            do i = 1, NATOM
-                  do j = SH0(i), SH0(i+1)-1
-                        SHATOM(j) = i
-                  end do
-            end do
+            if (allocated(BASIS_SET_PATH)) then
+               allocate(SHATOM(NSHELL))
+               do i = 1, NATOM
+                     do j = SH0(i), SH0(i+1)-1
+                           SHATOM(j) = i
+                     end do
+               end do
+            end if
             !
             ! Summary of loaded data
             !
@@ -962,27 +970,27 @@ contains
 
 
       subroutine data_free()
-            deallocate(dnuclz)
-            deallocate(inuclz)
-            deallocate(atoml)
-            deallocate(dist)
-            deallocate(distun)
-            deallocate(idist)
-            deallocate(atomr)
-            deallocate(idx)
-            deallocate(sh0)
-            deallocate(shtype)
-            deallocate(nprm)
-            deallocate(expn)
-            deallocate(CNTR)
-            deallocate(CNTRNORM)
-            deallocate(nrml)
-            deallocate(shpos)
-            deallocate(sh)
-            deallocate(r2max)
-            deallocate(ELEMENT)
-            deallocate(ELEMENT_IDX)
-            deallocate(SHATOM)
+            if (allocated(dnuclz)) deallocate(dnuclz)
+            if (allocated(inuclz)) deallocate(inuclz)
+            if (allocated(atoml)) deallocate(atoml)
+            if (allocated(dist)) deallocate(dist)
+            if (allocated(distun)) deallocate(distun)
+            if (allocated(idist)) deallocate(idist)
+            if (allocated(atomr)) deallocate(atomr)
+            if (allocated(idx)) deallocate(idx)
+            if (allocated(sh0)) deallocate(sh0)
+            if (allocated(shtype)) deallocate(shtype)
+            if (allocated(nprm)) deallocate(nprm)
+            if (allocated(expn)) deallocate(expn)
+            if (allocated(CNTR)) deallocate(CNTR)
+            if (allocated(CNTRNORM)) deallocate(CNTRNORM)
+            if (allocated(nrml)) deallocate(nrml)
+            if (allocated(shpos)) deallocate(shpos)
+            if (allocated(sh)) deallocate(sh)
+            if (allocated(r2max)) deallocate(r2max)
+            if (allocated(ELEMENT)) deallocate(ELEMENT)
+            if (allocated(ELEMENT_IDX)) deallocate(ELEMENT_IDX)
+            if (allocated(SHATOM)) deallocate(SHATOM)
             call ecp_free()
       end subroutine data_free
 end module basis

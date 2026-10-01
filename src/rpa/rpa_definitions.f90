@@ -493,7 +493,13 @@ module rpa_definitions
       !
       ! Removal of small eigenvalues of T2
       !
-      real(F64) :: T2CutoffThresh = 1.0E-4_F64
+      ! The default values of T2CutoffThresh, T2AuxNOCutoffThresh,
+      ! LocalizedOrbitals, CutoffThreshVabij, and CutoffThreshPNO
+      ! must be identical to the values assigned in rpa_Params_Default.
+      ! In that way, accuracy custom starts from the default settings and
+      ! the keywords in the input file perturb them.
+      !
+      real(F64) :: T2CutoffThresh = 1.0E-5_F64
       integer :: T2CutoffType = RPA_T2_CUTOFF_EIG
       logical :: T2CutoffSmoothStep = .false.
       real(F64) :: T2CutoffSteepness = 0.1_F64
@@ -509,19 +515,19 @@ module rpa_definitions
       ! Transformation of the RPA amplitudes to an auxiliary basis
       !
       integer :: T2AuxOrbitals = RPA_AUX_NATURAL_ORBITALS
-      real(F64) :: T2AuxNOCutoffThresh = 1.0E-8_F64
+      real(F64) :: T2AuxNOCutoffThresh = 1.0E-9_F64
       real(F64) :: T2AuxLOCutoffThresh = 0.0_F64
       real(F64) :: T2AuxNOProjectionThresh = 1.0E-6_F64
       logical :: ComputeNaturalOrbitals = .false.
       !
       ! Localized occupied orbitals
       !
-      integer :: LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_CHOLESKY
+      integer :: LocalizedOrbitals = RPA_LOCALIZED_ORBITALS_BOYS
       real(F64) :: LocCholeskyLinDepThresh = 1.0E-6_F64
       real(F64) :: LocBoysConvergenceThresh = 1.0E-5_F64
       integer   :: LocBoysMaxNIters = 300
-      real(F64) :: CutoffThreshVabij = 1.0E-6_F64
-      real(F64) :: CutoffThreshPNO = 1.0E-5_F64
+      real(F64) :: CutoffThreshVabij = 1.0E-5_F64
+      real(F64) :: CutoffThreshPNO = 1.0E-6_F64
       !
       ! Refinement of approximate Hartree-Fock orbitals and
       ! orbital energies. The refinement subroutine is applied
@@ -705,7 +711,19 @@ contains
             ! a tool for perturbation of default settings.
             ! Do not overwrite predefined parameter profiles.
             !
-            continue
+            ! The defaults of TRPAParams equal the default profile.
+            ! Chol2Params is the exception (1.0E-7 in TChol2Params,
+            ! 1.0E-5 in the profile). The choleskytauthresh keyword,
+            ! read only in the rpa block, sets both tau values, so
+            ! the copy below does not alter a user-defined threshold.
+            !
+            ! The SCF parameters are the second exception. The ERI
+            ! algorithm and LinDepThresh keep the defaults of TSCFParams
+            ! (Cholesky and 1.0E-6), which are shared with non-RPA jobs.
+            ! The default profile uses THC and 1.0E-5. Set algorithm thc
+            ! and lindepthresh 1.0E-5 in the scf block to match it.
+            !
+            Chol2Params%CholeskyTauThresh = RPAParams%CholeskyTauThresh
          end select
       end if
    end subroutine rpa_SyncWorkflowParams

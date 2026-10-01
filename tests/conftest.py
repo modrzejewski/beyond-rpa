@@ -22,10 +22,15 @@ def pytest_collection_modifyitems(config, items):
         
         # ECP tests use a specific fast/slow helper
         is_ecp = "test_ecp" in getattr(item, "nodeid", "")
-        
+
+        # Quadrupole integral tests are single-molecule SCF calculations, always fast
+        is_quadrupole = "test_quadrupole" in getattr(item, "nodeid", "")
+
         # Use shared logic to determine if it's slow
         if is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)
+        elif is_quadrupole:
+            is_fast_test = True
         else:
             is_fast_test = utils.is_fast(filepath)
             

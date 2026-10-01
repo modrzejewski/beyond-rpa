@@ -227,14 +227,14 @@ contains
       integer, intent(in)    :: u
       integer, intent(inout) :: linenumber
 
-      character(len=DEFLEN) :: line
+      character(:), allocatable :: line
       character(:), allocatable :: lup
-      integer :: stat
+      logical :: eof
 
       lines: do
          linenumber = linenumber + 1
-         read(u, "(A)", iostat=stat) line
-         if (stat .eq. iostat_end) then
+         call io_text_readline(line, u, eof)
+         if (eof .and. len(line) == 0) then
             call msg("PARSER ERROR: TEXTFILE ENDED UNEXPECTEDLY", &
                priority=MSG_ERROR)
             stop
@@ -1095,11 +1095,17 @@ contains
       type(TBasisAssignment), intent(out) :: BasisAssign
       character(len=*), intent(in)        :: filename
 
-      character(len=DEFLEN) :: line
+      character(:), allocatable :: line
       character(:), allocatable :: key, val
-      integer :: u, linenumber, stat
+      integer :: u, linenumber
       integer :: current_block
       logical :: XYZDefined
+      logical :: eof
+      integer :: a
+      logical :: found
+      integer :: n_echoed_emb, n_omitted_emb
+      type(TBasisRule) :: Rule
+      integer, parameter :: embedding_echo_lines = 10 ! header + first 9 charge lines
       integer, parameter :: block_none = 0
       integer, parameter :: block_auxint = 1
       integer, parameter :: block_RhoSpher = 3
@@ -1123,23 +1129,40 @@ contains
       call midrule()
       linenumber = 0
       current_block = block_none
+      n_echoed_emb = 0
+      n_omitted_emb = 0
 
       call BasisAssign%set_library_dir(BASISDIR)
       call BasisAssign%set_guess_dir(GUESSDIR // "electron-densities" // DIRSEP // "rohf" // DIRSEP)
 
       lines: do
          linenumber = linenumber + 1
-         read(u, "(A)", iostat=stat) line
-         if (stat .eq. iostat_end) then
-            exit lines
-         end if
-         call echo(line)
+         call io_text_readline(line, u, eof)
+         if (eof .and. len(line) == 0) exit lines
          if (isblank(line) .or. iscomment(line)) then
             cycle lines
          end if
 
          call split(line, key, val)
          key = uppercase(key)
+         if (current_block == block_embedding .and. key /= "END") then
+            !
+            ! The EMBEDDING block can hold 10^4+ point charges.
+            ! Echo only its head.
+            !
+            if (n_echoed_emb < embedding_echo_lines) then
+               n_echoed_emb = n_echoed_emb + 1
+               call echo(line)
+            else
+               n_omitted_emb = n_omitted_emb + 1
+            end if
+         else
+            if (n_omitted_emb > 0) then
+               call msg("... " // str(n_omitted_emb) // " more lines of the EMBEDDING block not echoed")
+               n_omitted_emb = 0
+            end if
+            call echo(line)
+         end if
          select case (key)
           case ("AUXINT")
             if (val == "") then
@@ -1162,6 +1185,7 @@ contains
             cycle lines
           case ("EMBEDDING")
             current_block = block_embedding
+            n_echoed_emb = 0
             cycle lines
           case ("RPA")
             if (JOBTYPE /= JOB_REAL_UKS_RPA .and. JOBTYPE /= JOB_UNKNOWN) then
@@ -1482,10 +1506,21 @@ contains
          end if
       end if
 
-      if (.not. allocated(BASIS_SET_PATH)) then
-         call msg("NO BASIS SET SPECIFIED", MSG_ERROR)
+      if (.not. BasisAssign%Initialized) then
+         call msg("No basis set specified. Define a global basis set " // &
+            "using the 'basis' keyword or assign basis sets in the " // &
+            "'basis_assignment' block.", MSG_ERROR)
          error stop
       end if
+
+      do a = 1, System%NAtoms
+         call BasisAssign%get_atom_rule(Rule, a, System%ZNumbers(a), found=found)
+         if (.not. found) then
+            call msg("No basis set assigned for atom " // str(a) // &
+               " (" // trim(ELNAME_SHORT(System%ZNumbers(a))) // ")", MSG_ERROR)
+            error stop
+         end if
+      end do
 
       if (JOBTYPE == JOB_RTTDDFT_POLAR) then
          if (.not. allocated(RTTDDFT_POLAR_OMEGA)) then
