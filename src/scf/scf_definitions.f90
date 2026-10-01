@@ -252,9 +252,14 @@ module scf_definitions
             integer :: guess_type = SCF_GUESS_DEFAULT
             ! ----------------------------------------------------
             ! SCF convergence thresholds
+            !
+            ! ConvThreshRho: max element of the difference between
+            ! the AO density matrices of consecutive iterations.
+            ! ConvThreshGrad: max element of the occupied-virtual block
+            ! of the Fock matrix in the orthonormal semicanonical MO basis.
             ! ----------------------------------------------------
             real(F64) :: ConvThreshRho = 1.0E-6_F64
-            real(F64) :: ConvThreshGrad = 2.0E-5_F64
+            real(F64) :: ConvThreshGrad = 1.0E-6_F64
             !
             ! Threshold for removing small eigenvalues from
             ! the AO overlap matrix.

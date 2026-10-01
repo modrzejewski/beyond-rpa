@@ -81,8 +81,8 @@ contains
       HirshSCFParams%xcfunc = SCFParams%xcfunc
       HirshSCFParams%omega = SCFParams%omega
       HirshSCFParams%srexx = SCFParams%srexx
-      HirshSCFParams%ConvThreshRho = 1.0E-6
-      HirshSCFParams%ConvThreshGrad = 2.0E-5
+      HirshSCFParams%ConvThreshRho = 1.0E-6_F64
+      HirshSCFParams%ConvThreshGrad = 1.0E-6_F64
       HirshSCFParams%AUXInt_Type1 = AUX_HIRSHFELD_VOLUME_FREE
       HirshSCFParams%ERI_Algorithm = SCF_ERI_EXACT
       MaxNShells = AOBasis%MaxNShells
