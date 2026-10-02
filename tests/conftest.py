@@ -26,10 +26,13 @@ def pytest_collection_modifyitems(config, items):
         # Quadrupole integral tests are single-molecule SCF calculations, always fast
         is_quadrupole = "test_quadrupole" in getattr(item, "nodeid", "")
 
+        # Frozen core tests are single-molecule and small-dimer calculations, always fast
+        is_frozen_core = "test_frozen_core" in getattr(item, "nodeid", "")
+
         # Use shared logic to determine if it's slow
         if is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)
-        elif is_quadrupole:
+        elif is_quadrupole or is_frozen_core:
             is_fast_test = True
         else:
             is_fast_test = utils.is_fast(filepath)

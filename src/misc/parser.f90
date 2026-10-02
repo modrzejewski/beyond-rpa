@@ -1553,6 +1553,7 @@ contains
          FilePath=filename, &
          LibraryDir=BASISDIR & ! default library dir for ECPs on embedding atoms
          )
+      call RPAParams%validate_frozen_orbitals(System%ZNumbers, System%ZNumbersECP)
    end subroutine read_inputfile
 
 
@@ -3143,8 +3144,10 @@ contains
       character(*), intent(in)          :: Line
 
       character(:), allocatable :: key, val
+      character(:), allocatable :: s1, s2
       real(F64) :: m
       integer :: i
+      integer :: Z
 
       call split(line, key, val)
       select case (uppercase(key))
@@ -3552,6 +3555,23 @@ contains
        case ("COREORBTHRESH")
          read(val, *) m
          RPAParams%CoreOrbThresh = m
+       case ("FROZEN_ORBITALS", "FROZEN-ORBITALS", "FROZENORBITALS")
+         call split(val, s1, s2)
+         Z = znumber_short(s1)
+         if (Z == 0) then
+            call msg("Unknown element in frozen_orbitals: " // s1, MSG_ERROR)
+            error stop
+         end if
+         if (len_trim(s2) == 0 .or. .not. isinteger(s2)) then
+            call msg("Invalid number of frozen orbitals for " // s1, MSG_ERROR)
+            error stop
+         end if
+         read(s2, *) i
+         if (i < 0 .or. RPAParams%NFrozenOrbitals(Z) /= RPA_FROZEN_UNDEFINED) then
+            call msg("Negative or duplicate frozen_orbitals entry for " // s1, MSG_ERROR)
+            error stop
+         end if
+         RPAParams%NFrozenOrbitals(Z) = i
        case ("SMALLEIGENVALCUTOFFT2", "SMALLEIGENVALSCUTOFFT2")
          read(val, *) m
          RPAParams%SmallEigenvalCutoffT2 = m

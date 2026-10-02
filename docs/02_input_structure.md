@@ -142,6 +142,26 @@ The following methods are implemented primarily for testing purposes and are sig
 | `rPT2` | Renormalized second-order perturbation theory [[Ren2013](04_literature.md)] |
 | `RPA+2g` | RPA with singles corrections, SOSEX, and additional higher order term referred as 2g [[Cieśliński2023](04_literature.md)] |
 
+### Frozen core
+
+Frozen core orbitals are selected in the `rpa` block in one of two ways.
+
+| Keyword | Selection |
+|---|---|
+| `CoreOrbThresh {energy}` | Occupied orbitals with energies below `{energy}` (Hartree) are frozen. The default is `-3.0`. |
+| `FrozenOrbitals {element} {n_orbitals}` | The `{n_orbitals}` lowest occupied orbitals of each atom of the element are frozen. |
+
+If specified, `FrozenOrbitals` must be given for every element of the system. It takes precedence over `CoreOrbThresh`.
+
+```text
+rpa
+  FrozenOrbitals O 1
+  FrozenOrbitals H 0
+end
+```
+
+`FrozenOrbitals` counts orbitals above the ECP core. Each subsystem of a dimer or trimer freezes the orbitals of its own atoms. SCF and the mean-field correction terms use all electrons.
+
 ## Geometry
 
 The `xyz` block defines the geometry of the system. The string that specifies the number of atoms in the molecular subsystems controls how the calculation is performed. Subsystems (e.g., monomers A and B) are specified together with the total system (e.g., dimer AB) because their calculation reuses intermediates from the total system.

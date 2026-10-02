@@ -1700,7 +1700,7 @@ contains
 
 
       subroutine rpa_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-            NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+            NOcc, NVirt, NCore, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
             CholeskyVecs, CholeskyBasis, F_ao)
             
             real(F64), dimension(:), intent(inout)                    :: Energy
@@ -1710,6 +1710,7 @@ contains
             real(F64), dimension(:, :), intent(in)                    :: VirtEnergies
             integer, dimension(:), intent(in)                         :: NOcc
             integer, dimension(:), intent(in)                         :: NVirt
+            integer, dimension(:), intent(in)                         :: NCore
             type(TAOBasis), intent(in)                                :: AOBasis
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
@@ -1718,7 +1719,7 @@ contains
             real(F64), dimension(:, :, :), allocatable, intent(inout) :: CholeskyVecs[:]
             type(TChol2Vecs), intent(inout)                           :: CholeskyBasis
             real(F64), dimension(:, :, :), intent(in)                 :: F_ao
-            
+
             associate ( &
                   AtomCoords => AOBasis%AtomCoords, &
                   LmaxGTO => AOBasis%LmaxGTO, &
@@ -1741,12 +1742,12 @@ contains
                   NAOSpher => AOBasis%NAOSpher)
                   if (SpherAO) then
                         call rpa_Ecorr_1(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-                              NOcc, NVirt, AtomCoords, LmaxGTO, ShellLocSpher, ShellCenters, ShellParamsIdx, ShellMomentum, &
+                              NOcc, NVirt, NCore, AtomCoords, LmaxGTO, ShellLocSpher, ShellCenters, ShellParamsIdx, ShellMomentum, &
                               NAngFuncSpher, NPrimitives, CntrCoeffs, Exponents, NormFactorsSpher, SpherAO, AOBasis, &
                               RPAParams, RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, F_ao)
                   else
                         call rpa_Ecorr_1(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-                              NOcc, NVirt, AtomCoords, LmaxGTO, ShellLocCart, ShellCenters, ShellParamsIdx, ShellMomentum, &
+                              NOcc, NVirt, NCore, AtomCoords, LmaxGTO, ShellLocCart, ShellCenters, ShellParamsIdx, ShellMomentum, &
                               NAngFuncCart, NPrimitives, CntrCoeffs, Exponents, NormFactorsCart, SpherAO, AOBasis, &
                               RPAParams, RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, CholeskyBasis, F_ao)
                   end if
@@ -1754,7 +1755,7 @@ contains
       end subroutine rpa_Ecorr_2
       
 
-      subroutine rpa_Ecorr_1(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, NOcc, NVirt, AtomCoords, &
+      subroutine rpa_Ecorr_1(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, NOcc, NVirt, NCore, AtomCoords, &
             LmaxGTO, ShellLoc, ShellCenters, ShellParamsIdx, ShellMomentum, NAngFunc, NPrimitives, CntrCoeffs, &
             Exponents, NormFactors, SpherAO, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, &
             CholeskyBasis, F_ao)
@@ -1766,6 +1767,7 @@ contains
             real(F64), dimension(:, :), intent(in)                    :: VirtEnergies
             integer, dimension(:), intent(in)                         :: NOcc
             integer, dimension(:), intent(in)                         :: NVirt
+            integer, dimension(:), intent(in)                         :: NCore
             real(F64), dimension(:, :), intent(in)                    :: AtomCoords
             integer, intent(in)                                       :: LmaxGTO
             integer, dimension(:), intent(in)                         :: ShellLoc
@@ -1789,7 +1791,6 @@ contains
             
             integer :: NSpins, NAtoms, NAO, NShells
             integer :: MaxNOcc, MaxNVirt
-            integer, dimension(2) :: NCore
             integer :: s
             integer, dimension(2) :: NOccAct
             real(F64) :: Omega
@@ -1798,7 +1799,6 @@ contains
             real(F64), dimension(:, :, :), allocatable :: OccActCoeffs, VirtActCoeffs
             type(tclock) :: timer
             real(F64) :: time_W, time_WRG, time_GRWRG, time_LogDet, time_Density, time_Cholesky
-            real(F64) :: CoreOrbThresh
             logical :: ComputeGrids, ComputeRWRBasis
             real(F64) :: EcRPA
 
@@ -1810,7 +1810,6 @@ contains
             NAtom = size(AtomCoords, dim=2)
             NAO = size(OccCoeffs, dim=1)
             NShells = size(ShellCenters)
-            CoreOrbThresh = RPAParams%CoreOrbThresh
             if (RPAParams%Kappa > ZERO) then
                   Omega = Sqrt(ONE/RPAParams%Kappa)
                   call msg("Long-range interaction Erf(Omega r12)/r12 with Omega = " // str(Omega, d=4))
@@ -1824,14 +1823,12 @@ contains
             else
                   call msg("Using Cartesian AOs")
             end if
-            call msg("Threshold for inert core orbitals (a.u.): " // str(CoreOrbThresh,d=3))
             NOccAct = 0
             do s = 1, NSpins
                   if (NSpins > 1) then
                         if (s == 1) call msg("Alpha spin", underline=.true.)
                         if (s == 2) call msg("Beta spin", underline=.true.)
                   end if
-                  call rpa_NCore(NCore(s), OccEnergies(:, s), NOcc(s), CoreOrbThresh)
                   NOccAct(s) = NOcc(s) - NCore(s)
                   call msg("Occupied orbitals: " // str(NOcc(s)))
                   call msg("Discarded " // str(NCore(s)) // " core orbitals")
@@ -2045,7 +2042,7 @@ contains
 
 
       subroutine rpa_THC_Ecorr_2(RPAOutput, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-            hHF_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
+            hHF_ao, NOcc, NVirt, NCore, AOBasis, RPAParams, RPAGrids, THCGrid, T2CutoffCommonThresh)
 
             type(TRPAOutput), intent(inout)                           :: RPAOutput
             real(F64), dimension(:, :, :), intent(in)                 :: OccCoeffs
@@ -2054,7 +2051,8 @@ contains
             real(F64), dimension(:, :), intent(in)                    :: VirtEnergies
             real(F64), dimension(:, :, :), intent(in)                 :: hHF_ao
             integer, dimension(:), intent(in)                         :: NOcc
-            integer, dimension(:), intent(in)                         :: NVirt            
+            integer, dimension(:), intent(in)                         :: NVirt
+            integer, dimension(:), intent(in)                         :: NCore
             type(TAOBasis), intent(in)                                :: AOBasis
             type(TRPAParams), intent(in)                              :: RPAParams
             type(TRPAGrids), intent(inout)                            :: RPAGrids
@@ -2066,14 +2064,12 @@ contains
             integer, dimension(2) :: NVirtNO
             integer :: i0, i1, a0, a1
             integer :: MaxNOcc, MaxNVirt
-            integer, dimension(2) :: NCore
             integer :: s
             integer, dimension(2) :: NOccAct
             real(F64) :: Ef
             real(F64), dimension(:, :), allocatable :: Ei, Ea
             real(F64), dimension(:, :, :), allocatable :: OccActCoeffs, VirtActCoeffs
             type(tclock) :: timer
-            real(F64) :: CoreOrbThresh
             real(F64), dimension(2) :: FermiEnergy
             logical :: ComputeGrids, ComputePiUVecs
 
@@ -2082,20 +2078,17 @@ contains
             call msg("Orbital basis for the RPA+MBPT3 calculation", underline=.true.)            
             NSpins = size(OccEnergies, dim=2)
             NAO = size(OccCoeffs, dim=1)
-            CoreOrbThresh = RPAParams%CoreOrbThresh
             if (AOBasis%SpherAO) then
                   call msg("Atomic orbitals: " // str(NAO) // " spherical")
             else
                   call msg("Atomic orbitals: " // str(NAO) // " Cartesian")
             end if
-            call msg("Threshold for inert core orbitals (a.u.): " // str(CoreOrbThresh,d=3))
             NOccAct = 0
             do s = 1, NSpins
                   if (NSpins > 1) then
                         if (s == 1) call msg("Alpha spin", underline=.true.)
                         if (s == 2) call msg("Beta spin", underline=.true.)
                   end if
-                  call rpa_NCore(NCore(s), OccEnergies(:, s), NOcc(s), CoreOrbThresh)
                   NOccAct(s) = NOcc(s) - NCore(s)
                   call msg("Occupied orbitals: " // str(NOcc(s)))
                   call msg("Discarded " // str(NCore(s)) // " core orbitals")

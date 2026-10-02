@@ -7,7 +7,8 @@ module gparam
       use scf_definitions
       use h_io
       use rpa_definitions
-      
+      use periodic, only: KNOWN_ELEMENTS
+
       implicit none
       save
       !
@@ -27,7 +28,6 @@ module gparam
       ! Solving symmetric eigenvalue problems
       !
       integer :: TIME_EIGEN = 3
-      integer, parameter :: KNOWN_ELEMENTS = 86
       !
       ! Default character string length (maximum length
       ! of keyword names etc.)

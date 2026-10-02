@@ -927,7 +927,7 @@ contains
             ! Summary of loaded data
             !
             call toprule()
-            call msg("LOADED NEW SYSTEM: " // chemical_formula(xyz))
+            call msg("LOADED NEW SYSTEM")
             call midrule()
             call imsg("NUMBER OF ATOMS", NATOM)
             if (isint(CHARGE)) then
