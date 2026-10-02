@@ -20,3 +20,9 @@ Computationally expensive tests (e.g., those using large basis sets like `avqz` 
 - **Pytest Mode**: Slow tests must be skipped dynamically (e.g., via `pytest.skip`) unless an explicit environment variable is provided (e.g., `BEYOND_RPA_FULL=1`).
 - **Standalone Mode**: The standalone script must require an explicit flag (e.g., `--full` via `argparse`) to execute the slow tests.
 - **Implementation**: The categorization logic must be codified in an `is_fast_test()` function that evaluates the test's `.inp` filename or metadata.
+
+## 5. Registration in Meson
+Every pytest module (`tests/**/test_*.py`) must be registered in `meson.build`, so that `meson test` and `pytest` run the same tests.
+- **Entry**: Add a `test()` call inside the `if pytest.found()` block. It runs `pytest` on the module with `-v`, `-s`, and `--junitxml=<suite>_report.xml`, and sets `depends: post_build_target` and `workdir: meson.project_source_root()`.
+- **Timeout**: Set `timeout` from the measured runtime of the tests that run by default, with a safety margin.
+- **Verification**: `meson test -C <builddir> --list` must show one entry per pytest module, and `pytest --collect-only` from the project root must collect the same tests as the registered modules.

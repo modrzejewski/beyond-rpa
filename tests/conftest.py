@@ -29,10 +29,13 @@ def pytest_collection_modifyitems(config, items):
         # Frozen core tests are single-molecule and small-dimer calculations, always fast
         is_frozen_core = "test_frozen_core" in getattr(item, "nodeid", "")
 
+        # Basis assignment tests are single-molecule SCF calculations, always fast
+        is_basis = "test_basis" in getattr(item, "nodeid", "")
+
         # Use shared logic to determine if it's slow
         if is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)
-        elif is_quadrupole or is_frozen_core:
+        elif is_quadrupole or is_frozen_core or is_basis:
             is_fast_test = True
         else:
             is_fast_test = utils.is_fast(filepath)
