@@ -1,0 +1,41 @@
+! reference values from pyscf
+! Frozen orbitals AB/A/B:            2/1/1
+! HF single point AB (a.u.):         -152.06220207
+! dRPA single point AB (a.u.):       -0.45914869
+! HF single point A (a.u.):          -76.02670615
+! dRPA single point A (a.u.):        -0.22920150
+! HF single point B (a.u.):          -76.02932110
+! dRPA single point B (a.u.):        -0.23019657
+! HF interaction A...B (kcal/mol):   -3.874757
+! dRPA interaction A...B (kcal/mol): 0.156491
+
+basis cc-pVDZ
+
+scf
+  xcfunc HF
+end
+
+rpa
+  TheoryLevel RPA+ph
+  accuracy custom
+  ! The ludicrous baseline with a tighter decomposition threshold of Pi(u)
+  TargetErrorRandom 1.0E-7
+  T2CutoffThresh 1.0E-6
+  T2AuxNOCutoffThresh 1.0E-11
+  CutoffThreshPNO 1.0E-7
+  LocalizedOrbitals boys
+  CutoffThreshVabij 0.0
+  T2AdaptiveCutoffTargetKcal 0.0005
+  THC_QRThresh 1.0E-4
+  CholeskyTauThresh 1.0E-7
+end
+
+xyz
+3 3
+O       1.531750    0.005922   -0.120880
+H       0.575968   -0.005249    0.024966
+H       1.906249   -0.037561    0.763218
+O      -1.396226   -0.004990    0.106766
+H      -1.789372   -0.742283   -0.371009
+H      -1.777037    0.777638   -0.304264
+end

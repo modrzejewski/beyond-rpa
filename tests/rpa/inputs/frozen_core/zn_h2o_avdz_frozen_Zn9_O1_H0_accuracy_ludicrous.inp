@@ -1,0 +1,32 @@
+! reference values from pyscf
+! Frozen orbitals AB/A/B:            10/9/1
+! HF single point AB (a.u.):         -1853.88828171
+! dRPA single point AB (a.u.):       -0.68288257
+! HF single point A (a.u.):          -1777.84675113
+! dRPA single point A (a.u.):        -0.43675493
+! HF single point B (a.u.):          -76.04155710
+! dRPA single point B (a.u.):        -0.24576858
+! HF interaction A...B (kcal/mol):   0.016638
+! dRPA interaction A...B (kcal/mol): -0.225317
+
+basis aug-cc-pVDZ
+
+scf
+  xcfunc HF
+end
+
+rpa
+  TheoryLevel RPA+ph
+  accuracy ludicrous
+  FrozenOrbitals Zn 9
+  FrozenOrbitals O 1
+  FrozenOrbitals H 0
+end
+
+xyz
+1 3
+Zn      0.000000    0.000000    0.000000
+O       3.900000    0.000000    0.000000
+H       4.480000    0.760000    0.000000
+H       4.480000   -0.760000    0.000000
+end

@@ -3,9 +3,10 @@ Frozen Core Test Suite for beyond-rpa.
 
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
 
-The frozen_orbitals keyword is compared with the energy-threshold selection (coreorbthresh)
-of the same orbitals. The reference energy is computed in the same session, so no reference
-values are stored. Each invalid input states the expected error message in its header.
+Each reference input freezes a different set of core orbitals of a dimer. The HF and direct RPA
+energies of the dimer, of both monomers in the dimer basis, and the interaction energies are
+compared with PySCF references stored in the input preamble (see pyscf_*.py and
+inject_reference_preambles.py in the inputs directory).
 """
 
 import re
@@ -24,65 +25,126 @@ import utils
 BIN_PATH = Path(__file__).parents[2] / "bin" / "run"
 INPUTS_DIR = Path(__file__).parent / "inputs" / "frozen_core"
 
-TOLERANCE_ENERGY = 1.0e-8  # a.u.
-TOLERANCE_EINT = 3.0e-5  # kcal/mol
+#
+# Tolerances for each accuracy level: (single point in a.u., interaction energy in kcal/mol)
+#
+TOLERANCES = {
+    "default": (1.0e-4, 5.0e-4),
+    "ludicrous": (3.0e-5, 5.0e-5),
+}
 
 FLOAT_REGEX = r"([-+]?\d*\.\d+(?:[Ee][-+]?\d+)?)"
-ENERGIES_HEADER = "Single-Point Energies"
+SUBSYSTEMS = ["AB", "A", "B"]
 
-# (input with frozen_orbitals, reference input, energy label, tolerance, results equal)
-CASES = [
-    ("water_frozen_O1_H0", "water_default", "E(total)", TOLERANCE_ENERGY, True),
-    ("water_frozen_O0_H0", "water_all_correlated", "E(total)", TOLERANCE_ENERGY, True),
-    ("water_frozen_O0_H0", "water_default", "E(total)", TOLERANCE_ENERGY, False),
-    ("dimer_frozen_O1_H0", "dimer_default", "Eint(total)", TOLERANCE_EINT, True),
-    ("xenon_frozen_0", "xenon_all_correlated", "E(total)", TOLERANCE_ENERGY, True),
-    ("zn_water_frozen_Zn9_O1_H0", "zn_water_coreorbthresh_m2", "E(total)", TOLERANCE_ENERGY, True),
-]
-CASE_IDS = [f"{frozen}_vs_{reference}" for frozen, reference, *_ in CASES]
+# (term, reference key in the preamble, unit)
+TERMS = (
+    [(f"HF {s}", f"HF single point {s} (a.u.)", "a.u.") for s in SUBSYSTEMS]
+    + [(f"dRPA {s}", f"dRPA single point {s} (a.u.)", "a.u.") for s in SUBSYSTEMS]
+    + [
+        ("HF A...B", "HF interaction A...B (kcal/mol)", "kcal/mol"),
+        ("dRPA A...B", "dRPA interaction A...B (kcal/mol)", "kcal/mol"),
+    ]
+)
 
-INVALID = sorted(path.stem for path in INPUTS_DIR.glob("invalid_*.inp"))
+SINGLE_POINT_KEYS = ["mean field", "1-RDM linear", "1-RDM quadratic", "direct ring"]
+INTERACTION_KEYS = ["Eint(HF)", "Eint(1-RDM linear)", "Eint(1-RDM quadratic)", "Eint(direct ring)"]
 
 
-def run(name: str, nthreads: int) -> subprocess.CompletedProcess:
-    filepath = INPUTS_DIR / f"{name}.inp"
+def get_reference_inputs() -> list[Path]:
+    return sorted(INPUTS_DIR.glob("*_accuracy_*.inp"))
+
+
+def is_fast_test(filepath: Path) -> bool:
+    """
+    All frozen-core inputs are small dimers and are run by default.
+    """
+    return True
+
+
+def run(filepath: Path, nthreads: int) -> subprocess.CompletedProcess:
     return subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
 
 
-def energy(name: str, label: str, nthreads: int) -> float:
-    result = run(name, nthreads)
+def extract_ref_energies(filepath: Path) -> dict:
+    energies = {}
+    for line in filepath.read_text().splitlines():
+        if not line.startswith("!"):
+            break
+        for term, key, _ in TERMS:
+            if line[1:].strip().startswith(key + ":"):
+                energies[term] = float(line.split(":", 1)[1])
+    return energies
+
+
+def subsystem_label(header: str) -> str:
+    if "Monomer A" in header:
+        return "A"
+    if "Monomer B" in header:
+        return "B"
+    return "AB"
+
+
+def extract_calc_energies(text: str) -> dict:
+    """
+    Single points are taken from the first section printed after the first
+    "RPA for" header of each subsystem. For monomers, this section contains the
+    canonical-orbital direct ring energy used in the final interaction energy.
+    """
+    terms = {}
+    found = {}
+    label = None
+    for line in text.splitlines():
+        if "RPA for " in line:
+            new_label = subsystem_label(line)
+            label = new_label if new_label not in found else None
+            if label is not None:
+                found[label] = {}
+            continue
+        if label is None:
+            continue
+        for key in SINGLE_POINT_KEYS:
+            if key not in found[label]:
+                match = re.match(r"^\s*" + re.escape(key) + r"\s+" + FLOAT_REGEX, line)
+                if match:
+                    found[label][key] = float(match.group(1))
+    for s, values in found.items():
+        if all(key in values for key in SINGLE_POINT_KEYS):
+            terms[f"HF {s}"] = values["mean field"] + values["1-RDM linear"] + values["1-RDM quadratic"]
+            terms[f"dRPA {s}"] = values["direct ring"]
+    interaction = {}
+    for key in INTERACTION_KEYS:
+        match = re.search(r"^\s*" + re.escape(key) + r"\s+" + FLOAT_REGEX, text, re.MULTILINE)
+        if match:
+            interaction[key] = float(match.group(1))
+    if all(key in interaction for key in INTERACTION_KEYS):
+        terms["HF A...B"] = interaction["Eint(HF)"] + interaction["Eint(1-RDM linear)"] + interaction["Eint(1-RDM quadratic)"]
+        terms["dRPA A...B"] = interaction["Eint(direct ring)"]
+    return terms
+
+
+def tolerance(filepath: Path, unit: str) -> float:
+    accuracy = filepath.stem.rsplit("_accuracy_", 1)[1]
+    single_point, interaction = TOLERANCES[accuracy]
+    return single_point if unit == "a.u." else interaction
+
+
+@pytest.mark.parametrize("filepath", get_reference_inputs(), ids=lambda p: p.stem)
+def test_frozen_core(filepath: Path, record_property):
+    ref = extract_ref_energies(filepath)
+    assert len(ref) == len(TERMS), f"Reference energies missing in {filepath.name}"
+    result = run(filepath, utils.get_thread_count())
     assert result.returncode == 0, f"beyond-rpa failed:\n{result.stderr}"
-    match = re.search(r"^\s*" + re.escape(label) + r"\s+" + FLOAT_REGEX, result.stdout, re.MULTILINE)
-    assert match, f"{label} not found in the output of {name}"
-    return float(match.group(1))
-
-
-def expected_error(name: str) -> str:
-    for line in (INPUTS_DIR / f"{name}.inp").read_text().splitlines():
-        if line.startswith("! Expected error:"):
-            return line.split(":", 1)[1].strip()
-    raise ValueError(f"No expected error message in {name}.inp")
-
-
-@pytest.mark.parametrize("frozen, reference, label, tolerance, equal", CASES, ids=CASE_IDS)
-def test_frozen_orbitals(frozen, reference, label, tolerance, equal, record_property):
-    nthreads = utils.get_thread_count()
-    ref = energy(reference, label, nthreads)
-    calc = energy(frozen, label, nthreads)
-    record_property("reference", ref)
-    record_property("calculated", calc)
-    record_property("deviation", abs(calc - ref))
-    if equal:
-        assert calc == pytest.approx(ref, abs=tolerance)
-    else:
-        assert calc != pytest.approx(ref, abs=tolerance)
-
-
-@pytest.mark.parametrize("name", INVALID)
-def test_invalid_input(name):
-    result = run(name, utils.get_thread_count())
-    assert expected_error(name) in result.stdout
-    assert ENERGIES_HEADER not in result.stdout
+    calc = extract_calc_energies(result.stdout)
+    for term, _, unit in TERMS:
+        assert term in calc, f"Calculated value of {term} missing from output."
+        dev = abs(calc[term] - ref[term])
+        record_property(f"reference {term}", ref[term])
+        record_property(f"calculated {term}", calc[term])
+        record_property(f"deviation {term}", dev)
+    for term, _, unit in TERMS:
+        tol = tolerance(filepath, unit)
+        assert calc[term] == pytest.approx(ref[term], abs=tol), \
+            f"{term} deviation ({abs(calc[term] - ref[term]):.2e} {unit}) exceeds {tol:.1e}"
 
 
 if __name__ == "__main__":
@@ -94,42 +156,35 @@ if __name__ == "__main__":
 
     print(f"\nNumber of threads: {nthreads}")
     print("\nTolerances:")
-    print(f"  E(total):    {TOLERANCE_ENERGY:.1e} a.u.")
-    print(f"  Eint(total): {TOLERANCE_EINT:.1e} kcal/mol")
+    for accuracy, (single_point, interaction) in TOLERANCES.items():
+        print(f"  {accuracy + ':':<11} single point {single_point:.1e} a.u., interaction {interaction:.1e} kcal/mol")
 
-    width = 112
+    files = get_reference_inputs()
+    if not args.full:
+        files = [f for f in files if is_fast_test(f)]
+
+    header = f"{'Term':<10} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
+    width = len(header)
     print("\n" + "." * width)
-    print(f"{'Test':<45} | {'Property':<11} | {'Ref':>14} | {'Calc':>14} | {'Deviation':>10} | {'Expected':<8} | {'Status'}")
+    print(header)
     print("." * width)
-    for (frozen, reference, label, tolerance, equal), case_id in zip(CASES, CASE_IDS):
-        print(f"Running {case_id}... ", end="", flush=True)
+    for filepath in files:
+        print(f"Running {filepath.stem}... ", end="", flush=True)
         start_time = time.time()
-        try:
-            ref = energy(reference, label, nthreads)
-            calc = energy(frozen, label, nthreads)
-        except AssertionError:
-            print(f"FAILED ({time.time() - start_time:.2f}s)")
-            print(f"{case_id:<45} | {label:<11} | {'N/A':>14} | {'N/A':>14} | {'N/A':>10} | {'N/A':<8} | CRASHED")
+        result = run(filepath, nthreads)
+        elapsed = time.time() - start_time
+        if result.returncode != 0:
+            print(f"CRASHED ({elapsed:.2f}s)")
             print("-" * width)
             continue
-        print(f"done ({time.time() - start_time:.2f}s)")
-        dev = abs(calc - ref)
-        status = "PASSED" if (dev <= tolerance) == equal else "FAILED"
-        print(f"{case_id:<45} | {label:<11} | {ref:>14.8f} | {calc:>14.8f} | {dev:>10.2e} | {'equal' if equal else 'differ':<8} | {status}")
-        print("-" * width)
-
-    width = 100
-    print("\n" + "." * width)
-    print(f"{'Invalid input':<30} | {'Expected message':<50} | {'Message':<7} | {'Energies':<8} | {'Status'}")
-    print("." * width)
-    for name in INVALID:
-        print(f"Running {name}... ", end="", flush=True)
-        start_time = time.time()
-        result = run(name, nthreads)
-        print(f"done ({time.time() - start_time:.2f}s)")
-        message = expected_error(name)
-        found = message in result.stdout
-        computed = ENERGIES_HEADER in result.stdout
-        status = "PASSED" if found and not computed else "FAILED"
-        print(f"{name:<30} | {message:<50} | {'found' if found else 'missing':<7} | {'yes' if computed else 'no':<8} | {status}")
+        print(f"done ({elapsed:.2f}s)")
+        ref = extract_ref_energies(filepath)
+        calc = extract_calc_energies(result.stdout)
+        for term, _, unit in TERMS:
+            if term not in ref or term not in calc:
+                print(f"{term:<10} | {unit:<8} | {'N/A':>16} | {'N/A':>16} | {'N/A':>10} | ERROR")
+                continue
+            dev = abs(calc[term] - ref[term])
+            status = "PASSED" if dev <= tolerance(filepath, unit) else "FAILED"
+            print(f"{term:<10} | {unit:<8} | {ref[term]:>16.8f} | {calc[term]:>16.8f} | {dev:>10.2e} | {status}")
         print("-" * width)

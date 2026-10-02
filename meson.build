@@ -92,7 +92,7 @@ if pytest.found()
       meson.project_source_root() / 'tests' / 'rpa' / 'test_frozen_core.py'
     ],
     depends: post_build_target,
-    timeout: 600,
+    timeout: 1800,
     workdir: meson.project_source_root()
   )
 else

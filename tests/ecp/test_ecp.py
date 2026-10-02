@@ -119,16 +119,18 @@ if __name__ == "__main__":
     
     _display_tolerances()
     
-    print("\n" + "." * 105)
-    print(f"{'Test File':<35} | {'Term':<4} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | {'Status'}")
-    print("." * 105)
-    
+    header = f"{'Term':<4} | {'Ref (kcal/mol)':>15} | {'Calc (kcal/mol)':>15} | {'Deviation':>12} | Status"
+    width = len(header)
+    print("\n" + "." * width)
+    print(header)
+    print("." * width)
+
     all_files = get_input_files()
     if not args.full:
         files = [f for f in all_files if utils.is_fast_ecp(f)]
         if len(files) < len(all_files):
             print(f"Running {len(files)} fast tests. Use --full to run all {len(all_files)} tests.")
-            print("-" * 105)
+            print("-" * width)
     else:
         files = all_files
         
@@ -145,8 +147,8 @@ if __name__ == "__main__":
             elapsed = time.time() - start_time
             if result.returncode != 0:
                 print(f"FAILED ({elapsed:.2f}s)")
-                print(f"{'':<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | CRASHED")
-                print("-" * 105)
+                print(f"{'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | CRASHED")
+                print("-" * width)
                 continue
                 
             print(f"done ({elapsed:.2f}s)")
@@ -169,13 +171,12 @@ if __name__ == "__main__":
                     ref_str = f"{ref_val:.6f}"
                     calc_str = f"{calc_val:.6f}"
                     
-                prefix = filepath.name if key == "HF" else ""
-                print(f"{prefix:<35} | {key:<4} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
-                
+                print(f"{key:<4} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
+
         except Exception:
             elapsed = time.time() - start_time
             print(f"FAILED ({elapsed:.2f}s)")
-            print(f"{'':<35} | {'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | ERROR")
-            
-        print("-" * 105)
+            print(f"{'N/A':<4} | {'N/A':>15} | {'N/A':>15} | {'N/A':>12} | ERROR")
+
+        print("-" * width)
     print("\n")
