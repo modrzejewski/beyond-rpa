@@ -1,0 +1,13 @@
+basis def2-SVP
+scf
+  xcfunc HF
+end
+rpa
+  TheoryLevel RPA+ph
+  accuracy ludicrous
+  coreorbthresh -1000
+end
+xyz
+1
+Xe     0.000000     0.000000     0.000000
+end

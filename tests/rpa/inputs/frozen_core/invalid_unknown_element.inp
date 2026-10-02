@@ -1,0 +1,18 @@
+! Expected error: Unknown element in FrozenOrbitals: Q
+basis cc-pVDZ
+scf
+  xcfunc HF
+end
+rpa
+  TheoryLevel RPA+ph
+  accuracy default
+  frozen_orbitals Q 1
+  frozen_orbitals O 1
+  frozen_orbitals H 0
+end
+xyz
+3
+O      1.531750     0.005922    -0.120880
+H      0.575968    -0.005249     0.024966
+H      1.906249    -0.037561     0.763218
+end

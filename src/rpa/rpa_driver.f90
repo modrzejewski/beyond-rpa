@@ -62,6 +62,7 @@ contains
       type(TRPAOutput), dimension(:), allocatable :: RPAOutput
       integer, parameter :: MaxMacroIters = 6
       integer, dimension(2, MaxNSubsystems) :: NCore
+      character(:), allocatable :: CoreRule
 
       if (.not. RPAParams%Initialized) then
          call msg("RPA parameters are not initialized. Cannot run post-SCF calculations.", MSG_ERROR)
@@ -130,6 +131,8 @@ contains
       !
       ! Select the frozen core orbitals once for every subsystem
       !
+      call RPAParams%frozen_core_rule(CoreRule)
+      call msg("Frozen orbitals: " // CoreRule)
       do k = 1, NSystems
          call sys_Init(System, k)
          if (RPAParams%Algorithm == RPA_ALGO_JCTC2025 .or. &

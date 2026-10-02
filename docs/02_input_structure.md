@@ -144,14 +144,18 @@ The following methods are implemented primarily for testing purposes and are sig
 
 ### Frozen core
 
-Frozen core orbitals are selected in the `rpa` block in one of two ways.
+Frozen core orbitals are excluded from the correlation energy. SCF and the mean-field correction terms use all electrons. The frozen orbitals are selected in the `rpa` block in one of two ways.
 
 | Keyword | Selection |
 |---|---|
 | `CoreOrbThresh {energy}` | Occupied orbitals with energies below `{energy}` (Hartree) are frozen. The default is `-3.0`. |
-| `FrozenOrbitals {element} {n_orbitals}` | The `{n_orbitals}` lowest occupied orbitals of each atom of the element are frozen. |
+| `FrozenOrbitals {element} {n_orbitals}` | Each atom of the element contributes `{n_orbitals}` to the number of frozen orbitals. |
 
-If specified, `FrozenOrbitals` must be given for every element of the system. It takes precedence over `CoreOrbThresh`.
+With `FrozenOrbitals`, each subsystem (molecule, monomer, dimer, or trimer) freezes its N lowest-energy occupied orbitals, where N is the sum of `{n_orbitals}` over the atoms of the subsystem. Ghost atoms, point charges, and embedding ECP centers do not contribute.
+
+* `FrozenOrbitals` must be given for every element of the system.
+* `FrozenOrbitals` takes precedence over `CoreOrbThresh`.
+* `{n_orbitals}` counts orbitals above the ECP core.
 
 ```text
 rpa
@@ -160,7 +164,7 @@ rpa
 end
 ```
 
-`FrozenOrbitals` counts orbitals above the ECP core. Each subsystem of a dimer or trimer freezes the orbitals of its own atoms. SCF and the mean-field correction terms use all electrons.
+The selection by energy freezes the intended shells only if the frozen shells of all atoms lie below the active orbitals of all other atoms. This condition can fail when semicore shells are frozen.
 
 ## Geometry
 

@@ -585,6 +585,7 @@ module rpa_definitions
       procedure :: select_algorithm
       procedure :: select_orbitals
       procedure :: validate_frozen_orbitals => ValidateFrozenOrbitals
+      procedure, pass(this) :: frozen_core_rule => FrozenCoreRule
    end type TRPAParams
 
    type TRPAGrids
@@ -757,15 +758,44 @@ contains
       do a = 1, size(ZNumbers)
          Z = ZNumbers(a)
          if (this%NFrozenOrbitals(Z) == RPA_FROZEN_UNDEFINED) then
-            call msg("Missing frozen_orbitals entry for " // trim(ELNAME_SHORT(Z)), MSG_ERROR)
+            call msg("Missing FrozenOrbitals entry for " // &
+               trim(ELNAME_SHORT(Z)), MSG_ERROR)
             error stop
          end if
          if (this%NFrozenOrbitals(Z) > ZNumbersECP(a) / 2) then
-            call msg("Too many frozen orbitals for " // trim(ELNAME_SHORT(Z)), MSG_ERROR)
+            call msg("Too many frozen orbitals for " // &
+               trim(ELNAME_SHORT(Z)), MSG_ERROR)
             error stop
          end if
       end do
    end subroutine ValidateFrozenOrbitals
+
+
+   subroutine FrozenCoreRule(Rule, this)
+      !
+      ! Describe the rule that selects the frozen core orbitals.
+      !
+      character(:), allocatable, intent(out) :: Rule
+      class(TRPAParams), intent(in)          :: this
+
+      character(:), allocatable :: Separator
+      integer :: Z
+
+      if (any(this%NFrozenOrbitals /= RPA_FROZEN_UNDEFINED)) then
+         Rule = ""
+         Separator = ""
+         do Z = 1, KNOWN_ELEMENTS
+            if (this%NFrozenOrbitals(Z) /= RPA_FROZEN_UNDEFINED) then
+               Rule = Rule // Separator // trim(ELNAME_SHORT(Z)) // " " // &
+                  str(this%NFrozenOrbitals(Z))
+               Separator = ", "
+            end if
+         end do
+      else
+         Rule = "energies below " // &
+            str(this%CoreOrbThresh, d=3) // " a.u."
+      end if
+   end subroutine FrozenCoreRule
 
 
    subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)

@@ -1,0 +1,18 @@
+basis def2-SVP
+scf
+  xcfunc HF
+end
+rpa
+  TheoryLevel RPA+ph
+  accuracy default
+  FrozenOrbitals Zn 9
+  FrozenOrbitals O 1
+  FrozenOrbitals H 0
+end
+xyz
+4
+Zn     0.000000     0.000000     0.000000
+O      2.100000     0.000000     0.000000
+H      2.680000     0.760000     0.000000
+H      2.680000    -0.760000     0.000000
+end

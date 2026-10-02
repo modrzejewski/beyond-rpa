@@ -3559,16 +3559,19 @@ contains
          call split(val, s1, s2)
          Z = znumber_short(s1)
          if (Z == 0) then
-            call msg("Unknown element in frozen_orbitals: " // s1, MSG_ERROR)
+            call msg("Unknown element in FrozenOrbitals: " // s1, &
+               MSG_ERROR)
             error stop
          end if
-         if (len_trim(s2) == 0 .or. .not. isinteger(s2)) then
-            call msg("Invalid number of frozen orbitals for " // s1, MSG_ERROR)
+         if (.not. isinteger(s2)) then
+            call msg("Invalid number of frozen orbitals for " // s1, &
+               MSG_ERROR)
             error stop
          end if
          read(s2, *) i
          if (i < 0 .or. RPAParams%NFrozenOrbitals(Z) /= RPA_FROZEN_UNDEFINED) then
-            call msg("Negative or duplicate frozen_orbitals entry for " // s1, MSG_ERROR)
+            call msg("Negative or duplicate FrozenOrbitals entry for " // s1, &
+               MSG_ERROR)
             error stop
          end if
          RPAParams%NFrozenOrbitals(Z) = i

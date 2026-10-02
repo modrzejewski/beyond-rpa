@@ -274,15 +274,17 @@ contains
 
       character(len=:), allocatable :: adjs
       integer :: k, l
+      logical :: has_digits
 
       adjs = adjustl(s)
       l = len_trim(adjs)
 
       isinteger = .true.
+      has_digits = .false.
       kloop: do k = 1, l
          select case (adjs(k:k))
           case ("0":"9")
-            continue
+            has_digits = .true.
           case ("+", "-")
             if (k > 1) then
                isinteger = .false.
@@ -293,6 +295,7 @@ contains
             exit kloop
          end select
       end do kloop
+      isinteger = isinteger .and. has_digits
    end function isinteger
 
 
