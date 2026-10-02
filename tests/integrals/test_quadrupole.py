@@ -97,9 +97,10 @@ if __name__ == "__main__":
     print("\nTolerance:")
     print(f"  traceless quadrupole: {TOLERANCE:.1e} Debye*Angs")
 
-    width = 93
+    header = f"{'Term':<4} | {'Ref (D*A)':>12} | {'Calc (D*A)':>12} | {'Deviation':>12} | Status"
+    width = len(header)
     print("\n" + "." * width)
-    print(f"{'Test File':<30} | {'Term':<4} | {'Ref (D*A)':>12} | {'Calc (D*A)':>12} | {'Deviation':>12} | {'Status'}")
+    print(header)
     print("." * width)
 
     for filepath in get_input_files():
@@ -113,7 +114,7 @@ if __name__ == "__main__":
             elapsed = time.time() - start_time
             if result.returncode != 0:
                 print(f"FAILED ({elapsed:.2f}s)")
-                print(f"{'':<30} | {'N/A':<4} | {'N/A':>12} | {'N/A':>12} | {'N/A':>12} | CRASHED")
+                print(f"{'N/A':<4} | {'N/A':>12} | {'N/A':>12} | {'N/A':>12} | CRASHED")
                 print("-" * width)
                 continue
 
@@ -123,11 +124,10 @@ if __name__ == "__main__":
             for name in COMPONENTS:
                 dev = abs(calc[name] - ref[name])
                 status = "PASSED" if dev <= TOLERANCE else "FAILED"
-                prefix = filepath.name if name == "xx" else ""
-                print(f"{prefix:<30} | {name:<4} | {ref[name]:>12.6f} | {calc[name]:>12.6f} | {dev:>12.2e} | {status}")
+                print(f"{name:<4} | {ref[name]:>12.6f} | {calc[name]:>12.6f} | {dev:>12.2e} | {status}")
             print("-" * width)
 
         except Exception:
             print("ERROR")
-            print(f"{'':<30} | {'N/A':<4} | {'N/A':>12} | {'N/A':>12} | {'N/A':>12} | ERROR")
+            print(f"{'N/A':<4} | {'N/A':>12} | {'N/A':>12} | {'N/A':>12} | ERROR")
             print("-" * width)

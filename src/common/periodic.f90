@@ -1,9 +1,10 @@
 module periodic
       use arithmetic
       use string
-      use gparam
 
       implicit none
+
+      integer, parameter :: KNOWN_ELEMENTS = 86
 
       character(len=2), dimension(KNOWN_ELEMENTS) :: ELNAME_SHORT = [ &
             "H ", "HE", "LI", "BE", "B ", &
@@ -339,58 +340,6 @@ module periodic
             ]
 
 contains
-
-      pure function chemical_formula(molecule)
-            !
-            ! Compute chemical formula of a given molecule.
-            !
-            character(:), allocatable         :: chemical_formula
-            type(tmolecule), intent(in)       :: molecule
-            
-            character(:), allocatable :: s1, s2
-            integer :: n_total, n_real
-            integer :: k, l, tz, tn, n_ghosts, s
-            
-            n_total = molecule%natom
-            n_real = 0
-            do s = 1, 2
-                  n_real = n_real + molecule%real_atoms(2, s) - molecule%real_atoms(1, s) + 1
-            end do
-            s1 = ""
-            s2 = ""
-            do k = 1, molecule%nelement
-                  tz = molecule%zlist(k)
-                  if (n_total /= n_real) then
-                        tn = 0
-                        do s = 1, 2
-                              do l = molecule%real_atoms(1, s), molecule%real_atoms(2, s)
-                                    if (molecule%inuclz(l) == tz) tn = tn + 1
-                              end do
-                        end do
-                  else
-                        tn = molecule%zcount(k)
-                  end if
-                  if (tn > 0) then
-                        s1 = s1 // trim(ELNAME_SHORT(tz))
-                        if (tn > 1) then
-                              s1 = s1 // str(tn)
-                        end if
-                  end if
-                  n_ghosts = molecule%zcount(k) - tn
-                  if (n_ghosts > 0) then
-                        s2 = s2 // trim(ELNAME_SHORT(tz))
-                        if (n_ghosts > 1) then
-                              s2 = s2 // str(n_ghosts)
-                        end if
-                  end if
-            end do
-            if (len(s2) > 0) then
-                  chemical_formula = s1 // " + ghost centers " // s2
-            else 
-                  chemical_formula = s1
-            end if
-      end function chemical_formula
-
 
       pure function unpaired_electrons(z)
             !

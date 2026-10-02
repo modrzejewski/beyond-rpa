@@ -61,6 +61,8 @@ contains
       type(TClock) :: timer
       type(TRPAOutput), dimension(:), allocatable :: RPAOutput
       integer, parameter :: MaxMacroIters = 6
+      integer, dimension(2, MaxNSubsystems) :: NCore
+      character(:), allocatable :: CoreRule
 
       if (.not. RPAParams%Initialized) then
          call msg("RPA parameters are not initialized. Cannot run post-SCF calculations.", MSG_ERROR)
@@ -126,6 +128,33 @@ contains
             end if
             call msg("Mean-field calculation completed in " // str(clock_readwall(timer),d=1) // " seconds")
       end if
+      !
+      ! Select the frozen core orbitals once for every subsystem
+      !
+      call RPAParams%frozen_core_rule(CoreRule)
+      call msg("Frozen orbitals: " // CoreRule)
+      do k = 1, NSystems
+         call sys_Init(System, k)
+         if (RPAParams%Algorithm == RPA_ALGO_JCTC2025 .or. &
+            RPAParams%Algorithm == RPA_ALGO_JCTC2023_THC) then
+            call rpa_SelectNCore( &
+               NCore(:, k), &
+               RPAParams, &
+               System, &
+               MeanFieldStates(k)%OrbEnergies, &
+               MeanFieldStates(k)%NOcc, &
+               MeanFieldStates(k)%NSpins)
+         else
+            call rpa_SelectNCore( &
+               NCore(:, k), &
+               RPAParams, &
+               System, &
+               SCFOutput(k)%OrbEnergies, &
+               SCFOutput(k)%NOcc, &
+               size(SCFOutput(k)%OrbEnergies, dim=2))
+         end if
+         call msg("Frozen core orbitals in " // sys_ChemicalFormula(System) // ": " // str(NCore(1, k)))
+      end do
       allocate(RPAGrids%daiValues(RPA_HISTOGRAM_NBINS, n))
       allocate(RPAGrids%daiWeights(RPA_HISTOGRAM_NBINS, n))
       m = 1
@@ -148,15 +177,15 @@ contains
                            MeanFieldStates(k)%OrbEnergies, &
                            MeanFieldStates(k)%NOcc, &
                            MeanFieldStates(k)%NVirt, &
-                           MeanFieldStates(k)%NSpins, &
-                           RPAParams%CoreOrbThresh)
+                           NCore(:, k), &
+                           MeanFieldStates(k)%NSpins)
                else
                      call rpa_DaiMaxThresh(DaiMaxThresh, &
                            SCFOutput(k)%OrbEnergies, &
                            SCFOutput(k)%NOcc, &
                            SCFOutput(k)%NVirt, &
-                           NSpins, &
-                           RPAParams%CoreOrbThresh)
+                           NCore(:, k), &
+                           NSpins)
                end if
          end if
          do s = 1, NSpins
@@ -170,7 +199,7 @@ contains
                   MeanFieldStates(k)%OrbEnergies(:, s), &
                   MeanFieldStates(k)%NOcc(s), &
                   MeanFieldStates(k)%NVirt(s), &
-                  RPAParams%CoreOrbThresh, &
+                  NCore(s, k), &
                   DaiMaxThresh)
             else
                call rpa_DaiHistogram( &
@@ -179,7 +208,7 @@ contains
                   SCFOutput(k)%OrbEnergies(:, s), &
                   SCFOutput(k)%NOcc(s), &
                   SCFOutput(k)%NVirt(s), &
-                  RPAParams%CoreOrbThresh, &
+                  NCore(s, k), &
                   DaiMaxThresh)
             end if
             !
@@ -211,7 +240,7 @@ contains
                          !
                          RPAParams%ComputeNaturalOrbitals = .true.
                          RPAParams%TheoryLevel = RPA_THEORY_DIRECT_RING
-                         call rpa_entrypoint_THC(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+                         call rpa_entrypoint_THC(RPAOutput(k), MeanFieldStates(k), NCore(:, k), AOBasis, RPAParams, &
                                RPAGrids, THCGrid, T2CutoffCommonThresh)
                          EcRPA_T2_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_T2_DIRECT_RING)
                          EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
@@ -221,7 +250,7 @@ contains
                          RPAParams%TheoryLevel = TheoryLevel_NOBasis
                    end if
 
-               call rpa_entrypoint_THC(RPAOutput(k), MeanFieldStates(k), AOBasis, RPAParams, &
+               call rpa_entrypoint_THC(RPAOutput(k), MeanFieldStates(k), NCore(:, k), AOBasis, RPAParams, &
                   RPAGrids, THCGrid, T2CutoffCommonThresh)
                !
                ! Collect direct-ring RPA energy evaluated with various numerical
@@ -238,11 +267,11 @@ contains
                   EcRPA_Chi_MO(k) = RPAOutput(k)%Energy(RPA_ENERGY_DIRECT_RING)
                end if
              case (RPA_ALGO_JCTC2023_CHOLESKY)
-               call rpa_entrypoint_JCTC2023_Cholesky(RPAOutput(k)%Energy, SCFOutput(k), AOBasis, RPAParams, &
+               call rpa_entrypoint_JCTC2023_Cholesky(RPAOutput(k)%Energy, SCFOutput(k), NCore(:, k), AOBasis, RPAParams, &
                   RPAGrids, RPABasisVecs, RPABasis, CholeskyVecs, Chol2Vecs, &
                   SCFParams, System)
              case (RPA_ALGO_JCTC2020_MO, RPA_ALGO_JCTC2020_AO)
-               call rpa_entrypoint_JCTC2020(RPAOutput(k)%Energy, SCFOutput(k), SCFParams, AOBasis, &
+               call rpa_entrypoint_JCTC2020(RPAOutput(k)%Energy, SCFOutput(k), NCore(:, k), SCFParams, AOBasis, &
                   System, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
                   CholeskyVecs, Chol2Vecs)
              case default
@@ -379,7 +408,7 @@ contains
    end subroutine Rpa_EintNadd4Body
 
 
-   subroutine rpa_entrypoint_JCTC2020(Energy, SCFOutput, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
+   subroutine rpa_entrypoint_JCTC2020(Energy, SCFOutput, NCore, SCFParams, AOBasis, System, RPAParams, RPAGrids, RPABasisVecs, &
       RPABasis, CholeskyVecs, Chol2Vecs)
       !
       ! Direct random-phase approximation with singles correction. Used as a proof-of-concept
@@ -396,6 +425,7 @@ contains
       !
       real(F64), dimension(:), intent(out)                      :: Energy
       type(TSCFOutput), intent(in)                              :: SCFOutput
+      integer, dimension(:), intent(in)                         :: NCore
       type(TSCFParams), intent(in)                              :: SCFParams
       type(TAOBasis), intent(in)                                :: AOBasis
       type(TSystem), intent(in)                                 :: System
@@ -603,7 +633,7 @@ contains
             end do
             allocate(F_ao(0, 0, 0))
             call rpa_Ecorr_2(Energy, OccCoeffs, VirtCoeffs, OccEnergies, VirtEnergies, &
-               NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+               NOcc, NVirt, NCore, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
                CholeskyVecs, Chol2Vecs, F_ao)
          end if
          EcRPA = Energy(RPA_ENERGY_CORR)
@@ -673,7 +703,7 @@ contains
    end subroutine rpa_EcSingles_Ren2013
 
 
-   subroutine rpa_entrypoint_JCTC2023_Cholesky(Energy, SCFOutput, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
+   subroutine rpa_entrypoint_JCTC2023_Cholesky(Energy, SCFOutput, NCore, AOBasis, RPAParams, RPAGrids, RPABasisVecs, &
       RPABasis, CholeskyVecs, Chol2Vecs, SCFParams, System)
       !
       ! Proof-of-concept implementation used to explore the accuracy of the
@@ -687,6 +717,7 @@ contains
       !
       real(F64), dimension(:), intent(out)                      :: Energy
       type(TSCFOutput), intent(in)                              :: SCFOutput
+      integer, dimension(:), intent(in)                         :: NCore
       type(TAOBasis), intent(in)                                :: AOBasis
       type(TRPAParams), intent(in)                              :: RPAParams
       type(TRPAGrids), intent(inout)                            :: RPAGrids
@@ -742,7 +773,7 @@ contains
                VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
             end do
             call rpa_Ecorr_2(Energy, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-               NOcc, NVirt, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
+               NOcc, NVirt, NCore, AOBasis, RPAParams, RPAGrids, RPABasisVecs, RPABasis, &
                CholeskyVecs, Chol2Vecs, F_ao)
          end if
       end associate
@@ -766,7 +797,7 @@ contains
    end subroutine rpa_entrypoint_JCTC2023_Cholesky
 
 
-   subroutine rpa_entrypoint_THC(RPAOutput, MeanField, AOBasis, RPAParams, RPAGrids, THCGrid, &
+   subroutine rpa_entrypoint_THC(RPAOutput, MeanField, NCore, AOBasis, RPAParams, RPAGrids, THCGrid, &
       T2CutoffCommonThresh)
       !
       ! Code path with the best available implementation, designed primarily for RPA+ph.
@@ -778,6 +809,7 @@ contains
 
       type(TRPAOutput), intent(out)                             :: RPAOutput
       type(TMeanField), intent(in)                              :: MeanField
+      integer, dimension(:), intent(in)                         :: NCore
       type(TAOBasis), intent(in)                                :: AOBasis
       type(TRPAParams), intent(in)                              :: RPAParams
       type(TRPAGrids), intent(inout)                            :: RPAGrids
@@ -807,7 +839,7 @@ contains
                VirtEnergies(1:NVirt(s), s)= OrbEnergies(NOcc(s)+1:NOcc(s)+NVirt(s), s)
             end do
             call rpa_THC_Ecorr_2(RPAOutput, OccCoeffs_ao, VirtCoeffs_ao, OccEnergies, VirtEnergies, &
-               F_ao, NOcc, NVirt, AOBasis, RPAParams, RPAGrids, THCGrid, &
+               F_ao, NOcc, NVirt, NCore, AOBasis, RPAParams, RPAGrids, THCGrid, &
                T2CutoffCommonThresh)
          end if
       end associate

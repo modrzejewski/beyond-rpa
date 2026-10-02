@@ -3,6 +3,7 @@ module rpa_definitions
    use grid_definitions
    use scf_definitions
    use TwoStepCholesky_definitions
+   use periodic, only: KNOWN_ELEMENTS, ELNAME_SHORT
 
    implicit none
    !
@@ -277,6 +278,8 @@ module rpa_definitions
    integer, parameter :: RPA_ALGO_JCTC2023_THC      = 5
    integer, parameter :: RPA_ALGO_JCTC2025          = 4
 
+   integer, parameter :: RPA_FROZEN_UNDEFINED = -1
+
    type TRPAParams
       logical :: Initialized = .false.
       integer :: Accuracy = RPA_ACCURACY_DEFAULT
@@ -310,9 +313,16 @@ module rpa_definitions
       real(F64) :: TargetRelErrorFreq = 1.0E-3_F64
       !
       ! Exclude the occupied orbitals with energies Ei<CoreOrbThresh
-      ! from all summations
+      ! from all summations. Ignored if NFrozenOrbitals is defined.
       !
       real(F64) :: CoreOrbThresh = -3.0_F64
+      !
+      ! Number of frozen core orbitals of each element, indexed by the
+      ! atomic number. Either defined for all elements of the system
+      ! or not at all (RPA_FROZEN_UNDEFINED). Orbitals of the ECP core
+      ! are not counted.
+      !
+      integer, dimension(KNOWN_ELEMENTS) :: NFrozenOrbitals = RPA_FROZEN_UNDEFINED
       !
       ! Threshold controlling the exclusion of redundant eigenvectors of T2.
       !
@@ -574,6 +584,8 @@ module rpa_definitions
    contains
       procedure :: select_algorithm
       procedure :: select_orbitals
+      procedure :: validate_frozen_orbitals => ValidateFrozenOrbitals
+      procedure, pass(this) :: frozen_core_rule => FrozenCoreRule
    end type TRPAParams
 
    type TRPAGrids
@@ -727,6 +739,64 @@ contains
          end select
       end if
    end subroutine rpa_SyncWorkflowParams
+
+
+   subroutine ValidateFrozenOrbitals(this, ZNumbers, ZNumbersECP)
+      !
+      ! Check the frozen orbitals against the atoms of the system.
+      ! ZNumbersECP are the effective nuclear charges, i.e., the numbers
+      ! of electrons of each atom explicitly present in the calculation.
+      !
+      class(TRPAParams), intent(in)     :: this
+      integer, dimension(:), intent(in) :: ZNumbers
+      integer, dimension(:), intent(in) :: ZNumbersECP
+
+      integer :: a, Z
+
+      if (.not. this%Initialized) return
+      if (all(this%NFrozenOrbitals == RPA_FROZEN_UNDEFINED)) return
+      do a = 1, size(ZNumbers)
+         Z = ZNumbers(a)
+         if (this%NFrozenOrbitals(Z) == RPA_FROZEN_UNDEFINED) then
+            call msg("Missing FrozenOrbitals entry for " // &
+               trim(ELNAME_SHORT(Z)), MSG_ERROR)
+            error stop
+         end if
+         if (this%NFrozenOrbitals(Z) > ZNumbersECP(a) / 2) then
+            call msg("Too many frozen orbitals for " // &
+               trim(ELNAME_SHORT(Z)), MSG_ERROR)
+            error stop
+         end if
+      end do
+   end subroutine ValidateFrozenOrbitals
+
+
+   subroutine FrozenCoreRule(Rule, this)
+      !
+      ! Describe the rule that selects the frozen core orbitals.
+      !
+      character(:), allocatable, intent(out) :: Rule
+      class(TRPAParams), intent(in)          :: this
+
+      character(:), allocatable :: Separator
+      integer :: Z
+
+      if (any(this%NFrozenOrbitals /= RPA_FROZEN_UNDEFINED)) then
+         Rule = ""
+         Separator = ""
+         do Z = 1, KNOWN_ELEMENTS
+            if (this%NFrozenOrbitals(Z) /= RPA_FROZEN_UNDEFINED) then
+               Rule = Rule // Separator // trim(ELNAME_SHORT(Z)) // " " // &
+                  str(this%NFrozenOrbitals(Z))
+               Separator = ", "
+            end if
+         end do
+      else
+         Rule = "energies below " // &
+            str(this%CoreOrbThresh, d=3) // " a.u."
+      end if
+   end subroutine FrozenCoreRule
+
 
    subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
       type(TRPAParams), intent(inout)   :: RPAParams

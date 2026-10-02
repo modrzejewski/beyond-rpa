@@ -83,6 +83,54 @@ if pytest.found()
     timeout: 900,
     workdir: meson.project_source_root()
   )
+
+  test('frozen_core',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=frozen_core_report.xml',
+      meson.project_source_root() / 'tests' / 'rpa' / 'test_frozen_core.py'
+    ],
+    depends: post_build_target,
+    timeout: 1800,
+    workdir: meson.project_source_root()
+  )
+
+  test('ecp',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=ecp_report.xml',
+      meson.project_source_root() / 'tests' / 'ecp' / 'test_ecp.py'
+    ],
+    depends: post_build_target,
+    timeout: 1800,
+    workdir: meson.project_source_root()
+  )
+
+  test('embedding',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=embedding_report.xml',
+      meson.project_source_root() / 'tests' / 'embedding' / 'test_point_charges.py'
+    ],
+    depends: post_build_target,
+    timeout: 1800,
+    workdir: meson.project_source_root()
+  )
+
+  test('quadrupole',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=quadrupole_report.xml',
+      meson.project_source_root() / 'tests' / 'integrals' / 'test_quadrupole.py'
+    ],
+    depends: post_build_target,
+    timeout: 600,
+    workdir: meson.project_source_root()
+  )
 else
   message('pytest not found. Install pytest in your environment or run scripts in tests/ manually.')
 endif

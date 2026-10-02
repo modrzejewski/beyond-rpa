@@ -142,6 +142,30 @@ The following methods are implemented primarily for testing purposes and are sig
 | `rPT2` | Renormalized second-order perturbation theory [[Ren2013](04_literature.md)] |
 | `RPA+2g` | RPA with singles corrections, SOSEX, and additional higher order term referred as 2g [[Cieśliński2023](04_literature.md)] |
 
+### Frozen core
+
+Frozen core orbitals are excluded from the correlation energy. SCF and the mean-field correction terms use all electrons. The frozen orbitals are selected in the `rpa` block in one of two ways.
+
+| Keyword | Selection |
+|---|---|
+| `CoreOrbThresh {energy}` | Occupied orbitals with energies below `{energy}` (Hartree) are frozen. The default is `-3.0`. |
+| `FrozenOrbitals {element} {n_orbitals}` | Each atom of the element contributes `{n_orbitals}` to the number of frozen orbitals. |
+
+With `FrozenOrbitals`, each subsystem (molecule, monomer, dimer, or trimer) freezes its N lowest-energy occupied orbitals, where N is the sum of `{n_orbitals}` over the atoms of the subsystem. Ghost atoms, point charges, and embedding ECP centers do not contribute.
+
+* `FrozenOrbitals` must be given for every element of the system.
+* `FrozenOrbitals` takes precedence over `CoreOrbThresh`.
+* `{n_orbitals}` counts orbitals above the ECP core.
+
+```text
+rpa
+  FrozenOrbitals O 1
+  FrozenOrbitals H 0
+end
+```
+
+The selection by energy freezes the intended shells only if the frozen shells of all atoms lie below the active orbitals of all other atoms. This condition can fail when semicore shells are frozen.
+
 ## Geometry
 
 The `xyz` block defines the geometry of the system. The string that specifies the number of atoms in the molecular subsystems controls how the calculation is performed. Subsystems (e.g., monomers A and B) are specified together with the total system (e.g., dimer AB) because their calculation reuses intermediates from the total system.
