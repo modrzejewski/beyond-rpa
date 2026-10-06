@@ -32,11 +32,11 @@ def pytest_collection_modifyitems(config, items):
         # Basis assignment tests are single-molecule SCF calculations, always fast
         is_basis = "test_basis" in getattr(item, "nodeid", "")
 
-        # Semicore tests: the module's own rule, based on the input file name
-        is_semicore = "test_semicore" in getattr(item, "nodeid", "")
+        # ccRepo tests: the module's own rule, based on the input file name
+        is_cc_repo = "test_cc_repo" in getattr(item, "nodeid", "")
 
         # Use shared logic to determine if it's slow
-        if is_semicore:
+        if is_cc_repo:
             is_fast_test = item.module.is_fast_test(item.callspec.params["filepath"])
         elif is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)

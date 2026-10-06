@@ -60,12 +60,12 @@ if pytest.found()
     workdir: meson.project_source_root()
   )
 
-  test('semicore',
+  test('cc_repo',
     pytest,
     args: [
       '-v', '-s',
-      '--junitxml=semicore_report.xml',
-      meson.project_source_root() / 'tests' / 'basis' / 'test_semicore.py'
+      '--junitxml=cc_repo_report.xml',
+      meson.project_source_root() / 'tests' / 'basis' / 'test_cc_repo.py'
     ],
     depends: post_build_target,
     timeout: 120,

@@ -1,18 +1,18 @@
 """
-Semicore Basis Set Test Suite for beyond-rpa.
+ccRepo Basis Set Test Suite for beyond-rpa.
 
 Tests the cc-pwCVXZ basis sets from ccRepo (basis cc-repo/cc-pwCVXZ),
 the atomic guess densities generated for them (jobtype atomic_guess),
 and the errors for invalid basis set labels.
-The inputs are in tests/basis/inputs/semicore. Their reference energies
+The inputs are in tests/basis/inputs/cc_repo. Their reference energies
 come from the PySCF scripts in that folder; transfer_references.py
 writes them into the inputs.
 
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
 
 To run the test suite:
-- Pytest Mode: `pytest tests/basis/test_semicore.py`
-- Standalone Mode: `python tests/basis/test_semicore.py [--full]`
+- Pytest Mode: `pytest tests/basis/test_cc_repo.py`
+- Standalone Mode: `python tests/basis/test_cc_repo.py [--full]`
 """
 
 import argparse
@@ -27,7 +27,7 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 BIN_PATH = ROOT / "bin" / "run"
-INPUTS = Path(__file__).parent / "inputs" / "semicore"
+INPUTS = Path(__file__).parent / "inputs" / "cc_repo"
 #
 # Tolerances must be set by the user (see .agents/TESTING.md).
 # A check whose tolerance is None is skipped. The electron counts
@@ -104,7 +104,7 @@ def guess_results(filepath: Path, workdir: Path) -> dict:
 
 
 @pytest.mark.parametrize("filepath", inputs("reference energy from pyscf"), ids=lambda p: p.stem)
-def test_semicore_energy(filepath: Path, tmp_path, record_property):
+def test_cc_repo_energy(filepath: Path, tmp_path, record_property):
     r = energy_results(filepath, tmp_path)
     dev = abs(r["calculated"] - r["reference"])
     record_property("reference", r["reference"])
