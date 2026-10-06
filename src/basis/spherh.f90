@@ -155,8 +155,7 @@ contains
             ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
             ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
             ! For m = 0: Sl^m = Yl^0
-            ! Yl^m are orthonormal, complex-valued spherical harmonics
-            ! with the Condon-Shortley phase.
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.
             ! ---------------------------------------------------------------
             ! 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
             !    Electronic-Structure Theory, Wiley & Sons Chichester
@@ -207,8 +206,7 @@ contains
             ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
             ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
             ! For m = 0: Sl^m = Yl^0
-            ! Yl^m are orthonormal, complex-valued spherical harmonics
-            ! with the Condon-Shortley phase.            
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! Definition of the expansion coefficients Clm:
             !
             ! r**l Slm = Sum(u+v+w=l) Clm(lxlylzpos(u,v,w)) x**u y**v z**w
@@ -290,8 +288,7 @@ contains
             ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
             ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
             ! For m = 0: Sl^m = Yl^0
-            ! Yl^m are orthonormal, complex-valued spherical harmonics
-            ! with the Condon-Shortley phase.            
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! ---------------------------------------------------------------
             ! 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
             !    Electronic-Structure Theory, Wiley & Sons Chichester
@@ -363,8 +360,7 @@ contains
             ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
             ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
             ! For m = 0: Sl^m = Yl^0
-            ! Yl^m are orthonormal, complex-valued spherical harmonics
-            ! with the Condon-Shortley phase.            
+            ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             !
             real(F64), dimension(3), intent(out) :: lvec
             integer, intent(in)                  :: l

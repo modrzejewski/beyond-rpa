@@ -14,7 +14,6 @@ The script sets up everything a new basis set needs:
 file uses GAMESS-US format with optimized general contractions, the form of
 all files in basis-sets/. Its header records the source, the download time
 (UTC), the software versions, the elements and the contraction options.
-An existing basis set file is kept.
 """
 import argparse
 import importlib.metadata

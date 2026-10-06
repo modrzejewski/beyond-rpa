@@ -146,8 +146,7 @@ def RSHU_l_eq_j(l, m):
     # For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
     # For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
     # For m = 0: Sl^m = Yl^0
-    # Yl^m are orthonormal, complex-valued spherical harmonics
-    # with the Condon-Shortley phase.    
+    # Yl^m are orthonormal, complex-valued spherical harmonics.    
     #
     # 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
     #    Electronic-Structure Theory, Wiley & Sons Chichester
@@ -223,7 +222,7 @@ def RSHUV(LMax):
     # delta(mx,nx) * delta(my,ny) * delta(mz,nz)
     #
     # The sum runs over l <= j with even j-l and over -l <= m <= l.
-    # This identity is checked by test_UV.
+    # test_UV prints this product for visual inspection.
     #
     #
     # 1. Moreno-Flores, R., Alvarez-Mendez, R., Vela, A., and
