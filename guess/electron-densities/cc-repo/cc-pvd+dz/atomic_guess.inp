@@ -1,10 +1,11 @@
 ! Atomic guess densities for cc-repo/cc-pVD+dZ
 ! The densities are written to the folder of this file.
 ! Coordinates are ignored; every element gets an isolated-atom SCF.
+! Run from this folder: the basis set path is relative to it.
 
 jobtype atomic_guess
 
-basis file /home/marcin/Documents/workspace/beyond-rpa/basis-sets/cc-repo/cc-pvd+dz.txt
+basis file ../../../../basis-sets/cc-repo/cc-pvd+dz.txt
 
 xyz
 8

@@ -8,6 +8,8 @@ The script sets up everything a new basis set needs:
         the folder for its atomic guess densities
     guess/electron-densities/<source>/<name>/atomic_guess.inp
         the input that generates the guess densities
+    guess/electron-densities/<source>/generate_densities.py
+        runs atomic_guess.inp in every basis set folder of the source
 
 <name> is the basis set name in lowercase. An input file selects the set with
 "basis <source>/<name>", for example "basis cc-repo/cc-pwCVTZ". The basis set
@@ -18,6 +20,7 @@ all files in basis-sets/. Its header records the source, the download time
 import argparse
 import importlib.metadata
 import re
+import shutil
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +29,10 @@ import basis_set_exchange as bse
 from basis_set_exchange import lut, manip, writers
 
 ROOT = Path(__file__).resolve().parent.parent
+#
+# Copied to guess/electron-densities/<source>/
+#
+GENERATOR = Path(__file__).resolve().parent / "generate_densities.py"
 SOURCES = ("bse", "cc-repo")
 ORIGINS = {
     "bse": "Basis Set Exchange, https://www.basissetexchange.org",
@@ -48,6 +55,27 @@ CONTRACTION_OPTIONS = {
 ANGULAR_MOMENTA = "spdfghi"
 BEYOND_RPA_NAMES = {"ALUMINIUM": "ALUMINUM", "CAESIUM": "CESIUM"}
 SPACING_ANGSTROM = 20.0
+#
+# Input that generates the guess densities, written to the guess folder.
+# The basis set path is relative to the guess folder, so the input works
+# in any copy of the repository. The program resolves the path against
+# its working directory, so the input is run from the guess folder.
+#
+TEMPLATE = """\
+! Atomic guess densities for {label}
+! The densities are written to the folder of this file.
+! Coordinates are ignored; every element gets an isolated-atom SCF.
+! Run from this folder: the basis set path is relative to it.
+
+jobtype atomic_guess
+
+basis file {basis_path}
+
+xyz
+{natoms}
+{atoms}
+end
+"""
 
 
 def number(x: float) -> str:
@@ -180,28 +208,18 @@ def elements_in_file(text: str) -> list[str]:
     return symbols
 
 
-def guess_input(label: str, basis_file: Path, symbols: list[str]) -> str:
-    """Return an input file that writes the guess densities next to itself.
-
-    The basis set is given by its file path, so the input works without
-    the <source>/<name> labels of the parser.
-    """
-    lines = [
-        f"! Atomic guess densities for {label}",
-        "! The densities are written to the folder of this file.",
-        "! Coordinates are ignored; every element gets an isolated-atom SCF.",
-        "",
-        "jobtype atomic_guess",
-        "",
-        f"basis file {basis_file}",
-        "",
-        "xyz",
-        str(len(symbols)),
-    ]
-    for k, symbol in enumerate(symbols):
-        lines.append(f"{symbol:<3}{0.0:12.4f}{0.0:12.4f}{SPACING_ANGSTROM * k:12.4f}")
-    lines += ["end", ""]
-    return "\n".join(lines)
+def guess_input(label: str, basis_path: Path, symbols: list[str]) -> str:
+    """Return TEMPLATE filled for the given basis set and elements."""
+    atoms = "\n".join(
+        f"{symbol:<3}{0.0:12.4f}{0.0:12.4f}{SPACING_ANGSTROM * k:12.4f}"
+        for k, symbol in enumerate(symbols)
+    )
+    return TEMPLATE.format(
+        label=label,
+        basis_path=basis_path,
+        natoms=len(symbols),
+        atoms=atoms,
+    )
 
 
 def main() -> None:
@@ -244,9 +262,13 @@ def main() -> None:
 
     guess_dir.mkdir(parents=True, exist_ok=True)
     inp = guess_dir / "atomic_guess.inp"
-    inp.write_text(guess_input(label, basis_file, symbols))
+    basis_path = basis_file.relative_to(guess_dir, walk_up=True)
+    inp.write_text(guess_input(label, basis_path, symbols))
     print(f"Wrote {inp}")
-    print(f"Generate the guess densities with: bin/run -nt 2 {inp}")
+    generator = guess_dir.parent / GENERATOR.name
+    shutil.copy(GENERATOR, generator)
+    print(f"Wrote {generator}")
+    print(f"Generate the guess densities with: python {generator} {guess_dir.name}")
 
 
 if __name__ == "__main__":
