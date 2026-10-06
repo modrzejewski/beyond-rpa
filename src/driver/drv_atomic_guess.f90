@@ -228,6 +228,7 @@ contains
 
       AtomSCFParams%xcfunc = XCF_HF
       AtomSCFParams%guess_type = SCF_GUESS_HBARE
+      AtomSCFParams%MaxNIters = SCFParams%MaxNIters
       !
       ! Cholesky integrals until the exact-integral Fock build handles
       ! atoms with fewer than five shells, e.g., H and He in cc-pVDZ

@@ -7,6 +7,10 @@ jobtype atomic_guess
 
 basis file ../../../../basis-sets/cc-repo/cc-pwcvdz.txt
 
+scf
+ maxniters 256
+end
+
 xyz
 24
 Li       0.0000      0.0000      0.0000

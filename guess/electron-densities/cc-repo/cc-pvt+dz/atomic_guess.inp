@@ -7,6 +7,10 @@ jobtype atomic_guess
 
 basis file ../../../../basis-sets/cc-repo/cc-pvt+dz.txt
 
+scf
+ maxniters 256
+end
+
 xyz
 8
 Na       0.0000      0.0000      0.0000

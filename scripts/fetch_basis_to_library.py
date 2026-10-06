@@ -71,6 +71,10 @@ jobtype atomic_guess
 
 basis file {basis_path}
 
+scf
+ maxniters 256
+end
+
 xyz
 {natoms}
 {atoms}
