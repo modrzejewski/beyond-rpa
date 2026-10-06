@@ -22,7 +22,8 @@ contains
             call images_init()
             if (JOBTYPE /= JOB_REAL_UKS_SP .and. &
                   JOBTYPE /= JOB_REAL_UKS_INT .and. &
-                  JOBTYPE /= JOB_REAL_UKS_RPA) then
+                  JOBTYPE /= JOB_REAL_UKS_RPA .and. &
+                  JOBTYPE /= JOB_ATOMIC_GUESS) then
                   call msg("WARNING: Loading deprecated module THREADS", MSG_WARNING)
                   call threads_init()
                   call linalg_init()
@@ -45,7 +46,8 @@ contains
             call images_free()
             if (JOBTYPE /= JOB_REAL_UKS_SP .and. &
                   JOBTYPE /= JOB_REAL_UKS_INT .and. &
-                  JOBTYPE /= JOB_REAL_UKS_RPA) then
+                  JOBTYPE /= JOB_REAL_UKS_RPA .and. &
+                  JOBTYPE /= JOB_ATOMIC_GUESS) then
                   call threads_free()
                   call linalg_free()
                   call fock2el_free()

@@ -32,8 +32,13 @@ def pytest_collection_modifyitems(config, items):
         # Basis assignment tests are single-molecule SCF calculations, always fast
         is_basis = "test_basis" in getattr(item, "nodeid", "")
 
+        # Semicore tests: the module's own rule, based on the input file name
+        is_semicore = "test_semicore" in getattr(item, "nodeid", "")
+
         # Use shared logic to determine if it's slow
-        if is_ecp:
+        if is_semicore:
+            is_fast_test = item.module.is_fast_test(item.callspec.params["filepath"])
+        elif is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)
         elif is_quadrupole or is_frozen_core or is_basis:
             is_fast_test = True

@@ -1,0 +1,9 @@
+! reference electron count: 10
+jobtype atomic_guess
+
+basis cc-repo/cc-pwCVTZ
+
+xyz
+1
+Ne 0.0 0.0 0.0
+end

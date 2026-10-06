@@ -60,6 +60,18 @@ if pytest.found()
     workdir: meson.project_source_root()
   )
 
+  test('semicore',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=semicore_report.xml',
+      meson.project_source_root() / 'tests' / 'basis' / 'test_semicore.py'
+    ],
+    depends: post_build_target,
+    timeout: 120,
+    workdir: meson.project_source_root()
+  )
+
   test('rpa+ph',
     pytest,
     args: [

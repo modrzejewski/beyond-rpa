@@ -22,6 +22,7 @@ program driver
       use drv_dft_rpa
       use drv_dft_disp
       use drv_mp2
+      use drv_atomic_guess
       
       implicit none
 
@@ -89,6 +90,9 @@ program driver
             
       case (JOB_REAL_UKS_SP)
             call task_dft_UKS(System, SCFParams, Chol2Params, THCParams, BasisAssign)
+
+      case (JOB_ATOMIC_GUESS)
+            call task_AtomicGuess(System, SCFParams, BasisAssign)
             
       case (JOB_RTTDDFT_POLAR)
             if (DOREPORT .and. IMG_ISMASTER) then

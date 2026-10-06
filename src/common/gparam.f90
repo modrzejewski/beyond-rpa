@@ -231,6 +231,7 @@ module gparam
       integer, parameter :: JOB_REAL_UKS_SP = 101
       integer, parameter :: JOB_REAL_UKS_INT = 102
       integer, parameter :: JOB_REAL_UKS_RPA = 103
+      integer, parameter :: JOB_ATOMIC_GUESS = 104
       !
       ! Available Coupled-Cluster models
       !

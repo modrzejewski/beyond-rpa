@@ -1,0 +1,12 @@
+! expected message: Basis set file not found
+jobtype uks sp
+basis cc-repo/no-such-set
+
+scf
+ xcfunc HF
+end
+
+xyz
+1
+Ne 0.0 0.0 0.0
+end
