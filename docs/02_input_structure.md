@@ -36,7 +36,7 @@ end
 
 ## Basis set
 
-The basis set name corresponds to the filenames available in the `basis-sets/` directory (case-insensitive). All basis set parameters are downloaded from the EMSL basis set exchange website.
+The basis set name corresponds to the filenames available in the `basis-sets/` directory (case-insensitive). The basis set parameters are downloaded from the EMSL basis set exchange website and from the correlation consistent basis sets repository (cc-repo) of the Hill Group at the University of Sheffield.
 
 | Keys | Description |
 |---|---|
@@ -44,6 +44,12 @@ The basis set name corresponds to the filenames available in the `basis-sets/` d
 | `aug-cc-pvdz`, `aug-cc-pvtz`, `aug-cc-pvqz`, `aug-cc-pv5z` | augmented Dunning's correlation-consistent polarized valence basis sets |
 | `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | Ahlrichs' def2 basis sets |
 | `def2-svpd`, `def2-tzvpd`, `def2-tzvppd`, `def2-qzvpd`, `def2-qzvppd` | augmented Ahlrichs' def2 basis sets |
+| **cc-repo** | |
+| `cc-repo/cc-pvdz`, `cc-repo/cc-pvtz`, `cc-repo/cc-pvqz` | Dunning's correlation-consistent polarized valence basis sets |
+| `cc-repo/aug-cc-pvdz`, `cc-repo/aug-cc-pvtz`, `cc-repo/aug-cc-pvqz` | augmented Dunning's correlation-consistent polarized valence basis sets |
+| `cc-repo/cc-pvd+dz`, `cc-repo/cc-pvt+dz`, `cc-repo/cc-pvq+dz` | Dunning's basis sets with tight d functions (Na, Mg, Al–Ar) |
+| `cc-repo/aug-cc-pvd+dz`, `cc-repo/aug-cc-pvt+dz`, `cc-repo/aug-cc-pvq+dz` | augmented Dunning's basis sets with tight d functions (Na, Mg, Al–Ar) |
+| `cc-repo/cc-pwcvdz`, `cc-repo/cc-pwcvtz`, `cc-repo/cc-pwcvqz` | Dunning's weighted core-valence basis sets |
 
 By default, a global basis set can be defined with the `basis` keyword. Alternatively, you can define different basis sets for specific elements or individual atoms using the `basis_assignment` block.
 
@@ -87,37 +93,6 @@ end
 ```
 This example highlights the prioritization rules. The first atom (regardless of its element) is forced to use `cc-pVDZ` (priority 1). Any other oxygen atoms use `aug-cc-pVDZ` (priority 2). Every other atom in the system defaults to the `cc-pVTZ` basis set via the `*` fallback (priority 3).
 
-### Basis sets from named sources
-
-Basis sets taken directly from a public repository are stored in subdirectories of `basis-sets/`, one per source. Select them with `<source>/<name>`:
-
-```text
-basis cc-repo/cc-pwCVTZ
-```
-
-```text
-basis_assignment
- Mg cc-repo/cc-pwCVTZ
- O  cc-repo/cc-pwCVTZ
- *  cc-pVTZ
-end
-```
-
-| Source | Origin |
-|---|---|
-| `bse` | Basis Set Exchange, basissetexchange.org |
-| `cc-repo` | ccRepo, grant-hill.group.shef.ac.uk/ccrepo |
-
-A name without a source, such as `cc-pVTZ`, selects the default library. The name after the slash is the source's own name, so `bse/cc-pVTZ` and `bse/cc-pV(T+d)Z` are different sets. The atomic guess densities follow the same layout: `basis-sets/<source>/<name>.txt` pairs with `guess/electron-densities/<source>/<name>/`, and the default library uses `guess/electron-densities/rohf/<name>/`.
-
-To add a set, run
-
-```bash
-python scripts/fetch_basis_to_library.py <source> <name> [--elements Mg O ...]
-```
-
-The script writes the basis set file with every element of the source, creates the guess folder, and writes `atomic_guess.inp` there. Running that input generates the guess densities next to it (see [Atomic guess densities](#atomic-guess-densities)).
-
 ### Effective core potentials
 
 When an element requires a pseudopotential, `beyond-rpa` automatically inspects the assigned atomic orbital basis set file (e.g., `def2-SVP` or `aug-cc-pVDZ-PP`) and extracts the corresponding ECP parameters from the `$ECP` section (GAMESS format, can be downloaded directly from EMSL basis set exchange).
@@ -154,24 +129,6 @@ This section is configured within the `scf` block using the `xcfunc` keyword fol
 | `PBE`, `PBE0` | Perdew-Burke-Ernzerhof (pure and hybrid) |
 | `TPSS`, `TPSSh` | Tao-Perdew-Staroverov-Scuseria (pure and hybrid) |
 | `SCAN` | Strongly constrained and appropriately normed exchange-correlation functional |
-
-### Atomic guess densities
-
-The default SCF guess is a superposition of spherically averaged atomic densities, read from the guess folder of each basis set. The job `atomic_guess` generates them: for every element in the `xyz` block it runs Hartree-Fock for the isolated atom in its ground-state multiplicity, averages the density over all directions, and writes `<element>.txt` to the folder of the input file. Coordinates are ignored, and existing files are not overwritten.
-
-```text
-jobtype atomic_guess
-
-basis file /path/to/beyond-rpa/basis-sets/cc-repo/cc-pwcvtz.txt
-
-xyz
-2
-Mg 0.0 0.0  0.0
-O  0.0 0.0 20.0
-end
-```
-
-`scripts/fetch_basis_to_library.py` writes such an input into the guess folder of every new basis set.
 
 ## Post-SCF correlation
 
