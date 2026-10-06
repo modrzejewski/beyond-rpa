@@ -19,11 +19,17 @@ import argparse
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
 
 import pytest
+
+TESTS_DIR = Path(__file__).parent.parent
+if str(TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(TESTS_DIR))
+import utils
 
 ROOT = Path(__file__).parent.parent.parent
 BIN_PATH = ROOT / "bin" / "run"
@@ -67,11 +73,15 @@ def tolerance(name: str) -> float:
     return value
 
 
-def run(filepath: Path, workdir: Path) -> str:
+def run(filepath: Path, workdir: Path, nthreads: int) -> str:
     """Run a copy of the input in workdir, where the program writes its files."""
     inp = workdir / filepath.name
     shutil.copy(filepath, inp)
-    result = subprocess.run([str(BIN_PATH), str(inp)], capture_output=True, text=True)
+    result = subprocess.run(
+        [str(BIN_PATH), "-nt", str(nthreads), str(inp)],
+        capture_output=True,
+        text=True,
+    )
     return result.stdout + result.stderr
 
 
@@ -82,8 +92,8 @@ def value_after(output: str, label: str) -> float:
     return float(match.group(1))
 
 
-def energy_results(filepath: Path, workdir: Path) -> dict:
-    output = run(filepath, workdir)
+def energy_results(filepath: Path, workdir: Path, nthreads: int) -> dict:
+    output = run(filepath, workdir, nthreads)
     return {
         "reference": float(preamble(filepath, "reference energy from pyscf")),
         "calculated": value_after(output, "Converged energy"),
@@ -91,8 +101,8 @@ def energy_results(filepath: Path, workdir: Path) -> dict:
     }
 
 
-def guess_results(filepath: Path, workdir: Path) -> dict:
-    output = run(filepath, workdir)
+def guess_results(filepath: Path, workdir: Path, nthreads: int) -> dict:
+    output = run(filepath, workdir, nthreads)
     return {
         "electron_count": float(preamble(filepath, "reference electron count")),
         "electron_count_cart": value_after(output, "Tr(RhoAvg S), Cartesian AOs"),
@@ -105,7 +115,7 @@ def guess_results(filepath: Path, workdir: Path) -> dict:
 
 @pytest.mark.parametrize("filepath", inputs("reference energy from pyscf"), ids=lambda p: p.stem)
 def test_cc_repo_energy(filepath: Path, tmp_path, record_property):
-    r = energy_results(filepath, tmp_path)
+    r = energy_results(filepath, tmp_path, utils.get_thread_count())
     dev = abs(r["calculated"] - r["reference"])
     record_property("reference", r["reference"])
     record_property("calculated", r["calculated"])
@@ -116,7 +126,7 @@ def test_cc_repo_energy(filepath: Path, tmp_path, record_property):
 
 @pytest.mark.parametrize("filepath", inputs("reference electron count"), ids=lambda p: p.stem)
 def test_atomic_guess(filepath: Path, tmp_path, record_property):
-    r = guess_results(filepath, tmp_path)
+    r = guess_results(filepath, tmp_path, utils.get_thread_count())
     for key, value in r.items():
         record_property(key, value)
     z = r["electron_count"]
@@ -128,18 +138,18 @@ def test_atomic_guess(filepath: Path, tmp_path, record_property):
 
 @pytest.mark.parametrize("filepath", inputs("expected message"), ids=lambda p: p.stem)
 def test_label_error(filepath: Path, tmp_path):
-    output = run(filepath, tmp_path)
+    output = run(filepath, tmp_path, utils.get_thread_count())
     assert preamble(filepath, "expected message") in output
 
 
-def table_rows(filepath: Path, workdir: Path) -> list[tuple]:
+def table_rows(filepath: Path, workdir: Path, nthreads: int) -> list[tuple]:
     """Return (quantity, reference, result, tolerance key) rows for one input."""
     if preamble(filepath, "reference energy from pyscf") is not None:
-        r = energy_results(filepath, workdir)
+        r = energy_results(filepath, workdir, nthreads)
         rows = [("E(HF)", r["reference"], r["calculated"], "energy")]
         rows.append(("complete atomic guess", 1.0, float(r["complete_guess"]), None))
     elif preamble(filepath, "reference electron count") is not None:
-        r = guess_results(filepath, workdir)
+        r = guess_results(filepath, workdir, nthreads)
         z = r["electron_count"]
         rows = [
             ("Tr(RhoAvg S) Cartesian", z, r["electron_count_cart"], "electron_count"),
@@ -148,7 +158,7 @@ def table_rows(filepath: Path, workdir: Path) -> list[tuple]:
             ("max|c(D_avg) - c(D)|", 0.0, r["angular_mean"], "angular_mean"),
         ]
     else:
-        found = preamble(filepath, "expected message") in run(filepath, workdir)
+        found = preamble(filepath, "expected message") in run(filepath, workdir, nthreads)
         rows = [("expected error message", 1.0, float(found), None)]
     return rows
 
@@ -164,24 +174,35 @@ def status(ref: float, value: float, key: str | None) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--full", action="store_true", help="also run the slow tests")
+    parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use")
+    parser.add_argument("--full", action="store_true", help="Run the full test suite (including slow tests)")
     args = parser.parse_args()
+    nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
 
-    print("\n" + "." * 124)
-    print(f"{'Test Title':<26} | {'Quantity':<26} | {'Reference':>17} | {'Result':>17} | {'Deviation':>10} | Status")
-    print("." * 124)
+    print(f"\nNumber of threads: {nthreads}")
+    print("\nTolerances:")
+    for key, value in TOLERANCES.items():
+        shown = "not set" if value is None else f"{value:.1e}"
+        print(f"  {key + ':':<17} {shown}")
+
+    header = f"{'Quantity':<24} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
+    width = len(header)
+    print("\n" + "." * width)
+    print(header)
+    print("." * width)
     for filepath in sorted(INPUTS.glob("*.inp")):
         if not args.full and not is_fast_test(filepath):
             continue
-        print(f"Running {filepath.stem}...", end=" ", flush=True)
+        print(f"Running {filepath.stem}... ", end="", flush=True)
         start = time.time()
         with tempfile.TemporaryDirectory() as tmp:
             try:
-                rows = table_rows(filepath, Path(tmp))
+                rows = table_rows(filepath, Path(tmp), nthreads)
             except Exception as error:
                 rows = [(f"error: {error}", float("nan"), float("nan"), None)]
         print(f"done ({time.time() - start:.2f}s)")
         for quantity, ref, value, key in rows:
-            print(f"{filepath.stem:<26} | {quantity:<26} | {ref:>17.10f} | {value:>17.10f} | "
+            print(f"{quantity:<24} | {ref:>16.10f} | {value:>16.10f} | "
                   f"{abs(value - ref):>10.2e} | {status(ref, value, key)}")
+        print("-" * width)
     print("\n")
