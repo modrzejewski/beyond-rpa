@@ -205,6 +205,7 @@ module sys_definitions
             procedure :: read_xyz => sys_Read_XYZ
             procedure :: read_embedding => sys_Read_Embedding
             procedure :: read_ecp => sys_ReadECP
+            procedure :: set_ecp => sys_SetECP
             procedure :: is_monomer_real => sys_IsMonomerReal
       end type TSystem
 
@@ -404,6 +405,19 @@ contains
                   call sys_Init(this, SYS_TOTAL)
             end if
       end subroutine sys_SetEffectiveCores_
+
+
+      subroutine sys_SetECP(this, Assign)
+            !
+            ! Assign pseudopotentials to the atoms and update the effective
+            ! nuclear charges and the numbers of valence electrons.
+            !
+            class(TSystem), intent(inout)       :: this
+            class(TBasisAssignment), intent(in) :: Assign
+
+            this%ECP%Assignment = Assign
+            call sys_SetEffectiveCores_(this)
+      end subroutine sys_SetECP
 
 
       subroutine sys_Init(System, i)

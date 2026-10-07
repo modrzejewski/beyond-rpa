@@ -28,28 +28,32 @@ module drv_atomic_guess
 contains
 
    subroutine drv_IsolatedAtomSCF(AtomSCF, AtomBasis, Atom, ZNumber, Rule, &
-      AtomSCFParams, LibraryDir, GuessDir)
+      AtomSCFParams, LibraryDir, GuessDir, ECPRule)
       !
       ! Run SCF for an isolated neutral atom of element ZNumber in its
       ! ground-state spin multiplicity, with the basis set of Rule.
       ! The atom is read from the same lines as an xyz block of the input.
       ! LibraryDir and GuessDir are passed to the basis assignment of the
       ! atom; the resolved paths in Rule suffice for basis_Init.
+      ! ECPRule, if present, points to the file with the pseudopotential
+      ! of the atom. A file without ECP data leaves the atom all-electron.
       ! With Cholesky integrals, the Cholesky vectors are computed with
       ! the default parameters of TChol2Params.
       ! The caller calls free_modules and data_free after it has
       ! finished with AtomBasis.
       !
-      type(TSCFOutput), intent(out)      :: AtomSCF
-      type(TAOBasis), intent(out)        :: AtomBasis
-      type(TSystem), intent(out)         :: Atom
-      integer, intent(in)                :: ZNumber
-      type(TBasisRule), intent(in)       :: Rule
-      type(TSCFParams), intent(in)       :: AtomSCFParams
-      character(*), optional, intent(in) :: LibraryDir
-      character(*), optional, intent(in) :: GuessDir
+      type(TSCFOutput), intent(out)            :: AtomSCF
+      type(TAOBasis), intent(out)              :: AtomBasis
+      type(TSystem), intent(out)               :: Atom
+      integer, intent(in)                      :: ZNumber
+      type(TBasisRule), intent(in)             :: Rule
+      type(TSCFParams), intent(in)             :: AtomSCFParams
+      character(*), optional, intent(in)       :: LibraryDir
+      character(*), optional, intent(in)       :: GuessDir
+      type(TBasisRule), optional, intent(in)   :: ECPRule
 
       type(TBasisAssignment) :: AtomBasisAssign
+      type(TBasisAssignment) :: AtomECPAssign
       type(TBasisRule) :: GlobalRule
       type(TChol2Params) :: Chol2Params
       type(TChol2Vecs) :: Chol2Vecs
@@ -68,6 +72,12 @@ contains
          "mult " // str(unpaired_electrons(ZNumber) + 1), SYS_UNITS_BOHR)
       call sys_Read_XYZ_NextLine(Atom, AtomIdx, &
          trim(ELNAME_SHORT(ZNumber)) // " 0.0 0.0 0.0", SYS_UNITS_BOHR)
+      if (present(ECPRule)) then
+         GlobalRule = ECPRule
+         GlobalRule%id = 0
+         call AtomECPAssign%add_global_fallback(GlobalRule)
+         call Atom%set_ecp(AtomECPAssign)
+      end if
       call sys_Init(Atom, SYS_TOTAL)
 
       call data_load_2(Atom)
@@ -221,6 +231,8 @@ contains
       type(TAOBasis) :: AtomBasis
       type(TSystem) :: Atom
       type(TBasisRule) :: Rule
+      type(TBasisRule) :: ECPRule
+      logical :: ECPFound
       integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap
       real(F64), dimension(:, :), allocatable :: Rho_tot, RhoAvg_cao
       character(:), allocatable :: GuessPath, Element
@@ -251,9 +263,21 @@ contains
             cycle
          end if
 
-         call drv_IsolatedAtomSCF(AtomSCF, AtomBasis, Atom, Z, Rule, &
-            AtomSCFParams, LibraryDir=BasisAssign%LibraryDir, &
-            GuessDir=BasisAssign%GuessDir)
+         !
+         ! Pseudopotential of the element as resolved by the parser:
+         ! from the basis set file, unless the ecp_assignment block
+         ! of the input assigns another one.
+         !
+         call System%ECP%Assignment%get_atom_rule(ECPRule, a, Z, found=ECPFound)
+         if (ECPFound) then
+            call drv_IsolatedAtomSCF(AtomSCF, AtomBasis, Atom, Z, Rule, &
+               AtomSCFParams, LibraryDir=BasisAssign%LibraryDir, &
+               GuessDir=BasisAssign%GuessDir, ECPRule=ECPRule)
+         else
+            call drv_IsolatedAtomSCF(AtomSCF, AtomBasis, Atom, Z, Rule, &
+               AtomSCFParams, LibraryDir=BasisAssign%LibraryDir, &
+               GuessDir=BasisAssign%GuessDir)
+         end if
          if (.not. AtomSCF%Converged) then
             call msg("Atom SCF not converged for " // Element, MSG_ERROR)
             error stop

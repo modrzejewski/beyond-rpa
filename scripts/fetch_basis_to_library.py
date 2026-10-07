@@ -8,19 +8,22 @@ The script sets up everything a new basis set needs:
         the folder for its atomic guess densities
     guess/electron-densities/<source>/<name>/atomic_guess.inp
         the input that generates the guess densities
-    guess/electron-densities/<source>/generate_densities.py
-        runs atomic_guess.inp in every basis set folder of the source
 
 <name> is the basis set name in lowercase. An input file selects the set with
 "basis <source>/<name>", for example "basis cc-repo/cc-pwCVTZ". The basis set
 file uses GAMESS-US format with optimized general contractions, the form of
 all files in basis-sets/. Its header records the source, the download time
 (UTC), the software versions, the elements and the contraction options.
+
+The script does not change an existing basis set: it keeps the basis set
+file and its guess densities, and only rewrites atomic_guess.inp. To update
+the parameters, e.g., to add a newly published element, delete the basis set
+file and the guess densities <element>.txt of the set, then run this script
+and scripts/generate_densities.py again.
 """
 import argparse
 import importlib.metadata
 import re
-import shutil
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,10 +32,6 @@ import basis_set_exchange as bse
 from basis_set_exchange import lut, manip, writers
 
 ROOT = Path(__file__).resolve().parent.parent
-#
-# Copied to guess/electron-densities/<source>/
-#
-GENERATOR = Path(__file__).resolve().parent / "generate_densities.py"
 SOURCES = ("bse", "cc-repo")
 ORIGINS = {
     "bse": "Basis Set Exchange, https://www.basissetexchange.org",
@@ -269,10 +268,7 @@ def main() -> None:
     basis_path = basis_file.relative_to(guess_dir, walk_up=True)
     inp.write_text(guess_input(label, basis_path, symbols))
     print(f"Wrote {inp}")
-    generator = guess_dir.parent / GENERATOR.name
-    shutil.copy(GENERATOR, generator)
-    print(f"Wrote {generator}")
-    print(f"Generate the guess densities with: python {generator} {guess_dir.name}")
+    print(f"Generate the guess densities with: python scripts/generate_densities.py {args.source}")
 
 
 if __name__ == "__main__":
