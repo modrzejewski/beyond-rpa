@@ -72,7 +72,7 @@ jobtype atomic_guess
 basis file {basis_path}
 
 scf
- maxniters 256
+ maxniters 1024
 end
 
 xyz

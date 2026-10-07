@@ -8,7 +8,7 @@ jobtype atomic_guess
 basis file ../../../../basis-sets/cc-repo/cc-pwcvdz.txt
 
 scf
- maxniters 256
+ maxniters 1024
 end
 
 xyz
