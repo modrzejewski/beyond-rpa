@@ -696,20 +696,10 @@ contains
             p = "aug-cc-pcvqz"
             n = "aug-cc-pCVQZ"
             ! ----------------------------------------------
-            !               (aug-)cc-pwCXZ
+            !        cc-pwCVXZ: the ccRepo parameters
             ! ----------------------------------------------
-          case ("CC-PWCVQZ")
-            p = "cc-pwcvqz"
-            n = "cc-pwCVQZ"
-          case ("AUG-CC-PWCVQZ")
-            p = "aug-cc-pwcvqz"
-            n = "aug-cc-pwCVQZ"
-          case ("CC-PWCV5Z")
-            p = "cc-pwcv5z"
-            n = "cc-pwCV5Z"
-          case ("AUG-CC-PWCV5Z")
-            p = "aug-cc-pwcv5z"
-            n = "aug-cc-pwCV5Z"
+          case ("CC-PWCVDZ", "CC-PWCVTZ", "CC-PWCVQZ")
+            call basis_SourceLabel(p, n, "cc-repo/" // trim(adjustl(ValString)))
           case ("DEF2-QZVP")
             p = "def2-qzvp"
             n = "Def2-QZVP"
@@ -815,10 +805,8 @@ contains
       Source = lowercase(trim(adjustl(Label(1:k-1))))
       Name = trim(adjustl(Label(k+1:)))
       select case (Source)
-       case ("bse")
-         DisplayedName = Name // " (BSE)"
-       case ("cc-repo")
-         DisplayedName = Name // " (ccRepo)"
+       case ("bse", "cc-repo")
+         DisplayedName = Name // " (basis-sets/" // Source // ")"
        case default
          call msg("Unknown basis set source: " // Source // &
             ". Allowed sources: bse, cc-repo", MSG_ERROR)
