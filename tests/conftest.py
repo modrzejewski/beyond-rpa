@@ -35,8 +35,11 @@ def pytest_collection_modifyitems(config, items):
         # ccRepo tests: the module's own rule, based on the input file name
         is_cc_repo = "test_cc_repo" in getattr(item, "nodeid", "")
 
+        # Semicore THC grid tests: the module's own rule, based on the input file name
+        is_semicore_thc = "test_semicore_thc" in getattr(item, "nodeid", "")
+
         # Use shared logic to determine if it's slow
-        if is_cc_repo:
+        if is_cc_repo or is_semicore_thc:
             is_fast_test = item.module.is_fast_test(item.callspec.params["filepath"])
         elif is_ecp:
             is_fast_test = utils.is_fast_ecp(filepath)

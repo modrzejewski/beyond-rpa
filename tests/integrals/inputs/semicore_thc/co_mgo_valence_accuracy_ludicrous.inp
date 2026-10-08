@@ -1,0 +1,42 @@
+! test category: slow
+! reference values from pyscf
+! Frozen orbitals AB/A/B:                       8/2/6
+! HF single point AB (a.u.):                    -387.1671316747
+! MP2 correlation AB (a.u.):                    -0.6998494838
+! HF single point A (a.u.):                     -112.7786542891
+! MP2 correlation A (a.u.):                     -0.3642236277
+! HF single point B (a.u.):                     -274.3800121289
+! MP2 correlation B (a.u.):                     -0.3355393268
+! HF interaction A...B (kcal/mol):              -5.31202871
+! MP2 correlation interaction A...B (kcal/mol): -0.05429802
+
+basis_assignment
+  C  cc-repo/aug-cc-pvtz
+  Mg cc-repo/cc-pvtz
+  O  cc-repo/aug-cc-pvtz
+end
+
+scf
+  xcfunc HF
+end
+
+rpa
+  TheoryLevel RPA+ph
+  accuracy ludicrous
+  FrozenOrbitals C 1
+  FrozenOrbitals Mg 5
+  FrozenOrbitals O 1
+  ! The ludicrous baseline keeps the default THC grid (SG-1),
+  ! which limits the accuracy; we upgrade it to medium.
+  THC_BeckeGridKind medium
+  PT2
+end
+
+xyz
+2 2
+charges 0 0
+C      0.00000000000    0.00000000000    2.44102235837
+O      0.00000000000    0.00000000000    3.58784217303
+Mg     0.00000000000    0.00000000000    0.00000000000
+O      0.00000000000    0.00000000000   -1.74900000000
+end
