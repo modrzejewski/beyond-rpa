@@ -1,3 +1,4 @@
+! test category: fast
 ! expected message: Basis set file not found
 jobtype uks sp
 basis cc-repo/no-such-set

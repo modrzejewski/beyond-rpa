@@ -89,7 +89,7 @@ def test_quadrupole(filepath: Path, record_property):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run quadrupole tests.")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use")
-    parser.add_argument("--full", action="store_true", help="Run the full test suite (all quadrupole tests are fast)")
+    parser.add_argument("--full", action="store_true", help="Run the full test suite (including slow tests)")
     args = parser.parse_args()
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
 
@@ -103,7 +103,11 @@ if __name__ == "__main__":
     print(header)
     print("." * width)
 
-    for filepath in get_input_files():
+    files = get_input_files()
+    if not args.full:
+        files = [f for f in files if utils.is_fast_test(f)]
+
+    for filepath in files:
         ref = extract_ref_quadrupole(filepath)
 
         print(f"Running {filepath.name}... ", end="", flush=True)

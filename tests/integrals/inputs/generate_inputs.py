@@ -28,7 +28,8 @@ COORDS_ANGSTROM = np.array(
 ANGLES_DEG = (30.0, 40.0, 50.0)
 COMPONENTS = {"xx": (0, 0), "yy": (1, 1), "zz": (2, 2), "xy": (0, 1), "xz": (0, 2), "yz": (1, 2)}
 AU2DEBYE = 2.541746473
-INPUT_TEMPLATE = """{reference}
+INPUT_TEMPLATE = """! test category: fast
+{reference}
 jobtype uks sp
 basis {basis}
 

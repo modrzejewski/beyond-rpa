@@ -8,6 +8,7 @@ All Python test scripts must be designed to function simultaneously as an automa
 - **Standalone Mode (via `python script.py`)**: The script must include an `if __name__ == '__main__':` block. This block manually loops through the test cases, executes the external binary, and prints a detailed, tabular summary directly to standard output. The table columns are the computed quantity, Reference Value, Calculated Result, Deviation, and Pass/Fail Status.
   - **Progress Indication**: To provide immediate feedback, the script must print `Running <test title>...` *before* executing the binary. Once the binary finishes, it must print the elapsed time (e.g. `done (3.42s)`) and *only then* print the corresponding table rows for that test.
   - **Table Layout**: The table has no test-title column. The `Running <test title>...` line names the test whose rows follow, which keeps the table narrow. Compute the table width from the header string, print a dotted line (`"." * width`) above and below the header, and print a dashed line (`"-" * width`) after the rows of each test. Example: `tests/rpa/test_frozen_core.py`.
+  - **Tolerances**: Before the table, print every tolerance with its unit, for each test category and computed quantity. Example: `tests/integrals/test_semicore_thc.py`.
 - **Numerical Tolerance**: Tests should rely on `pytest.approx` for numerical tolerance checking. The exact numerical value of this tolerance must always be determined by the human programmer. An AI agent must not guess or set this value independently, and must prompt the user for the required tolerance when creating testing scripts.
 
 ## 2. CI/CD Structured Reporting
@@ -18,9 +19,11 @@ Always utilize modern `pathlib.Path` objects for file I/O and path manipulation.
 
 ## 4. Test Categorization (Fast vs Slow)
 Computationally expensive tests (e.g., those using large basis sets like `avqz` or testing large molecular complexes like trimers) must be categorized as "slow" and skipped by default to ensure the standard test suite remains snappy.
-- **Pytest Mode**: Slow tests must be skipped dynamically (e.g., via `pytest.skip`) unless an explicit environment variable is provided (e.g., `BEYOND_RPA_FULL=1`).
-- **Standalone Mode**: The standalone script must require an explicit flag (e.g., `--full` via `argparse`) to execute the slow tests.
-- **Implementation**: The categorization logic must be codified in an `is_fast_test()` function that evaluates the test's `.inp` filename or metadata.
+- **Category Tag**: The developer declares the category in the preamble (the leading comment and blank lines) of each input with exactly one line `! test category: fast` or `! test category: slow`. A missing, repeated, or invalid tag is an error at test collection.
+- **Implementation**: `is_fast_test()` in `tests/utils.py` reads the tag. Test modules do not define their own categorization rules.
+- **Pytest Mode**: Parametrize each test with its input file as `filepath`. `tests/conftest.py` calls `utils.is_fast_test()` and skips slow tests unless pytest runs with `--full`.
+- **Standalone Mode**: The standalone script must require an explicit flag (`--full` via `argparse`) to execute the slow tests. It selects the inputs with `utils.is_fast_test()`.
+- **Input Writers**: Scripts that write or rewrite inputs, e.g., reference injectors, must keep the tag. `utils.preamble_tags()` returns the tag lines of an input.
 
 ## 5. Registration in Meson
 Every pytest module (`tests/**/test_*.py`) must be registered in `meson.build`, so that `meson test` and `pytest` run the same tests.

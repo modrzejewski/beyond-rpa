@@ -1,3 +1,4 @@
+! test category: fast
 ! expected message: Unknown basis set source
 jobtype uks sp
 basis foo/cc-pwCVTZ

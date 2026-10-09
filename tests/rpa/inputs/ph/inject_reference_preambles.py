@@ -1,5 +1,9 @@
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import utils
 
 KEYS_TO_CHECK = [
     "Eint(direct ring)",
@@ -35,7 +39,7 @@ def main():
         # 2. Find highest accuracy .txt available
         best_acc = None
         best_txt = None
-        for acc in ["ludicrous", "tight", "default"]:
+        for acc in ["ludicrous", "default"]:
             txt_path = inputs_dir / f"{base_name}_accuracy_{acc}.txt"
             if txt_path.exists():
                 best_acc = acc
@@ -66,7 +70,9 @@ def main():
             with open(inp_file, 'r') as f:
                 content = f.read()
                 
-            # Strip old preamble (all lines starting with ! or empty lines at the very beginning)
+            # Strip old preamble (all lines starting with ! or empty lines at the very beginning),
+            # keep the test category tag
+            tags = "".join(tag + "\n" for tag in utils.preamble_tags(content))
             lines = content.splitlines()
             start_idx = 0
             for i, line in enumerate(lines):
@@ -82,7 +88,7 @@ def main():
                 
             # Write new content
             with open(inp_file, 'w') as f:
-                f.write(new_preamble + core_content)
+                f.write(tags + new_preamble + core_content)
                 
             print(f"Updated {inp_file.name} to use {best_acc} references.")
 

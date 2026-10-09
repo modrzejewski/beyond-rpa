@@ -22,20 +22,14 @@ BIN_PATH = Path(__file__).parents[2] / "bin" / "run"
 
 INPUTS_DIR = Path(__file__).parent / "inputs"
 
-TEST_CASES = [
-    {
-        "input_path": INPUTS_DIR / "water_dimer_mp2_avdz_16_charges_sp.inp",
-        "property": "single_point"
-    },
-    {
-        "input_path": INPUTS_DIR / "water_dimer_mp2_avdz_16_charges.inp",
-        "property": "interaction"
-    },
-    {
-        "input_path": INPUTS_DIR / "water_dimer_mp2_avdz_10000_charges.inp",
-        "property": "interaction"
-    }
-]
+#
+# Property tested with each input
+#
+PROPERTIES = {
+    INPUTS_DIR / "water_dimer_mp2_avdz_16_charges_sp.inp": "single_point",
+    INPUTS_DIR / "water_dimer_mp2_avdz_16_charges.inp": "interaction",
+    INPUTS_DIR / "water_dimer_mp2_avdz_10000_charges.inp": "interaction",
+}
 
 REF_KEYS_SP = [
     "reference HF single point energy of AB (in a.u.)",
@@ -127,10 +121,9 @@ def print_results_table(results: list[dict]):
         
         print(f"{calc_key:<25} | {unit:<10} | {ref_str:>15} | {calc_str:>15} | {dev_str:>12} | {status}")
 
-@pytest.mark.parametrize("test_case", TEST_CASES, ids=lambda tc: tc["input_path"].stem)
-def test_point_charges(test_case: dict, record_property):
-    filepath = test_case["input_path"]
-    prop = test_case["property"]
+@pytest.mark.parametrize("filepath", list(PROPERTIES), ids=lambda p: p.stem)
+def test_point_charges(filepath: Path, record_property):
+    prop = PROPERTIES[filepath]
     
     print(f"\nTesting {filepath.name} ({prop}) ... ", end="", flush=True)
     
@@ -186,9 +179,7 @@ if __name__ == "__main__":
     print(f"{'Property':<25} | {'Unit':<10} | {'Ref':>15} | {'Calc':>15} | {'Deviation':>12} | {'Status'}")
     print("." * 100)
     
-    for tc in TEST_CASES:
-        filepath = tc["input_path"]
-        prop = tc["property"]
+    for filepath, prop in PROPERTIES.items():
         print(f"Running {filepath.name} ({prop})... ", end="", flush=True)
         start_time = time.time()
         

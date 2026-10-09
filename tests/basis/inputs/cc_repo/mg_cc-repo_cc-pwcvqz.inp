@@ -1,3 +1,4 @@
+! test category: fast
 ! reference energy from pyscf: -199.6142329493
 jobtype uks sp
 basis cc-repo/cc-pwCVQZ

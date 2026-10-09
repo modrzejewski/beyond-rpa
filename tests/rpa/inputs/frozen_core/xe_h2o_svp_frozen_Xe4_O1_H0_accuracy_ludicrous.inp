@@ -1,3 +1,4 @@
+! test category: fast
 ! reference values from pyscf
 ! Frozen orbitals AB/A/B:            5/4/1
 ! HF single point AB (a.u.):         -404.25985770

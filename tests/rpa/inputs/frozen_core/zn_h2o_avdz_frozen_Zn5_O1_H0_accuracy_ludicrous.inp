@@ -1,3 +1,4 @@
+! test category: fast
 ! reference values from pyscf
 ! Frozen orbitals AB/A/B:            6/5/1
 ! HF single point AB (a.u.):         -1853.88828171
@@ -17,7 +18,18 @@ end
 
 rpa
   TheoryLevel RPA+ph
-  accuracy ludicrous
+  accuracy custom
+  ! The ludicrous baseline with tighter decomposition thresholds
+  ! of Pi(u) and of the THC integrals
+  TargetErrorRandom 1.0E-7
+  T2CutoffThresh 1.0E-6
+  T2AuxNOCutoffThresh 1.0E-11
+  CutoffThreshPNO 1.0E-7
+  LocalizedOrbitals boys
+  CutoffThreshVabij 0.0
+  T2AdaptiveCutoffTargetKcal 0.0005
+  THC_QRThresh 1.0E-5
+  CholeskyTauThresh 1.0E-7
   FrozenOrbitals Zn 5
   FrozenOrbitals O 1
   FrozenOrbitals H 0

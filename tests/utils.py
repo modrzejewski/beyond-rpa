@@ -1,6 +1,43 @@
 import os
 from pathlib import Path
 
+TEST_CATEGORY_TAG = "! test category:"
+
+
+def preamble_lines(content: str) -> list[str]:
+    """
+    Return the leading comment and blank lines of an input.
+    """
+    lines = []
+    for line in content.splitlines():
+        if not (line.startswith("!") or not line.strip()):
+            break
+        lines.append(line)
+    return lines
+
+
+def preamble_tags(content: str) -> list[str]:
+    """
+    Return the test category tags in the preamble of an input.
+    """
+    return [line for line in preamble_lines(content) if line.startswith(TEST_CATEGORY_TAG)]
+
+
+def is_fast_test(filepath: Path) -> bool:
+    """
+    Read the tag "! test category: fast" or "slow" in the input preamble.
+    The developer declares the category of each input. A missing,
+    repeated, or invalid tag is an error.
+    """
+    categories = [tag.split(":", 1)[1].strip() for tag in preamble_tags(filepath.read_text())]
+    if len(categories) != 1 or categories[0] not in ("fast", "slow"):
+        raise ValueError(
+            f"{filepath}: declare the test category in the input preamble with exactly one line "
+            f"\"{TEST_CATEGORY_TAG} fast\" or \"{TEST_CATEGORY_TAG} slow\""
+        )
+    return categories[0] == "fast"
+
+
 def get_thread_count() -> int:
     """
     Returns the number of threads to use for tests.
@@ -23,26 +60,6 @@ def get_thread_count() -> int:
         
     return cores
 
-def is_fast_ecp(filepath: Path) -> bool:
-    """
-    Determine if an ECP test is considered 'fast'.
-    Slow ECP tests are those using the avtz-pp or avqz-pp basis set.
-    """
-    return "avtz-pp" not in filepath.name and "avqz-pp" not in filepath.name
-
-def is_fast(filepath: Path) -> bool:
-    """
-    Determine if a test is considered 'fast' (default behavior).
-    Fast tests are dimers with avtz or avdz basis, and default accuracy.
-    """
-    name = filepath.name
-    is_dimer = "dimer" in name
-    is_fast_basis = "avtz" in name or "avdz" in name
-    # If the filename contains accuracy information, require it to be default
-    is_fast_acc = "accuracy_default" in name if "accuracy" in name else True 
-    
-    return is_dimer and is_fast_basis and is_fast_acc
-
 def filter_test_files(all_files: list[Path], args) -> list[Path]:
     """
     Filters test files based on explicit boolean command-line flags.
@@ -51,7 +68,7 @@ def filter_test_files(all_files: list[Path], args) -> list[Path]:
         return all_files
         
     # Group the requested flags by category
-    acc_flags = [f for f in ["accuracy_default", "accuracy_tight", "accuracy_ludicrous"] if getattr(args, f, False)]
+    acc_flags = [f for f in ["accuracy_default", "accuracy_ludicrous"] if getattr(args, f, False)]
     basis_flags = [f for f in ["avdz", "avtz", "avqz"] if getattr(args, f, False)]
     size_flags = [f for f in ["dimer", "trimer"] if getattr(args, f, False)]
     
@@ -72,7 +89,7 @@ def filter_test_files(all_files: list[Path], args) -> list[Path]:
                 filtered_files.append(f)
         else:
             # Fallback to default 'fast' behavior
-            if is_fast(f):
+            if is_fast_test(f):
                 filtered_files.append(f)
                 
     return filtered_files
