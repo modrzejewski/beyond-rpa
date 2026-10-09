@@ -1,3 +1,4 @@
+! test category: fast
 ! Reference values computed with version from 2024 with accuracy set to ludicrous:
 ! Eint(direct ring) = -0.0003904888
 ! Eint(total) = 0.001548704

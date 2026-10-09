@@ -47,12 +47,6 @@ TOLERANCES = {
 }
 
 
-def is_fast_test(filepath: Path) -> bool:
-    """All inputs are fast. Each takes a few seconds; the atomic guess
-    densities of Mg are already the converged densities."""
-    return True
-
-
 def preamble(filepath: Path, key: str) -> str | None:
     for line in filepath.read_text().splitlines():
         if not line.startswith("!"):
@@ -191,7 +185,7 @@ if __name__ == "__main__":
     print(header)
     print("." * width)
     for filepath in sorted(INPUTS.glob("*.inp")):
-        if not args.full and not is_fast_test(filepath):
+        if not args.full and not utils.is_fast_test(filepath):
             continue
         print(f"Running {filepath.stem}... ", end="", flush=True)
         start = time.time()

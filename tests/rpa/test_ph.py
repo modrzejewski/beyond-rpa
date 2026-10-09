@@ -4,7 +4,7 @@ RPA+ph Test Suite for beyond-rpa.
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
 By default, it only runs fast tests.
 
-To run the full test suite (including expensive tests at "tight" and "ludicrous" accuracy levels):
+To run the full test suite (including expensive tests at the "ludicrous" accuracy level):
 - Pytest Mode: Use `--full` flag (e.g. `pytest tests/rpa/test_ph.py --full`)
 - Standalone Mode: Run with the `--full` argument (e.g. `python tests/rpa/test_ph.py --full`)
 """
@@ -87,7 +87,7 @@ def extract_calc_energies(text: str) -> dict:
 
 def get_tolerance(filepath: Path) -> float:
     name = filepath.name
-    if "accuracy_tight" in name or "accuracy_ludicrous" in name:
+    if "accuracy_ludicrous" in name:
         return TOLERANCE_HIGH_ACCURACY
     return TOLERANCE_DEFAULT
 
@@ -131,7 +131,7 @@ def test_rpa_energy(filepath: Path, record_property):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run RPA tests.")
-    parser.add_argument("--full", action="store_true", help="Run full test suite (including tight/ludicrous)")
+    parser.add_argument("--full", action="store_true", help="Run full test suite (including ludicrous)")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use (default: physical cores)")
     
     # System Size
@@ -145,7 +145,6 @@ if __name__ == "__main__":
 
     # Accuracy
     parser.add_argument("--accuracy_default", action="store_true", help="Include default accuracy")
-    parser.add_argument("--accuracy_tight", action="store_true", help="Include tight accuracy")
     parser.add_argument("--accuracy_ludicrous", action="store_true", help="Include ludicrous accuracy")
     
     args = parser.parse_args()

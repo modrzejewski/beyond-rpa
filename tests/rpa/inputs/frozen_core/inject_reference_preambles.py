@@ -4,13 +4,18 @@ Copy the PySCF reference energies into the preambles of the frozen-core inputs.
 Reads every pyscf_*.txt file in this directory. Each file contains blocks
 that start with "Input: <name>" and list "<key>: <value>" lines. The preamble
 (leading comment and blank lines) of every <name>_accuracy_*.inp is replaced
-with the values of the block. Inputs without a block, e.g., invalid_*.inp,
-are not modified.
+with the values of the block. The test category tag of the preamble
+("! test category: fast" or "slow") is kept. Inputs without a block, e.g.,
+invalid_*.inp, are not modified.
 
 Usage: python inject_reference_preambles.py
 """
 
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import utils
 
 
 def parse_blocks(text: str) -> dict[str, list[tuple[str, str]]]:
@@ -45,11 +50,11 @@ def main():
                 print(f"No input file for block {name} in {txt_file.name}")
                 continue
             width = max(len(key) for key, _ in entries) + 2
-            preamble = ["! reference values from pyscf"]
-            preamble += [f"! {key + ':':<{width}}{value}" for key, value in entries]
-            preamble.append("")
+            references = ["! reference values from pyscf"]
+            references += [f"! {key + ':':<{width}}{value}" for key, value in entries]
             for inp_file in inp_files:
                 content = inp_file.read_text()
+                preamble = utils.preamble_tags(content) + references + [""]
                 updated = "\n".join(preamble) + "\n" + strip_preamble(content)
                 if updated == content:
                     print(f"Unchanged {inp_file.name}")

@@ -1,3 +1,4 @@
+! test category: fast
 ! reference from pyscf: traceless quadrupole (Debye*Angs)
 ! Qxx = -0.173329
 ! Qyy = 0.804922

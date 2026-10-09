@@ -1,3 +1,4 @@
+! test category: fast
 ! reference energy from pyscf: -76.0315623434763
 
 jobtype uks sp

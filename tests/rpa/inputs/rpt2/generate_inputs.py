@@ -1,6 +1,10 @@
 import glob
 import re
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import utils
 
 def extract_energies(lines):
     keys = ["Eint(direct ring)", "Eint(total)", "EintNadd(direct ring)", "EintNadd(total)"]
@@ -23,7 +27,9 @@ def generate_inputs():
             
         energies = extract_energies(lines)
         
-        extracted_lines = [
+        # Keep the test category tag of an existing input
+        tags = utils.preamble_tags(inp_path.read_text()) if inp_path.exists() else []
+        extracted_lines = tags + [
             "! Reference values computed with version from 2024 with accuracy set to ludicrous:"
         ]
         if "Eint(direct ring)" in energies:
@@ -55,7 +61,7 @@ def generate_inputs():
                     continue # Skip deprecated/replaced lines
                 else:
                     extracted_lines.append(content)
-            elif in_input and "---" in line and len(extracted_lines) > 5:
+            elif in_input and "---" in line and len(extracted_lines) > 5 + len(tags):
                 break # Reached the end of the input block
 
         with open(inp_path, 'w') as f:

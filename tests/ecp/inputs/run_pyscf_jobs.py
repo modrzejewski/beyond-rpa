@@ -1,6 +1,11 @@
 import os
+import sys
 import subprocess
 import glob
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import utils
 
 def main():
     py_files = glob.glob("pyscf_*.py")
@@ -37,7 +42,11 @@ def main():
             with open(inp_filename, "r") as f:
                 content = f.read()
                 
-            pasted_text = "! reference values from pyscf\n"
+            # Keep the test category tag at the top of the preamble
+            tags = utils.preamble_tags(content)
+            content = "\n".join(line for line in content.split("\n") if line not in tags)
+            
+            pasted_text = "".join(tag + "\n" for tag in tags) + "! reference values from pyscf\n"
             for line in output_text.strip().split("\n"):
                 line = line.strip()
                 if line and ("(a.u.)" in line or "(kcal/mol)" in line):

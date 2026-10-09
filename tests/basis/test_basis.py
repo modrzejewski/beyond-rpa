@@ -20,11 +20,12 @@ def get_input_files():
     return list(inputs_dir.glob("*.inp"))
 
 def get_reference_energy(filepath: Path) -> float:
-    with filepath.open("r") as f:
-        first_line = f.readline().strip()
-    match = re.search(r"reference energy from pyscf:\s*([-+]?\d*\.\d+|\d+)", first_line)
-    if match:
-        return float(match.group(1))
+    for line in filepath.read_text().splitlines():
+        if not (line.startswith("!") or not line.strip()):
+            break
+        match = re.search(r"reference energy from pyscf:\s*([-+]?\d*\.\d+|\d+)", line)
+        if match:
+            return float(match.group(1))
     raise ValueError(f"Could not find reference energy in {filepath}")
 
 def extract_energy_from_output(stdout: str) -> float:

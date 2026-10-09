@@ -54,13 +54,6 @@ def get_reference_inputs() -> list[Path]:
     return sorted(INPUTS_DIR.glob("*_accuracy_*.inp"))
 
 
-def is_fast_test(filepath: Path) -> bool:
-    """
-    All frozen-core inputs are small dimers and are run by default.
-    """
-    return True
-
-
 def run(filepath: Path, nthreads: int) -> subprocess.CompletedProcess:
     return subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
 
@@ -150,7 +143,7 @@ def test_frozen_core(filepath: Path, record_property):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run frozen core tests.")
     parser.add_argument("-nt", "--nthreads", type=int, default=None, help="Number of OpenMP threads to use")
-    parser.add_argument("--full", action="store_true", help="Run the full test suite (all frozen core tests are fast)")
+    parser.add_argument("--full", action="store_true", help="Run the full test suite (including slow tests)")
     args = parser.parse_args()
     nthreads = args.nthreads if args.nthreads is not None else utils.get_thread_count()
 
@@ -161,7 +154,7 @@ if __name__ == "__main__":
 
     files = get_reference_inputs()
     if not args.full:
-        files = [f for f in files if is_fast_test(f)]
+        files = [f for f in files if utils.is_fast_test(f)]
 
     header = f"{'Term':<10} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
     width = len(header)

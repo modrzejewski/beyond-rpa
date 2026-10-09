@@ -1,3 +1,4 @@
+! test category: slow
 ! Reference values computed with version from 2024 with accuracy set to ludicrous:
 ! EintNadd(direct ring) = 0.0001145735
 ! EintNadd(total) = -0.00979635

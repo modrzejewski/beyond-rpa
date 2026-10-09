@@ -124,7 +124,6 @@ if __name__ == "__main__":
 
     # Accuracy
     parser.add_argument("--accuracy_default", action="store_true", help="Include default accuracy")
-    parser.add_argument("--accuracy_tight", action="store_true", help="Include tight accuracy")
     parser.add_argument("--accuracy_ludicrous", action="store_true", help="Include ludicrous accuracy")
     
     args = parser.parse_args()

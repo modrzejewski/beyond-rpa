@@ -1,3 +1,4 @@
+! test category: slow
 ! Reference values computed with accuracy set to ludicrous:
 ! EintNadd(direct ring) = 3.042782E-002
 ! EintNadd(SOSEX) = -1.398054E-002

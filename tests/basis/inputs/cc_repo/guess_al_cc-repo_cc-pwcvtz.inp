@@ -1,3 +1,4 @@
+! test category: fast
 ! reference electron count: 13
 jobtype atomic_guess
 

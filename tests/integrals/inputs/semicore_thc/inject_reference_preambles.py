@@ -11,9 +11,11 @@ inputs are skipped.
 Usage: python inject_reference_preambles.py
 """
 
+import sys
 from pathlib import Path
 
-TAG = "! test category:"
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+import utils
 
 
 def parse_blocks(text: str) -> dict[str, list[tuple[str, str]]]:
@@ -39,16 +41,6 @@ def strip_preamble(content: str) -> str:
     return "\n".join(lines[start_idx:]) + "\n"
 
 
-def preamble_tags(content: str) -> list[str]:
-    tags = []
-    for line in content.splitlines():
-        if not (line.startswith("!") or not line.strip()):
-            break
-        if line.startswith(TAG):
-            tags.append(line)
-    return tags
-
-
 def main():
     inputs_dir = Path(__file__).parent
     for txt_file in sorted(inputs_dir.glob("pyscf_*.txt")):
@@ -59,7 +51,7 @@ def main():
             references += [f"! {key + ':':<{width}}{value}" for key, value in entries]
             for inp_file in inp_files:
                 content = inp_file.read_text()
-                preamble = preamble_tags(content) + references + [""]
+                preamble = utils.preamble_tags(content) + references + [""]
                 updated = "\n".join(preamble) + "\n" + strip_preamble(content)
                 if updated == content:
                     print(f"Unchanged {inp_file.name}")

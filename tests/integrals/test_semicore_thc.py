@@ -72,18 +72,6 @@ def get_reference_inputs() -> list[Path]:
     return sorted(INPUTS_DIR.glob("*_accuracy_*.inp"))
 
 
-def is_fast_test(filepath: Path) -> bool:
-    """
-    Read the tag "! test category: fast" or "slow" in the input preamble.
-    """
-    for line in filepath.read_text().splitlines():
-        if not line.startswith("!"):
-            break
-        if line.startswith("! test category:"):
-            return line.split(":", 1)[1].strip() == "fast"
-    return False
-
-
 @functools.cache
 def run(filepath: Path, nthreads: int) -> subprocess.CompletedProcess:
     """
@@ -195,7 +183,7 @@ if __name__ == "__main__":
 
     files = get_reference_inputs()
     if not args.full:
-        files = [f for f in files if is_fast_test(f)]
+        files = [f for f in files if utils.is_fast_test(f)]
 
     header = f"{'Term':<12} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
     width = len(header)
@@ -221,7 +209,7 @@ if __name__ == "__main__":
             print(table_row(term, ref[term], calc[term], tolerance(filepath, term)))
         print("-" * width)
     for level, (semicore, valence) in CV_INPUTS.items():
-        if not args.full and not is_fast_test(semicore):
+        if not args.full and not utils.is_fast_test(semicore):
             continue
         print(f"Running co_mgo_core_valence_accuracy_{level}... ", end="", flush=True)
         start_time = time.time()

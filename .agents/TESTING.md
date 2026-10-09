@@ -19,11 +19,11 @@ Always utilize modern `pathlib.Path` objects for file I/O and path manipulation.
 
 ## 4. Test Categorization (Fast vs Slow)
 Computationally expensive tests (e.g., those using large basis sets like `avqz` or testing large molecular complexes like trimers) must be categorized as "slow" and skipped by default to ensure the standard test suite remains snappy.
-- **Pytest Mode**: Slow tests must be skipped dynamically (e.g., via `pytest.skip`) unless an explicit environment variable is provided (e.g., `BEYOND_RPA_FULL=1`).
-- **Standalone Mode**: The standalone script must require an explicit flag (e.g., `--full` via `argparse`) to execute the slow tests.
-- **Implementation**: The categorization logic must be codified in an `is_fast_test()` function.
-  - **Category Tag**: Declare the category in the preamble (the leading comment lines) of each input with `! test category: fast` or `! test category: slow`. `is_fast_test()` reads the tag; an input without the tag is slow. Scripts that rewrite the preamble, e.g., reference injectors, must keep the tag. Example: `tests/integrals/test_semicore_thc.py`.
-  - **Pytest Mode**: `tests/conftest.py` must call the module's own `is_fast_test()` (see the `test_cc_repo` and `test_semicore_thc` branches).
+- **Category Tag**: The developer declares the category in the preamble (the leading comment and blank lines) of each input with exactly one line `! test category: fast` or `! test category: slow`. A missing, repeated, or invalid tag is an error at test collection.
+- **Implementation**: `is_fast_test()` in `tests/utils.py` reads the tag. Test modules do not define their own categorization rules.
+- **Pytest Mode**: Parametrize each test with its input file as `filepath`. `tests/conftest.py` calls `utils.is_fast_test()` and skips slow tests unless pytest runs with `--full`.
+- **Standalone Mode**: The standalone script must require an explicit flag (`--full` via `argparse`) to execute the slow tests. It selects the inputs with `utils.is_fast_test()`.
+- **Input Writers**: Scripts that write or rewrite inputs, e.g., reference injectors, must keep the tag. `utils.preamble_tags()` returns the tag lines of an input.
 
 ## 5. Registration in Meson
 Every pytest module (`tests/**/test_*.py`) must be registered in `meson.build`, so that `meson test` and `pytest` run the same tests.
