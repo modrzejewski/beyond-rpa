@@ -11,6 +11,12 @@ interaction energies are compared with PySCF references (exact
 integrals) stored in the input preamble (see pyscf_semicore_thc.py
 and inject_reference_preambles.py in the inputs directory).
 
+The core-valence correction, i.e., the MP2 correlation interaction
+energy of the semicore input minus that of the valence input at the
+same accuracy level, is tested as well. The valence inputs use Mg
+cc-pVTZ instead of cc-pwCVTZ, so the correction includes the change
+of the Mg basis set.
+
 To run the test suite:
 - Pytest Mode: `pytest tests/integrals/test_semicore_thc.py [--full]`
 - Standalone Mode: `python tests/integrals/test_semicore_thc.py [--full]`
@@ -20,6 +26,7 @@ import re
 import sys
 import time
 import argparse
+import functools
 import subprocess
 from pathlib import Path
 import pytest
@@ -36,8 +43,8 @@ INPUTS_DIR = Path(__file__).parent / "inputs" / "semicore_thc"
 # Tolerances of the interaction energies (kcal/mol) for each accuracy level
 #
 TOLERANCES = {
-    "default": 9.0e-3,
-    "ludicrous": 5.0e-5,
+    "default": {"HF A...B": 1.0e-5, "MP2 A...B": 4.0e-3, "MP2 CV A...B": 4.0e-3},
+    "ludicrous": {"HF A...B": 1.0e-5, "MP2 A...B": 7.0e-5, "MP2 CV A...B": 7.0e-5},
 }
 
 FLOAT_REGEX = r"([-+]?\d*\.\d+(?:[Ee][-+]?\d+)?)"
@@ -47,6 +54,16 @@ TERMS = [
     ("HF A...B", "HF interaction A...B (kcal/mol)"),
     ("MP2 A...B", "MP2 correlation interaction A...B (kcal/mol)"),
 ]
+
+#
+# Core-valence correction: MP2 A...B of the semicore input
+# minus MP2 A...B of the valence input at the same accuracy level
+#
+CV_TERM = "MP2 CV A...B"
+CV_INPUTS = {
+    level: (INPUTS_DIR / f"co_mgo_semicore_accuracy_{level}.inp", INPUTS_DIR / f"co_mgo_valence_accuracy_{level}.inp")
+    for level in TOLERANCES
+}
 
 INTERACTION_KEYS = ["Eint(HF)", "Eint(1-RDM linear)", "Eint(1-RDM quadratic)", "Eint(total MP2)"]
 
@@ -67,7 +84,11 @@ def is_fast_test(filepath: Path) -> bool:
     return False
 
 
+@functools.cache
 def run(filepath: Path, nthreads: int) -> subprocess.CompletedProcess:
+    """
+    Run each input once. The core-valence test reuses the output.
+    """
     return subprocess.run([str(BIN_PATH), "-nt", str(nthreads), str(filepath)], capture_output=True, text=True)
 
 
@@ -101,9 +122,18 @@ def extract_calc_energies(text: str) -> dict:
     return terms
 
 
-def tolerance(filepath: Path) -> float:
+def tolerance(filepath: Path, term: str) -> float:
     accuracy = filepath.stem.rsplit("_accuracy_", 1)[1]
-    return TOLERANCES[accuracy]
+    return TOLERANCES[accuracy][term]
+
+
+def core_valence_correction(semicore: Path, valence: Path, nthreads: int) -> tuple[float, float]:
+    """
+    Reference and calculated MP2 A...B of the semicore input minus that of the valence input
+    """
+    ref = {f: extract_ref_energies(f)["MP2 A...B"] for f in (semicore, valence)}
+    calc = {f: extract_calc_energies(run(f, nthreads).stdout)["MP2 A...B"] for f in (semicore, valence)}
+    return ref[semicore] - ref[valence], calc[semicore] - calc[valence]
 
 
 @pytest.mark.parametrize("filepath", get_reference_inputs(), ids=lambda p: p.stem)
@@ -119,10 +149,31 @@ def test_semicore_thc(filepath: Path, record_property):
         record_property(f"reference {term}", ref[term])
         record_property(f"calculated {term}", calc[term])
         record_property(f"deviation {term}", dev)
-    tol = tolerance(filepath)
     for term, _ in TERMS:
+        tol = tolerance(filepath, term)
         assert calc[term] == pytest.approx(ref[term], abs=tol), \
             f"{term} deviation ({abs(calc[term] - ref[term]):.2e} kcal/mol) exceeds {tol:.1e}"
+
+
+@pytest.mark.parametrize("filepath, valence", [
+    pytest.param(semicore, valence, id=f"co_mgo_core_valence_accuracy_{level}")
+    for level, (semicore, valence) in CV_INPUTS.items()
+])
+def test_core_valence_correction(filepath: Path, valence: Path, record_property):
+    ref, calc = core_valence_correction(filepath, valence, utils.get_thread_count())
+    dev = abs(calc - ref)
+    record_property(f"reference {CV_TERM}", ref)
+    record_property(f"calculated {CV_TERM}", calc)
+    record_property(f"deviation {CV_TERM}", dev)
+    tol = tolerance(filepath, CV_TERM)
+    assert calc == pytest.approx(ref, abs=tol), \
+        f"{CV_TERM} deviation ({dev:.2e} kcal/mol) exceeds {tol:.1e}"
+
+
+def table_row(term: str, ref: float, calc: float, tol: float) -> str:
+    dev = abs(calc - ref)
+    status = "PASSED" if dev <= tol else "FAILED"
+    return f"{term:<12} | {'kcal/mol':<8} | {ref:>16.8f} | {calc:>16.8f} | {dev:>10.2e} | {status}"
 
 
 if __name__ == "__main__":
@@ -134,14 +185,15 @@ if __name__ == "__main__":
 
     print(f"\nNumber of threads: {nthreads}")
     print("\nTolerances:")
-    for accuracy, interaction in TOLERANCES.items():
-        print(f"  {accuracy + ':':<11} interaction {interaction:.1e} kcal/mol")
+    for accuracy, tolerances in TOLERANCES.items():
+        shown = ", ".join(f"{term} {tol:.1e}" for term, tol in tolerances.items())
+        print(f"  {accuracy + ':':<11} {shown} kcal/mol")
 
     files = get_reference_inputs()
     if not args.full:
         files = [f for f in files if is_fast_test(f)]
 
-    header = f"{'Term':<10} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
+    header = f"{'Term':<12} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
     width = len(header)
     print("\n" + "." * width)
     print(header)
@@ -160,9 +212,21 @@ if __name__ == "__main__":
         calc = extract_calc_energies(result.stdout)
         for term, _ in TERMS:
             if term not in ref or term not in calc:
-                print(f"{term:<10} | {'kcal/mol':<8} | {'N/A':>16} | {'N/A':>16} | {'N/A':>10} | ERROR")
+                print(f"{term:<12} | {'kcal/mol':<8} | {'N/A':>16} | {'N/A':>16} | {'N/A':>10} | ERROR")
                 continue
-            dev = abs(calc[term] - ref[term])
-            status = "PASSED" if dev <= tolerance(filepath) else "FAILED"
-            print(f"{term:<10} | {'kcal/mol':<8} | {ref[term]:>16.8f} | {calc[term]:>16.8f} | {dev:>10.2e} | {status}")
+            print(table_row(term, ref[term], calc[term], tolerance(filepath, term)))
+        print("-" * width)
+    for level, (semicore, valence) in CV_INPUTS.items():
+        if not args.full and not is_fast_test(semicore):
+            continue
+        print(f"Running co_mgo_core_valence_accuracy_{level}... ", end="", flush=True)
+        start_time = time.time()
+        try:
+            ref, calc = core_valence_correction(semicore, valence, nthreads)
+        except KeyError:
+            print(f"ERROR ({time.time() - start_time:.2f}s)")
+            print("-" * width)
+            continue
+        print(f"done ({time.time() - start_time:.2f}s)")
+        print(table_row(CV_TERM, ref, calc, tolerance(semicore, CV_TERM)))
         print("-" * width)

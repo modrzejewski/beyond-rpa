@@ -1,14 +1,14 @@
 ! test category: slow
 ! reference values from pyscf
 ! Frozen orbitals AB/A/B:                       8/2/6
-! HF single point AB (a.u.):                    -387.1671316747
-! MP2 correlation AB (a.u.):                    -0.6998494838
-! HF single point A (a.u.):                     -112.7786542891
-! MP2 correlation A (a.u.):                     -0.3642236277
-! HF single point B (a.u.):                     -274.3800121289
-! MP2 correlation B (a.u.):                     -0.3355393268
-! HF interaction A...B (kcal/mol):              -5.31202871
-! MP2 correlation interaction A...B (kcal/mol): -0.05429802
+! HF single point AB (a.u.):                    -387.1720934210
+! MP2 correlation AB (a.u.):                    -0.6930828222
+! HF single point A (a.u.):                     -112.7825052433
+! MP2 correlation A (a.u.):                     -0.3598153793
+! HF single point B (a.u.):                     -274.3802417121
+! MP2 correlation B (a.u.):                     -0.3352457413
+! HF interaction A...B (kcal/mol):              -5.86499564
+! MP2 correlation interaction A...B (kcal/mol): 1.24140103
 
 basis_assignment
   C  cc-repo/aug-cc-pvtz
@@ -35,8 +35,8 @@ end
 xyz
 2 2
 charges 0 0
-C      0.00000000000    0.00000000000    2.44102235837
-O      0.00000000000    0.00000000000    3.58784217303
+C      0.00000000000    0.00000000000    2.32028900000
+O      0.00000000000    0.00000000000    3.44057500000
 Mg     0.00000000000    0.00000000000    0.00000000000
-O      0.00000000000    0.00000000000   -1.74900000000
+O      0.00000000000    0.00000000000   -1.73209300000
 end

@@ -9,7 +9,8 @@ mgo:    MgO molecule, Mg and O cc-pwCVTZ
 co_mgo: CO on MgO, linear O-Mg-C-O, C and O aug-cc-pVTZ, Mg cc-pwCVTZ
         (semicore) or cc-pVTZ (valence); single points of CO...MgO (AB),
         CO (A), and MgO (B) in the basis of AB, and the counterpoise-corrected
-        interaction energies
+        interaction energies. Geometry: minimum of DF-PBE0-D3(BJ) with C and O
+        aug-cc-pVTZ and Mg cc-pwCVTZ.
 
 The output has one block per test case: a line "Input: <name>" followed by
 "<quantity> (<unit>): <value>" lines. Single points are in a.u., interaction
@@ -17,7 +18,7 @@ energies in kcal/mol, as in the beyond-rpa output.
 
 Usage: python pyscf_semicore_thc.py [mgo] [co_mgo] > pyscf_semicore_thc.txt
 Then run inject_reference_preambles.py to update the inputs. The mgo case
-takes seconds, the co_mgo case takes minutes.
+takes seconds, the co_mgo case takes about a minute.
 """
 import sys
 
@@ -32,10 +33,10 @@ MGO_GEOMETRY = [
     ("O", 0.0, 0.0, 1.749, "B"),
 ]
 CO_MGO_GEOMETRY = [
-    ("C", 0.0, 0.0, 2.44102235837, "A"),
-    ("O", 0.0, 0.0, 3.58784217303, "A"),
+    ("C", 0.0, 0.0, 2.320289, "A"),
+    ("O", 0.0, 0.0, 3.440575, "A"),
     ("Mg", 0.0, 0.0, 0.0, "B"),
-    ("O", 0.0, 0.0, -1.749, "B"),
+    ("O", 0.0, 0.0, -1.732093, "B"),
 ]
 NAMES = {"C": "CARBON", "O": "OXYGEN", "Mg": "MAGNESIUM"}
 FROZEN = {
