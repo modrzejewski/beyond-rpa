@@ -1,3 +1,4 @@
+! test category: fast
 ! reference values computed with pyscf
 ! reference HF single point energy of AB (in a.u.):                -152.09399440
 ! reference MP2 correlation energy of AB (in a.u.):                  -0.44175523

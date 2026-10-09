@@ -207,6 +207,122 @@ contains
       end subroutine RhoSpherCoeffs
 
 
+      subroutine RhoSpherAverage(RhoAvg, Rho, AOBasis, SpherAO)
+            !
+            ! Average a density matrix of an isolated atom over all
+            ! directions. Rho is a single matrix: one spin component or
+            ! the total density. The average is linear, so averaging the
+            ! alpha and beta components separately and adding the results
+            ! gives the same matrix as averaging their sum once.
+            !
+            ! If SpherAO is true, Rho and RhoAvg are both in the solid
+            ! harmonic AO basis. Otherwise (default), both are in the
+            ! Cartesian AO basis: Rho is transformed to solid harmonics,
+            ! averaged, and transformed back.
+            !
+            ! This subroutine can be called only for single-atom systems.
+            !
+            real(F64), dimension(:, :), contiguous, intent(out) :: RhoAvg
+            real(F64), dimension(:, :), contiguous, intent(in)  :: Rho
+            type(TAOBasis), intent(in)                          :: AOBasis
+            logical, optional, intent(in)                       :: SpherAO
+
+            real(F64), dimension(:, :), allocatable :: Rho_sao, RhoAvg_sao
+            real(F64), dimension(:, :), allocatable :: Unit_cao, W_T, Work
+            logical :: InputSpher
+            integer :: k
+
+            InputSpher = .false.
+            if (present(SpherAO)) InputSpher = SpherAO
+            if (InputSpher) then
+                  call RhoSpherAverage_(RhoAvg, Rho, AOBasis)
+            else
+                  associate ( &
+                        NAOCart => AOBasis%NAOCart, &
+                        NAOSpher => AOBasis%NAOSpher, &
+                        NShells => AOBasis%NShells, &
+                        LmaxGTO => AOBasis%LmaxGTO, &
+                        NormFactorsSpher => AOBasis%NormFactorsSpher, &
+                        NormFactorsCart => AOBasis%NormFactorsCart, &
+                        ShellLocSpher => AOBasis%ShellLocSpher, &
+                        ShellLocCart => AOBasis%ShellLocCart, &
+                        ShellMomentum => AOBasis%ShellMomentum, &
+                        ShellParamsIdx => AOBasis%ShellParamsIdx &
+                        )
+                        allocate(Unit_cao(NAOCart, NAOCart))
+                        allocate(Rho_sao(NAOSpher, NAOSpher))
+                        allocate(RhoAvg_sao(NAOSpher, NAOSpher))
+                        allocate(W_T(NAOSpher, NAOCart))
+                        allocate(Work(NAOCart, NAOSpher))
+                        call SpherGTO_TransformMatrix(Rho_sao, Rho, &
+                              LmaxGTO, NormFactorsSpher, NormFactorsCart, &
+                              ShellLocSpher, ShellLocCart, ShellMomentum, &
+                              ShellParamsIdx, NAOSpher, NAOCart, NShells, Work)
+                        call RhoSpherAverage_(RhoAvg_sao, Rho_sao, AOBasis)
+                        !
+                        ! W**T <- covariant transformation of unit vectors
+                        !
+                        Unit_cao = ZERO
+                        do k = 1, NAOCart
+                              Unit_cao(k, k) = ONE
+                        end do
+                        call SpherGTO_TransformVectors_U(W_T, Unit_cao, &
+                              LmaxGTO, NormFactorsSpher, NormFactorsCart, &
+                              ShellLocSpher, ShellLocCart, ShellMomentum, &
+                              ShellParamsIdx, NAOSpher, NAOCart, NShells, NAOCart)
+                        call real_aTba(RhoAvg, W_T, RhoAvg_sao, Work)
+                  end associate
+            end if
+      end subroutine RhoSpherAverage
+
+
+      subroutine RhoSpherAverage_(RhoAvg_sao, Rho_sao, AOBasis)
+            !
+            ! Average a density matrix in the solid harmonic AO basis
+            ! over all directions:
+            !
+            ! RhoAvg(am,bm') = delta(la,lb) delta(m,m') / (2la+1)
+            !                  * Sum(k) Rho(ak,bk)
+            !
+            ! The result conserves the number of electrons, is spherically
+            ! symmetric, and equals Rho_sao for a spherical atom.
+            !
+            real(F64), dimension(:, :), intent(out) :: RhoAvg_sao
+            real(F64), dimension(:, :), intent(in)  :: Rho_sao
+            type(TAOBasis), intent(in)              :: AOBasis
+
+            real(F64) :: Avg
+            integer :: a, b, k, la, lb, a0, b0, NSpher
+
+            associate ( &
+                  NShells => AOBasis%NShells, &
+                  ShellLocSpher => AOBasis%ShellLocSpher, &
+                  ShellMomentum => AOBasis%ShellMomentum, &
+                  ShellParamsIdx => AOBasis%ShellParamsIdx &
+                  )
+                  RhoAvg_sao = ZERO
+                  do b = 1, NShells
+                        lb = ShellMomentum(ShellParamsIdx(b))
+                        b0 = ShellLocSpher(b)
+                        do a = 1, NShells
+                              la = ShellMomentum(ShellParamsIdx(a))
+                              if (la /= lb) cycle
+                              a0 = ShellLocSpher(a)
+                              NSpher = 2 * la + 1
+                              Avg = ZERO
+                              do k = 0, NSpher - 1
+                                    Avg = Avg + Rho_sao(a0+k, b0+k)
+                              end do
+                              Avg = Avg / real(NSpher, F64)
+                              do k = 0, NSpher - 1
+                                    RhoAvg_sao(a0+k, b0+k) = Avg
+                              end do
+                        end do
+                  end do
+            end associate
+      end subroutine RhoSpherAverage_
+
+
       pure function RhoSpherValue(RhoCoeffs, r, k, ShellParamsIdx, CntrCoeffs, Exponents, NPrimitives, &
             ShellMomentum, AtomShellMap, AtomShellN, MaxNShells)
             !

@@ -1133,7 +1133,7 @@ contains
       n_omitted_emb = 0
 
       call BasisAssign%set_library_dir(BASISDIR)
-      call BasisAssign%set_guess_dir(GUESSDIR // "electron-densities" // DIRSEP // "rohf" // DIRSEP)
+      call BasisAssign%set_guess_dir(GUESSDIR // "electron-densities" // DIRSEP)
 
       lines: do
          linenumber = linenumber + 1
@@ -1489,7 +1489,7 @@ contains
       end if
 
       if (NJOB .eq. 0 .and. JOBTYPE /= JOB_REAL_UKS_RPA .and. JOBTYPE /= JOB_REAL_UKS_SP &
-         .and. JOBTYPE /= JOB_REAL_UKS_INT) then
+         .and. JOBTYPE /= JOB_REAL_UKS_INT .and. JOBTYPE /= JOB_ATOMIC_GUESS) then
          call msg("PARSER ERROR: NO GEOMETRY FILE SPECIFIED", &
             priority=MSG_ERROR)
          stop
@@ -1613,6 +1613,8 @@ contains
       aup = uppercase(a)
       bup = uppercase(b)
       select case (aup)
+       case ("ATOMIC_GUESS", "ATOMIC-GUESS")
+         JOBTYPE = JOB_ATOMIC_GUESS
        case ("VISUALIZE")
          select case (bup)
           case ("RHO_DIFF")

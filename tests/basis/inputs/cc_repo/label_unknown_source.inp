@@ -1,0 +1,13 @@
+! test category: fast
+! expected message: Unknown basis set source
+jobtype uks sp
+basis foo/cc-pwCVTZ
+
+scf
+ xcfunc HF
+end
+
+xyz
+1
+Ne 0.0 0.0 0.0
+end

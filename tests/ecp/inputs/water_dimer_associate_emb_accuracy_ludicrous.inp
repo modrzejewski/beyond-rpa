@@ -1,3 +1,4 @@
+! test category: fast
 ! reference values from pyscf
 ! HF single point AB (a.u.):           -151.93937544
 ! dRPA single point AB (a.u.):           -0.45785432
@@ -18,8 +19,9 @@ end
 rpa
   TheoryLevel RPA+ph
   accuracy custom
-  ! The decomposition threshold of Pi(u) is the bottleneck for accuracy;
-  ! we perturb the ludicrous baseline to make it tighter.
+  ! The decomposition thresholds of Pi(u) and of the THC integrals
+  ! are the bottleneck for accuracy; we perturb the ludicrous
+  ! baseline to make them tighter.
   TargetErrorRandom 1.0E-7
   T2CutoffThresh 1.0E-6
   T2AuxNOCutoffThresh 1.0E-11
@@ -27,7 +29,7 @@ rpa
   LocalizedOrbitals boys
   CutoffThreshVabij 0.0
   T2AdaptiveCutoffTargetKcal 0.0005
-  THC_QRThresh 1.0E-4
+  THC_QRThresh 1.0E-5
   CholeskyTauThresh 1.0E-7
 end
 

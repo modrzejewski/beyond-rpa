@@ -60,6 +60,18 @@ if pytest.found()
     workdir: meson.project_source_root()
   )
 
+  test('cc_repo',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=cc_repo_report.xml',
+      meson.project_source_root() / 'tests' / 'basis' / 'test_cc_repo.py'
+    ],
+    depends: post_build_target,
+    timeout: 120,
+    workdir: meson.project_source_root()
+  )
+
   test('rpa+ph',
     pytest,
     args: [
@@ -126,6 +138,18 @@ if pytest.found()
       '-v', '-s',
       '--junitxml=quadrupole_report.xml',
       meson.project_source_root() / 'tests' / 'integrals' / 'test_quadrupole.py'
+    ],
+    depends: post_build_target,
+    timeout: 600,
+    workdir: meson.project_source_root()
+  )
+
+  test('semicore_thc',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=semicore_thc_report.xml',
+      meson.project_source_root() / 'tests' / 'integrals' / 'test_semicore_thc.py'
     ],
     depends: post_build_target,
     timeout: 600,

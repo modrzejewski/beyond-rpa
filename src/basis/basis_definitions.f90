@@ -526,7 +526,8 @@ contains
       ! Parameters:
       !   Rule                : Output basis rule object.
       !   BasisAssign         : Input TBasisAssignment object containing LibraryDir and GuessDir state.
-      !   ValString           : Input basis string, either an EMSL alias or 'FILE path'.
+      !   ValString           : Input basis string: an EMSL alias, a library label
+      !                         <source>/<name>, or 'FILE path'.
       !
       type(TBasisRule), intent(out)       :: Rule
       class(TBasisAssignment), intent(in) :: BasisAssign
@@ -543,6 +544,19 @@ contains
             Rule%FromLibrary = .false.
          else
             call msg("Basis set coefficients file is inaccessible: " // a2, MSG_ERROR)
+            error stop
+         end if
+      else if (index(ValString, "/") > 0) then
+         call basis_SourceLabel(p, n, ValString)
+         Rule%BaseName = p
+         Rule%FromLibrary = .true.
+         if (.not. allocated(BasisAssign%LibraryDir)) then
+            call msg("Basis library directory is not specified", MSG_ERROR)
+            error stop
+         end if
+         p = BasisAssign%LibraryDir // p // ".txt"
+         if (.not. io_exists(p)) then
+            call msg("Basis set file not found: " // p, MSG_ERROR)
             error stop
          end if
       else
@@ -682,20 +696,10 @@ contains
             p = "aug-cc-pcvqz"
             n = "aug-cc-pCVQZ"
             ! ----------------------------------------------
-            !               (aug-)cc-pwCXZ
+            !        cc-pwCVXZ: the ccRepo parameters
             ! ----------------------------------------------
-          case ("CC-PWCVQZ")
-            p = "cc-pwcvqz"
-            n = "cc-pwCVQZ"
-          case ("AUG-CC-PWCVQZ")
-            p = "aug-cc-pwcvqz"
-            n = "aug-cc-pwCVQZ"
-          case ("CC-PWCV5Z")
-            p = "cc-pwcv5z"
-            n = "cc-pwCV5Z"
-          case ("AUG-CC-PWCV5Z")
-            p = "aug-cc-pwcv5z"
-            n = "aug-cc-pwCV5Z"
+          case ("CC-PWCVDZ", "CC-PWCVTZ", "CC-PWCVQZ")
+            call basis_SourceLabel(p, n, "cc-repo/" // trim(adjustl(ValString)))
           case ("DEF2-QZVP")
             p = "def2-qzvp"
             n = "Def2-QZVP"
@@ -763,12 +767,17 @@ contains
       if (allocated(BasisAssign%GuessDir) .and. Rule%FromLibrary) then
          Rule%GuessAvailable = .true.
          !
-         ! GuessDir points to a root directory containing guess density files.
-         ! Each basis set has its own subdirectory under GuessDir named after
-         ! the BaseName of the basis set. The guess files for individual elements
-         ! will reside inside this subdirectory.
+         ! GuessDir is the root of the guess densities. A set from a named
+         ! source, BaseName = <source>/<name>, has its guesses in the
+         ! parallel folder <source>/<name>/. The default library uses
+         ! rohf/<name>/.
          !
-         Rule%PathToGuessDir = BasisAssign%GuessDir // Rule%BaseName // "/"
+         if (index(Rule%BaseName, DIRSEP) > 0) then
+            Rule%PathToGuessDir = BasisAssign%GuessDir // Rule%BaseName // DIRSEP
+         else
+            Rule%PathToGuessDir = BasisAssign%GuessDir // "rohf" // DIRSEP &
+               // Rule%BaseName // DIRSEP
+         end if
       else
          Rule%GuessAvailable = .false.
       end if
@@ -776,4 +785,33 @@ contains
       Rule%PathToParams = p
       Rule%DisplayedName = n
    end subroutine basis_ResolvePath
+
+
+   subroutine basis_SourceLabel(Path, DisplayedName, Label)
+      !
+      ! Split a library label <source>/<name> into the path of the basis
+      ! set file relative to the library directory, <source>/<name> in
+      ! lowercase, and the displayed name. Allowed sources: bse (Basis Set
+      ! Exchange) and cc-repo (ccRepo).
+      !
+      character(:), allocatable, intent(out) :: Path
+      character(:), allocatable, intent(out) :: DisplayedName
+      character(*), intent(in)               :: Label
+
+      character(:), allocatable :: Source, Name
+      integer :: k
+
+      k = index(Label, "/")
+      Source = lowercase(trim(adjustl(Label(1:k-1))))
+      Name = trim(adjustl(Label(k+1:)))
+      select case (Source)
+       case ("bse", "cc-repo")
+         DisplayedName = Name // " (basis-sets/" // Source // ")"
+       case default
+         call msg("Unknown basis set source: " // Source // &
+            ". Allowed sources: bse, cc-repo", MSG_ERROR)
+         error stop
+      end select
+      Path = Source // DIRSEP // lowercase(Name)
+   end subroutine basis_SourceLabel
 end module basis_definitions

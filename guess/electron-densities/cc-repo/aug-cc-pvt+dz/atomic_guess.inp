@@ -1,0 +1,24 @@
+! Atomic guess densities for cc-repo/aug-cc-pVT+dZ
+! The densities are written to the folder of this file.
+! Coordinates are ignored; every element gets an isolated-atom SCF.
+! Run from this folder: the basis set path is relative to it.
+
+jobtype atomic_guess
+
+basis file ../../../../basis-sets/cc-repo/aug-cc-pvt+dz.txt
+
+scf
+ maxniters 1024
+end
+
+xyz
+8
+Na       0.0000      0.0000      0.0000
+Mg       0.0000      0.0000     20.0000
+Al       0.0000      0.0000     40.0000
+Si       0.0000      0.0000     60.0000
+P        0.0000      0.0000     80.0000
+S        0.0000      0.0000    100.0000
+Cl       0.0000      0.0000    120.0000
+Ar       0.0000      0.0000    140.0000
+end

@@ -25,6 +25,7 @@ module drv_dft
    use TwoStepCholesky_definitions
    use drv_eri
    use TwoStepCholesky
+   use drv_atomic_guess
 
    implicit none
 
@@ -45,7 +46,8 @@ contains
       type(TSCFParams) :: HirshSCFParams
       type(TSCFOutput) :: HirshSCFOutput
       type(TAOBasis) :: HirshAOBasis
-      integer :: k
+      type(TBasisRule) :: Rule
+      integer :: k, i
       integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap
       integer :: NElements, ZNumber
       integer :: MaxNShells
@@ -62,19 +64,6 @@ contains
       call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
       call free_modules()
       call data_free()
-      !
-      ! Define an isolated atom
-      !
-      HirshAtom%SystemKind = SYS_MOLECULE
-      HirshAtom%SubsystemAtoms(1) = 1
-      HirshAtom%NAtoms = 1
-      HirshAtom%RealAtoms(:, 1) = [1, 1]
-      HirshAtom%RealAtoms(:, 2) = [1, 0]
-      allocate(HirshAtom%AtomCoords(3, 1))
-      HirshAtom%AtomCoords(:, 1) = [ZERO, ZERO, ZERO]
-      allocate(HirshAtom%ZNumbers(1))
-      HirshAtom%SubsystemCharges(1) = 0
-      HirshAtom%Charge = 0
       !
       ! Parameters controlling the SCF for an isolated atom
       !
@@ -96,44 +85,23 @@ contains
 
       do k = 1, NElements
          ZNumber = ZList(k)
-
-         block
-            type(TBasisAssignment) :: HirshBasisAssign
-            type(TBasisRule)       :: GlobalRule
-            integer                :: i
-
-            ! Extract rule for this element from the parent system
-            i = minloc(System%ZNumbers, dim=1, mask=(System%ZNumbers == ZNumber))
-            call BasisAssign%get_atom_rule(GlobalRule, i, ZNumber)
-            GlobalRule%id = 0
-
-            if (GlobalRule%FromLibrary) call HirshBasisAssign%set_library_dir(BasisAssign%LibraryDir)
-            if (GlobalRule%GuessAvailable) call HirshBasisAssign%set_guess_dir(BasisAssign%GuessDir)
-            call HirshBasisAssign%add_global_fallback(GlobalRule)
-
-            HirshAtom%ZNumbers(1) = ZNumber
-            HirshAtom%SubsystemMult(1) = unpaired_electrons(ZNumber) + 1
-            HirshAtom%Mult = unpaired_electrons(ZNumber) + 1
-            call sys_init(HirshAtom, SYS_TOTAL)
-
-            call data_load_2(HirshAtom)
-            call init_modules()
-            call basis_Init(HirshAOBasis, HirshAtom, BasisAssign=HirshBasisAssign)
-            call scf_driver_SpinUnres(HirshSCFOutput, HirshSCFParams, HirshAOBasis, HirshAtom)
-            !
-            ! Generate spherically-averaged atomic densities (summed over spins)
-            ! for all elements present in the system. Those densities are subsequently
-            ! used to compute the Hirshfeld weights at each point of the numerical
-            ! grid of the main system. The coefficients of the density matrices
-            ! are passed to the subroutines evaluated on the numerical grid
-            ! as the input array AUXIn.
-            !
-            call RhoSpherCoeffs(SCFParams%AUXIn(:, k), HirshSCFOutput%Rho_cao, HirshAOBasis)
-            SCFParams%HirshVolumes(k) = HirshSCFOutput%AUXOut(1)
-
-            call free_modules()
-            call data_free()
-         end block
+         i = minloc(System%ZNumbers, dim=1, mask=(System%ZNumbers == ZNumber))
+         call BasisAssign%get_atom_rule(Rule, i, ZNumber)
+         call drv_IsolatedAtomSCF(HirshSCFOutput, HirshAOBasis, HirshAtom, ZNumber, &
+            Rule, HirshSCFParams, LibraryDir=BasisAssign%LibraryDir, &
+            GuessDir=BasisAssign%GuessDir)
+         !
+         ! Generate spherically-averaged atomic densities (summed over spins)
+         ! for all elements present in the system. Those densities are subsequently
+         ! used to compute the Hirshfeld weights at each point of the numerical
+         ! grid of the main system. The coefficients of the density matrices
+         ! are passed to the subroutines evaluated on the numerical grid
+         ! as the input array AUXIn.
+         !
+         call RhoSpherCoeffs(SCFParams%AUXIn(:, k), HirshSCFOutput%Rho_cao, HirshAOBasis)
+         SCFParams%HirshVolumes(k) = HirshSCFOutput%AUXOut(1)
+         call free_modules()
+         call data_free()
       end do
    end subroutine task_dft_IsolatedHirshfeldAtoms_UKS
 

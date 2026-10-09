@@ -88,9 +88,9 @@ contains
                   sqrc = sq2
             end if
             !
-            ! Real solid harmonics are normalized to 1
-            ! instead of Racah's normalization in Helgaker's
-            ! textbook
+            ! Real spherical harmonics Sl^m are normalized to 1
+            ! on the unit sphere instead of Racah's normalization
+            ! in Helgaker's textbook
             !
             a = sqrt(real(2*l+1, F64)/fourpi)
             nslm = a * sqra * sqrb * sqrc / (real(2**abs(m), F64) * fact(l))
@@ -152,9 +152,9 @@ contains
             ! is computed in a single call.
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
-            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
-            ! For m = 0: Sl^m = Yl^m
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
+            ! For m = 0: Sl^m = Yl^0
             ! Yl^m are orthonormal, complex-valued spherical harmonics.
             ! ---------------------------------------------------------------
             ! 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
@@ -203,9 +203,9 @@ contains
             ! Sum(u+v+w=l+2*kappa) Clmk(lxlylzpos(u,v,w)) x**u y**v z**w
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
-            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
-            ! For m = 0: Sl^m = Yl^m
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
+            ! For m = 0: Sl^m = Yl^0
             ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! Definition of the expansion coefficients Clm:
             !
@@ -285,9 +285,9 @@ contains
             ! Int d Omega S_{l'm'} S_{lm} = delta_{ll'}delta{mm'}
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
-            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
-            ! For m = 0: Sl^m = Yl^m
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
+            ! For m = 0: Sl^m = Yl^0
             ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             ! ---------------------------------------------------------------
             ! 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
@@ -357,9 +357,9 @@ contains
             ! complex numbers.
             !
             ! Definition of real spherical harmonics:
-            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
-            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
-            ! For m = 0: Sl^m = Yl^m
+            ! For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
+            ! For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
+            ! For m = 0: Sl^m = Yl^0
             ! Yl^m are orthonormal, complex-valued spherical harmonics.            
             !
             real(F64), dimension(3), intent(out) :: lvec

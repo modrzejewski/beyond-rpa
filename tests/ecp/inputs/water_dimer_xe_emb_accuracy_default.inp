@@ -1,3 +1,4 @@
+! test category: fast
 ! reference values from pyscf
 ! HF single point AB (a.u.):           -151.93937544
 ! dRPA single point AB (a.u.):           -0.45785432

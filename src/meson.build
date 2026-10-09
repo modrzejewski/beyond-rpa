@@ -514,6 +514,7 @@ sources = files(
   'misc/mp2.f90',
   'driver/initialize.f90',
   'driver/drv_eri.f90',
+  'driver/drv_atomic_guess.f90',
   'driver/drv_dft.f90',
   'driver/drv_mp2.f90',
   'driver/drv_dft_rpa.f90',

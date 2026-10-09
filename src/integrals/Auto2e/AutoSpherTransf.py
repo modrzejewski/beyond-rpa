@@ -94,9 +94,9 @@ def Nslm(l, m):
     else:
         sqrc = sqrt(2)
     #
-    # Real solid harmonics are normalized to 1
-    # instead of Racah's normalization in Helgaker's
-    # textbook
+    # Real spherical harmonics Sl^m are normalized to 1
+    # on the unit sphere instead of Racah's normalization
+    # in Helgaker's textbook
     #
     a = sqrt((2*l+1)/(4*pi))
     return a * sqra * sqrb * sqrc / (2**abs(m) * factorial(l))
@@ -143,9 +143,9 @@ def RSHU_l_eq_j(l, m):
     # is computed in a single call.
     #
     # Definition of real spherical harmonics:
-    # For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re( Ylm )
-    # For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im( Ylm )
-    # For m = 0: Sl^m = Yl^m
+    # For m > 0: Sl^m = (-1)^m * Sqrt(2) * Re(Yl^m)
+    # For m < 0: Sl^m = (-1)^m * Sqrt(2) * Im(Yl^|m|)
+    # For m = 0: Sl^m = Yl^0
     # Yl^m are orthonormal, complex-valued spherical harmonics.    
     #
     # 1. Helgaker, T., Jorgensen, P., Olsen, J., Molecular
@@ -202,10 +202,10 @@ def RSHUV(LMax):
     #
     # The matrix U[(l,m,j)] contains coefficients of the transformation
     # from Cartesian polynomials x**lx * y**ly * z**lz, lx+ly+lz=j to
-    # real spherical harmonics Ylm normalized to one on
-    # the unit sphere.
+    # real spherical harmonics Sl^m normalized to one on
+    # the unit sphere (see RSHU_l_eq_j for the definition of Sl^m).
     #
-    # Ylm = Sum(lx+ly+lz=j) U[(l,m,j)][lx][ly][lz] x**lx * y**ly * z**lz
+    # Sl^m = Sum(lx+ly+lz=j) U[(l,m,j)][lx][ly][lz] x**lx * y**ly * z**lz
     #
     # The definition of the coefficients U[lx][ly][lz] is numerically
     # equivalent to the definition in Ref. 1, but it's coded according
@@ -218,8 +218,11 @@ def RSHUV(LMax):
     # The matrix V is the inverse of U and should be used to transform
     # the matrices which act on the atomic orbitals:
     #
-    # Sum(l,m) U[(l,m,j)][mx][my][mz] * U[(l,m,j)][nx][nx][nz] =
+    # Sum(l,m) V[(l,m,j)][mx][my][mz] * U[(l,m,j)][nx][ny][nz] =
     # delta(mx,nx) * delta(my,ny) * delta(mz,nz)
+    #
+    # The sum runs over l <= j with even j-l and over -l <= m <= l.
+    # test_UV prints this product for visual inspection.
     #
     #
     # 1. Moreno-Flores, R., Alvarez-Mendez, R., Vela, A., and

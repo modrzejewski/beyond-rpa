@@ -1,0 +1,14 @@
+! test category: fast
+! reference energy from pyscf: -199.6142329493
+jobtype uks sp
+basis cc-repo/cc-pwCVQZ
+
+scf
+ xcfunc HF
+ eri_algorithm exact
+end
+
+xyz
+1
+Mg 0.0 0.0 0.0
+end

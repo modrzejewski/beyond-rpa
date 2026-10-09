@@ -127,7 +127,7 @@ if __name__ == "__main__":
 
     all_files = get_input_files()
     if not args.full:
-        files = [f for f in all_files if utils.is_fast_ecp(f)]
+        files = [f for f in all_files if utils.is_fast_test(f)]
         if len(files) < len(all_files):
             print(f"Running {len(files)} fast tests. Use --full to run all {len(all_files)} tests.")
             print("-" * width)
