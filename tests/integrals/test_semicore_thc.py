@@ -160,7 +160,11 @@ def test_semicore_thc(filepath: Path, record_property):
     for level, (semicore, valence) in CV_INPUTS.items()
 ])
 def test_core_valence_correction(filepath: Path, valence: Path, record_property):
-    ref, calc = core_valence_correction(filepath, valence, utils.get_thread_count())
+    nthreads = utils.get_thread_count()
+    for f in (filepath, valence):
+        result = run(f, nthreads)
+        assert result.returncode == 0, f"beyond-rpa failed for {f.name}:\n{result.stderr}"
+    ref, calc = core_valence_correction(filepath, valence, nthreads)
     dev = abs(calc - ref)
     record_property(f"reference {CV_TERM}", ref)
     record_property(f"calculated {CV_TERM}", calc)

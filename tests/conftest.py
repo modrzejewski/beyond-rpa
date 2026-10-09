@@ -32,10 +32,10 @@ def pytest_collection_modifyitems(config, items):
         # Basis assignment tests are single-molecule SCF calculations, always fast
         is_basis = "test_basis" in getattr(item, "nodeid", "")
 
-        # ccRepo tests: the module's own rule, based on the input file name
+        # ccRepo tests: the module's own rule, all inputs fast
         is_cc_repo = "test_cc_repo" in getattr(item, "nodeid", "")
 
-        # Semicore THC grid tests: the module's own rule, based on the input file name
+        # Semicore THC grid tests: the module's own rule, based on the test category tag in the input preamble
         is_semicore_thc = "test_semicore_thc" in getattr(item, "nodeid", "")
 
         # Use shared logic to determine if it's slow
