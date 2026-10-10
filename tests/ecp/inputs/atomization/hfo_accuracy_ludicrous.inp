@@ -1,0 +1,19 @@
+! test category: fast
+
+basis_assignment
+  Hf bse/cc-pVTZ-PP
+  O  cc-repo/cc-pVTZ
+end
+
+scf
+  xcfunc HF
+  eri_algorithm cholesky
+  maxniters 256
+end
+
+xyz
+2
+mult 1
+Hf     0.000000    0.000000    0.000000
+O      0.000000    0.000000    1.700000
+end

@@ -1,0 +1,17 @@
+! test category: fast
+
+basis bse/cc-pVTZ-PP
+
+scf
+  xcfunc HF
+  eri_algorithm thc
+  thc_qrthresh 1.0E-4
+  lindepthresh 5.0E-6
+  maxniters 256
+end
+
+xyz
+1
+mult 4
+Ta     0.000000    0.000000    0.000000
+end
