@@ -617,18 +617,12 @@ contains
           case ("CC-PVDZ_OLD", "CC-PVDZ-OLD")
             p = "cc-pvdz"
             n = "cc-pVDZ (old)"
-          case ("CC-PVDZ-PP")
-            p = "cc-pvdz-pp"
-            n = "cc-pVDZ-PP"
           case ("AUG-CC-PVDZ", "AUG-CC-PV(D+D)Z")
             p = "aug-cc-pvddz"
             n = "aug-cc-pVDZ"
           case ("AUG-CC-PVDZ_OLD", "AUG-CC-PVDZ-OLD")
             p = "aug-cc-pvdz"
             n = "aug-cc-pVDZ (old)"
-          case ("AUG-CC-PVDZ-PP")
-            p = "aug-cc-pvdz-pp"
-            n = "aug-cc-pVDZ-PP"
           case ("D-AUG-CC-PVDZ")
             p = "d-aug-cc-pvdz"
             n = "d-aug-cc-pVDZ"
@@ -638,18 +632,12 @@ contains
           case ("CC-PVTZ_OLD", "CC-PVTZ-OLD")
             p = "cc-pvtz"
             n = "cc-pVTZ (old)"
-          case ("CC-PVTZ-PP")
-            p = "cc-pvtz-pp"
-            n = "cc-pVTZ-PP"
           case ("AUG-CC-PVTZ", "AUG-CC-PV(T+D)Z")
             p = "aug-cc-pvtdz"
             n = "aug-cc-pVTZ"
           case ("AUG-CC-PVTZ_OLD", "AUG-CC-PVTZ-OLD")
             p = "aug-cc-pvtz"
             n = "aug-cc-pVTZ (old)"
-          case ("AUG-CC-PVTZ-PP")
-            p = "aug-cc-pvtz-pp"
-            n = "aug-cc-pVTZ-PP"
           case ("D-AUG-CC-PVTZ")
             p = "d-aug-cc-pvtz"
             n = "d-aug-cc-pVTZ"
@@ -706,6 +694,13 @@ contains
           case ("DEF2-SV(P)", "DEF2-SVP", "DEF2-SVPD", &
              "DEF2-TZVP", "DEF2-TZVPD", "DEF2-TZVPP", "DEF2-TZVPPD", &
              "DEF2-QZVP", "DEF2-QZVPD", "DEF2-QZVPP", "DEF2-QZVPPD")
+            call basis_SourceLabel(p, n, "bse/" // trim(adjustl(ValString)))
+            ! ----------------------------------------------
+            !    cc-pVXZ-PP: the BSE parameters, ECP elements
+            !    only (Cu-Kr, Y-Xe, Hf-Rn)
+            ! ----------------------------------------------
+          case ("CC-PVDZ-PP", "CC-PVTZ-PP", "CC-PVQZ-PP", &
+             "AUG-CC-PVDZ-PP", "AUG-CC-PVTZ-PP", "AUG-CC-PVQZ-PP")
             call basis_SourceLabel(p, n, "bse/" // trim(adjustl(ValString)))
           case ("SADLEJ-PVTZ")
             p = "sadlej-pvtz"

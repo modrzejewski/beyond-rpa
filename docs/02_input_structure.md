@@ -45,8 +45,8 @@ The basis set name corresponds to the filenames available in the `basis-sets/` d
 | **bse** (downloaded October 2026) | |
 | `def2-sv(p)`, `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | def2 basis sets |
 | `def2-svpd`, `def2-tzvpd`, `def2-tzvppd`, `def2-qzvpd`, `def2-qzvppd` | def2 basis sets with diffuse functions |
-| `bse/cc-pvdz-pp`, `bse/cc-pvtz-pp`, `bse/cc-pvqz-pp` | correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
-| `bse/aug-cc-pvdz-pp`, `bse/aug-cc-pvtz-pp`, `bse/aug-cc-pvqz-pp` | augmented correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
+| `cc-pvdz-pp`, `cc-pvtz-pp`, `cc-pvqz-pp` | correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
+| `aug-cc-pvdz-pp`, `aug-cc-pvtz-pp`, `aug-cc-pvqz-pp` | augmented correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
 | **cc-repo** (downloaded October 2026) | |
 | `cc-repo/cc-pvdz`, `cc-repo/cc-pvtz`, `cc-repo/cc-pvqz` | correlation-consistent polarized valence basis sets |
 | `cc-repo/aug-cc-pvdz`, `cc-repo/aug-cc-pvtz`, `cc-repo/aug-cc-pvqz` | augmented correlation-consistent polarized valence basis sets |
