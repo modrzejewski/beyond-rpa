@@ -11,8 +11,6 @@ module real_scf
    use fbuild
    use fock2el
    use scf
-   use ecpint
-   use spin_orbit_ecp
    use grid
    use scf_definitions
    use basis_sets
