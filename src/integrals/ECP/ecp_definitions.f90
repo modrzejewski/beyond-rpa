@@ -345,8 +345,8 @@ contains
                   call io_text_readline(line, u, eof)
             end do
             
-            if (maxval(nkl(1:i)) > 2 .or. minval(nkl(1:i)) < 0) then
-                  call msg("Invalid ECP parameter: R^N exponent outside of the allowed range 0..2", MSG_ERROR)
+            if (minval(nkl(1:i)) < 0) then
+                  call msg("Invalid ECP parameter: negative R^N exponent", MSG_ERROR)
                   error stop
             end if
             
