@@ -700,39 +700,13 @@ contains
             ! ----------------------------------------------
           case ("CC-PWCVDZ", "CC-PWCVTZ", "CC-PWCVQZ")
             call basis_SourceLabel(p, n, "cc-repo/" // trim(adjustl(ValString)))
-          case ("DEF2-QZVP")
-            p = "def2-qzvp"
-            n = "Def2-QZVP"
-          case ("DEF2-QZVPD")
-            p = "def2-qzvpd"
-            n = "Def2-QZVPD"
-          case ("DEF2-QZVPP")
-            p = "def2-qzvpp"
-            n = "Def2-QZVPP"
-          case ("DEF2-QZVPPD")
-            p = "def2-qzvppd"
-            n = "Def2-QZVPPD"
-          case ("DEF2-SV(P)")
-            p = "def2-sv_p"
-            n = "Def2-SV(P)"
-          case ("DEF2-SVP")
-            p = "def2-svp"
-            n = "Def2-SVP"
-          case ("DEF2-SVPD")
-            p = "def2-svpd"
-            n = "Def2-SVPD"
-          case ("DEF2-TZVP")
-            p = "def2-tzvp"
-            n = "Def2-TZVP"
-          case ("DEF2-TZVPD")
-            p = "def2-tzvpd"
-            n = "Def2-TZVPD"
-          case ("DEF2-TZVPP")
-            p = "def2-tzvpp"
-            n = "Def2-TZVPP"
-          case ("DEF2-TZVPPD")
-            p = "def2-tzvppd"
-            n = "Def2-TZVPPD"
+            ! ----------------------------------------------
+            !        def2 sets: the BSE parameters
+            ! ----------------------------------------------
+          case ("DEF2-SV(P)", "DEF2-SVP", "DEF2-SVPD", &
+             "DEF2-TZVP", "DEF2-TZVPD", "DEF2-TZVPP", "DEF2-TZVPPD", &
+             "DEF2-QZVP", "DEF2-QZVPD", "DEF2-QZVPP", "DEF2-QZVPPD")
+            call basis_SourceLabel(p, n, "bse/" // trim(adjustl(ValString)))
           case ("SADLEJ-PVTZ")
             p = "sadlej-pvtz"
             n = "Sadlej-pVTZ"
