@@ -611,45 +611,27 @@ contains
              "6-311(3+, 3+)G(d, p)")
             p = "6-311g_triple_diff_all_pol_all"
             n = "6-311(3+,3+)G**"
-          case ("CC-PVDZ", "CC-PV(D+D)Z")
-            p = "cc-pvddz"
-            n = "cc-pVDZ"
           case ("CC-PVDZ_OLD", "CC-PVDZ-OLD")
             p = "cc-pvdz"
             n = "cc-pVDZ (old)"
-          case ("AUG-CC-PVDZ", "AUG-CC-PV(D+D)Z")
-            p = "aug-cc-pvddz"
-            n = "aug-cc-pVDZ"
           case ("AUG-CC-PVDZ_OLD", "AUG-CC-PVDZ-OLD")
             p = "aug-cc-pvdz"
             n = "aug-cc-pVDZ (old)"
           case ("D-AUG-CC-PVDZ")
             p = "d-aug-cc-pvdz"
             n = "d-aug-cc-pVDZ"
-          case ("CC-PVTZ", "CC-PV(T+D)Z")
-            p = "cc-pvtdz"
-            n = "cc-pVTZ"
           case ("CC-PVTZ_OLD", "CC-PVTZ-OLD")
             p = "cc-pvtz"
             n = "cc-pVTZ (old)"
-          case ("AUG-CC-PVTZ", "AUG-CC-PV(T+D)Z")
-            p = "aug-cc-pvtdz"
-            n = "aug-cc-pVTZ"
           case ("AUG-CC-PVTZ_OLD", "AUG-CC-PVTZ-OLD")
             p = "aug-cc-pvtz"
             n = "aug-cc-pVTZ (old)"
           case ("D-AUG-CC-PVTZ")
             p = "d-aug-cc-pvtz"
             n = "d-aug-cc-pVTZ"
-          case ("CC-PVQZ", "CC-PV(Q+D)Z")
-            p = "cc-pvqdz"
-            n = "cc-pVQZ"
           case ("CC-PVQZ_OLD", "CC-PVQZ-OLD")
             p = "cc-pvqz"
             n = "cc-pVQZ (old)"
-          case ("AUG-CC-PVQZ", "AUG-CC-PV(Q+D)Z")
-            p = "aug-cc-pvqdz"
-            n = "aug-cc-pVQZ"
           case ("AUG-CC-PVQZ_OLD", "AUG-CC-PVQZ-OLD")
             p = "aug-cc-pvqz"
             n = "aug-cc-pVQZ (old)"
@@ -684,10 +666,28 @@ contains
             p = "aug-cc-pcvqz"
             n = "aug-cc-pCVQZ"
             ! ----------------------------------------------
-            !        cc-pwCVXZ: the ccRepo parameters
+            !  (aug-)cc-pVXZ, cc-pwCVXZ: the ccRepo parameters
             ! ----------------------------------------------
-          case ("CC-PWCVDZ", "CC-PWCVTZ", "CC-PWCVQZ")
+          case ("CC-PVDZ", "CC-PVTZ", "CC-PVQZ", &
+             "AUG-CC-PVDZ", "AUG-CC-PVTZ", "AUG-CC-PVQZ", &
+             "CC-PWCVDZ", "CC-PWCVTZ", "CC-PWCVQZ")
             call basis_SourceLabel(p, n, "cc-repo/" // trim(adjustl(ValString)))
+            ! ----------------------------------------------
+            !   (aug-)cc-pV(X+d)Z: the ccRepo parameters,
+            !   Na-Ar only
+            ! ----------------------------------------------
+          case ("CC-PV(D+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/cc-pVD+dZ")
+          case ("CC-PV(T+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/cc-pVT+dZ")
+          case ("CC-PV(Q+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/cc-pVQ+dZ")
+          case ("AUG-CC-PV(D+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/aug-cc-pVD+dZ")
+          case ("AUG-CC-PV(T+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/aug-cc-pVT+dZ")
+          case ("AUG-CC-PV(Q+D)Z")
+            call basis_SourceLabel(p, n, "cc-repo/aug-cc-pVQ+dZ")
             ! ----------------------------------------------
             !        def2 sets: the BSE parameters
             ! ----------------------------------------------

@@ -36,23 +36,22 @@ end
 
 ## Basis set
 
-The basis set name corresponds to the filenames available in the `basis-sets/` directory (case-insensitive). The basis set parameters are downloaded from the EMSL basis set exchange website and from the correlation consistent basis sets repository (cc-repo) of the Hill Group at the University of Sheffield.
+The basis set name corresponds to the filenames available in the `basis-sets/` directory (case-insensitive). The basis set parameters are downloaded from the basis set exchange (bse) and from the correlation consistent basis sets repository (cc-repo) of the Hill Group at the University of Sheffield.
 
 | Keys | Description |
 |---|---|
-| `cc-pvdz`, `cc-pvtz`, `cc-pvqz`, `cc-pv5z` | correlation-consistent polarized valence basis sets |
-| `aug-cc-pvdz`, `aug-cc-pvtz`, `aug-cc-pvqz`, `aug-cc-pv5z` | augmented correlation-consistent polarized valence basis sets |
+| **cc-repo** (downloaded October 2026) | |
+| `cc-pvdz`, `cc-pvtz`, `cc-pvqz` | correlation-consistent polarized valence basis sets |
+| `aug-cc-pvdz`, `aug-cc-pvtz`, `aug-cc-pvqz` | augmented correlation-consistent polarized valence basis sets |
+| `cc-pv(d+d)z`, `cc-pv(t+d)z`, `cc-pv(q+d)z` | correlation-consistent polarized valence basis sets with tight d functions (Na–Ar) |
+| `aug-cc-pv(d+d)z`, `aug-cc-pv(t+d)z`, `aug-cc-pv(q+d)z` | augmented correlation-consistent polarized valence basis sets with tight d functions (Na–Ar) |
+| `cc-pwcvdz` | correlation-consistent polarized weighted core-valence basis set (Li–Ca, Ga–Kr) |
+| `cc-pwcvtz`, `cc-pwcvqz` | correlation-consistent polarized weighted core-valence basis sets (Li–Kr) |
 | **bse** (downloaded October 2026) | |
 | `def2-sv(p)`, `def2-svp`, `def2-tzvp`, `def2-tzvpp`, `def2-qzvp`, `def2-qzvpp` | def2 basis sets |
 | `def2-svpd`, `def2-tzvpd`, `def2-tzvppd`, `def2-qzvpd`, `def2-qzvppd` | def2 basis sets with diffuse functions |
 | `cc-pvdz-pp`, `cc-pvtz-pp`, `cc-pvqz-pp` | correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
 | `aug-cc-pvdz-pp`, `aug-cc-pvtz-pp`, `aug-cc-pvqz-pp` | augmented correlation-consistent polarized valence basis sets with pseudopotentials (Cu–Kr, Y–Xe, Hf–Rn) |
-| **cc-repo** (downloaded October 2026) | |
-| `cc-repo/cc-pvdz`, `cc-repo/cc-pvtz`, `cc-repo/cc-pvqz` | correlation-consistent polarized valence basis sets |
-| `cc-repo/aug-cc-pvdz`, `cc-repo/aug-cc-pvtz`, `cc-repo/aug-cc-pvqz` | augmented correlation-consistent polarized valence basis sets |
-| `cc-repo/cc-pvd+dz`, `cc-repo/cc-pvt+dz`, `cc-repo/cc-pvq+dz` | correlation-consistent polarized valence basis sets with tight d functions (Na, Mg, Al–Ar) |
-| `cc-repo/aug-cc-pvd+dz`, `cc-repo/aug-cc-pvt+dz`, `cc-repo/aug-cc-pvq+dz` | augmented correlation-consistent polarized valence basis sets with tight d functions (Na, Mg, Al–Ar) |
-| `cc-pwcvdz`, `cc-pwcvtz`, `cc-pwcvqz` | correlation-consistent polarized weighted core-valence basis sets |
 
 By default, a global basis set can be defined with the `basis` keyword. Alternatively, you can define different basis sets for specific elements or individual atoms using the `basis_assignment` block.
 
