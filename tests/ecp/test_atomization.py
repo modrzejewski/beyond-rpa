@@ -43,12 +43,10 @@ REFERENCE_KEY = "HF single point (a.u.)"
 #
 MOLECULES = [
     {"name": "hfo", "label": "HfO", "atoms": {"hf": 1, "o": 1}},
-    {"name": "tao", "label": "TaO", "atoms": {"ta": 1, "o": 1}},
-    {"name": "wo", "label": "WO", "atoms": {"w": 1, "o": 1}},
+    {"name": "tao", "label": "TaO+", "atoms": {"ta": 1, "o": 1}},
+    {"name": "wo", "label": "WO2+", "atoms": {"w": 1, "o": 1}},
     {"name": "hfh2", "label": "HfH2", "atoms": {"hf": 1, "h": 2}},
     {"name": "hfh4", "label": "HfH4", "atoms": {"hf": 1, "h": 4}},
-    {"name": "tah2", "label": "TaH2", "atoms": {"ta": 1, "h": 2}},
-    {"name": "tah3", "label": "TaH3", "atoms": {"ta": 1, "h": 3}},
     {"name": "wh12", "label": "W(H2)6", "atoms": {"w": 1, "h": 12}},
 ]
 ATOM_LABELS = {"hf": "Hf", "ta": "Ta", "w": "W", "o": "O", "h": "H"}
