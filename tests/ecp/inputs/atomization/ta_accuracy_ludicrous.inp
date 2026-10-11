@@ -1,5 +1,6 @@
 ! test category: fast
 ! reference values from pyscf
+! Charge:                 0
 ! Multiplicity:           4
 ! HF single point (a.u.): -56.7451654478
 

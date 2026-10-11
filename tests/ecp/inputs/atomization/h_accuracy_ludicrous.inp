@@ -1,4 +1,8 @@
 ! test category: fast
+! reference values from pyscf
+! Charge:                 0
+! Multiplicity:           2
+! HF single point (a.u.): -0.4998098113
 
 basis cc-repo/cc-pVTZ
 

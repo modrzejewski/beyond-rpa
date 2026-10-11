@@ -1,4 +1,8 @@
 ! test category: fast
+! reference values from pyscf
+! Charge:                 0
+! Multiplicity:           3
+! HF single point (a.u.): -49.1195240379
 
 basis_assignment
   Hf bse/cc-pVTZ-PP
