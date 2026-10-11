@@ -1,0 +1,28 @@
+Input: hfo
+Multiplicity:               1
+HF single point (a.u.):     -122.9403032709
+
+Input: tao
+Multiplicity:               2
+HF single point (a.u.):     -131.7087600103
+
+Input: wo
+Multiplicity:               3
+HF single point (a.u.):     -141.6104379067
+
+Input: hf
+Multiplicity:               3
+HF single point (a.u.):     -47.9485566673
+
+Input: ta
+Multiplicity:               4
+HF single point (a.u.):     -56.7451654478
+
+Input: w
+Multiplicity:               5
+HF single point (a.u.):     -66.6836210738
+
+Input: o
+Multiplicity:               3
+HF single point (a.u.):     -74.8117566196
+

@@ -1,4 +1,7 @@
 ! test category: fast
+! reference values from pyscf
+! Multiplicity:           3
+! HF single point (a.u.): -47.9485566673
 
 basis bse/cc-pVTZ-PP
 
