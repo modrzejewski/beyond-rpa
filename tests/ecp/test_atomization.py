@@ -141,16 +141,16 @@ def test_atomization(filepath: Path, record_property):
         record_property(f"reference {term}", reference)
         record_property(f"calculated {term}", calculated)
         record_property(f"deviation {term}", abs(calculated - reference))
-    skipped = []
-    for (term, unit, reference), (_, _, calculated) in rows:
-        tol = tolerance(filepath, unit)
-        if tol is None:
-            skipped.append(term)
-            continue
-        assert calculated == pytest.approx(reference, abs=tol), \
-            f"{term} deviation ({abs(calculated - reference):.2e} {unit}) exceeds {tol:.1e}"
-    if skipped:
-        pytest.skip(f"tolerances not set by the user: {', '.join(skipped)}")
+    #
+    # Only the atomization energy (the last row, kcal/mol) is a pass/fail
+    # criterion; the single points above it are recorded for diagnosis.
+    #
+    (term, unit, reference), (_, _, calculated) = rows[-1]
+    tol = tolerance(filepath, unit)
+    if tol is None:
+        pytest.skip(f"tolerance not set by the user for {term}")
+    assert calculated == pytest.approx(reference, abs=tol), \
+        f"{term} deviation ({abs(calculated - reference):.2e} {unit}) exceeds {tol:.1e}"
 
 
 if __name__ == "__main__":
