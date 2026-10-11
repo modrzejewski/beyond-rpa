@@ -1,12 +1,12 @@
 """
-Atomization Energy Test Suite for beyond-rpa: ECPs with r^2 terms.
+Atomization Energy Test Suite for beyond-rpa: PP basis sets.
 
 This module functions simultaneously as an automated pytest suite and a manual standalone debugging script.
 
-The cc-pVTZ-PP ECPs of Hf, Ta, and W contain r^2 Exp(-a r^2) terms. The HF atomization energies
-of HfO, TaO, and WO are assembled from the single points of the molecules and the atoms, and
-compared with PySCF references stored in the input preambles (see pyscf_atomization.py and
-inject_reference_preambles.py in the inputs directory). The single points are compared as well.
+The HF atomization energies of the molecules are assembled from the single points of the molecules
+and their atoms, and compared with PySCF references stored in the input preambles (see
+pyscf_atomization.py and inject_reference_preambles.py in the inputs directory). The single points
+are compared as well.
 """
 
 import re
@@ -39,27 +39,41 @@ HARTREE_TO_KCAL = 627.5094688043
 FLOAT_REGEX = r"([-+]?\d*\.\d+(?:[Ee][-+]?\d+)?)"
 REFERENCE_KEY = "HF single point (a.u.)"
 #
-# Oxide input name: (oxide, metal, metal input name)
+# Each molecule: input name, label, and the input names and numbers of its atoms
 #
-OXIDES = {
-    "hfo": ("HfO", "Hf", "hf"),
-    "tao": ("TaO", "Ta", "ta"),
-    "wo": ("WO", "W", "w"),
-}
-OXYGEN = "o"
+MOLECULES = [
+    {"name": "hfo", "label": "HfO", "atoms": {"hf": 1, "o": 1}},
+    {"name": "tao", "label": "TaO", "atoms": {"ta": 1, "o": 1}},
+    {"name": "wo", "label": "WO", "atoms": {"w": 1, "o": 1}},
+    {"name": "hfh2", "label": "HfH2", "atoms": {"hf": 1, "h": 2}},
+    {"name": "hfh4", "label": "HfH4", "atoms": {"hf": 1, "h": 4}},
+    {"name": "tah2", "label": "TaH2", "atoms": {"ta": 1, "h": 2}},
+    {"name": "tah3", "label": "TaH3", "atoms": {"ta": 1, "h": 3}},
+    {"name": "wh12", "label": "W(H2)6", "atoms": {"w": 1, "h": 12}},
+]
+ATOM_LABELS = {"hf": "Hf", "ta": "Ta", "w": "W", "o": "O", "h": "H"}
 _results = {}
 
 
 def get_reference_inputs() -> list[Path]:
-    return sorted(f for name in OXIDES for f in INPUTS_DIR.glob(f"{name}_accuracy_*.inp"))
+    return sorted(f for molecule in MOLECULES for f in INPUTS_DIR.glob(f"{molecule['name']}_accuracy_*.inp"))
 
 
 def accuracy(filepath: Path) -> str:
     return filepath.stem.rsplit("_accuracy_", 1)[1]
 
 
-def companion(filepath: Path, name: str) -> Path:
+def molecule_of(filepath: Path) -> dict:
+    name = filepath.stem.rsplit("_accuracy_", 1)[0]
+    return next(molecule for molecule in MOLECULES if molecule["name"] == name)
+
+
+def atom_input(filepath: Path, name: str) -> Path:
     return INPUTS_DIR / f"{name}_accuracy_{accuracy(filepath)}.inp"
+
+
+def inputs_of(filepath: Path) -> list[Path]:
+    return [filepath] + [atom_input(filepath, name) for name in molecule_of(filepath)["atoms"]]
 
 
 def run(filepath: Path, nthreads: int) -> float | None:
@@ -81,25 +95,17 @@ def extract_ref_energy(filepath: Path) -> float | None:
 
 
 def terms(filepath: Path, energies: dict) -> list[tuple[str, str, float | None]]:
-    """Return (term, unit, value) rows of one oxide from the energies of its three inputs."""
-    oxide, metal, metal_name = OXIDES[filepath.stem.rsplit("_accuracy_", 1)[0]]
-    e_oxide = energies[filepath]
-    e_metal = energies[companion(filepath, metal_name)]
-    e_oxygen = energies[companion(filepath, OXYGEN)]
+    """Return (term, unit, value) rows of one molecule from the energies of its inputs."""
+    molecule = molecule_of(filepath)
+    rows = [(f"E({molecule['label']})", "a.u.", energies[filepath])]
+    for name in molecule["atoms"]:
+        rows.append((f"E({ATOM_LABELS[name]})", "a.u.", energies[atom_input(filepath, name)]))
     atomization = None
-    if None not in (e_oxide, e_metal, e_oxygen):
-        atomization = (e_metal + e_oxygen - e_oxide) * HARTREE_TO_KCAL
-    return [
-        (f"E({oxide})", "a.u.", e_oxide),
-        (f"E({metal})", "a.u.", e_metal),
-        ("E(O)", "a.u.", e_oxygen),
-        (f"D({metal}-O)", "kcal/mol", atomization),
-    ]
-
-
-def inputs_of(filepath: Path) -> list[Path]:
-    metal_name = OXIDES[filepath.stem.rsplit("_accuracy_", 1)[0]][2]
-    return [filepath, companion(filepath, metal_name), companion(filepath, OXYGEN)]
+    if None not in energies.values():
+        atoms = sum(n * energies[atom_input(filepath, name)] for name, n in molecule["atoms"].items())
+        atomization = (atoms - energies[filepath]) * HARTREE_TO_KCAL
+    rows.append((f"D({molecule['label']})", "kcal/mol", atomization))
+    return rows
 
 
 def tolerance(filepath: Path, unit: str) -> float | None:
@@ -151,7 +157,7 @@ if __name__ == "__main__":
     if not args.full:
         files = [f for f in files if utils.is_fast_test(f)]
 
-    header = f"{'Term':<9} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
+    header = f"{'Term':<10} | {'Unit':<8} | {'Ref':>16} | {'Calc':>16} | {'Deviation':>10} | Status"
     width = len(header)
     print("\n" + "." * width)
     print(header)
@@ -169,12 +175,14 @@ if __name__ == "__main__":
             print("-" * width)
             continue
         print(f"done ({elapsed:.2f}s)")
+        if None in ref.values():
+            missing = ", ".join(f.stem for f, energy in ref.items() if energy is None)
+            print(f"Reference energies missing: {missing}")
+            print("-" * width)
+            continue
         for (term, unit, reference), (_, _, calculated) in zip(terms(filepath, ref), terms(filepath, calc)):
-            if reference is None:
-                print(f"{term:<9} | {unit:<8} | {'N/A':>16} | {calculated:>16.8f} | {'N/A':>10} | ERROR")
-                continue
             dev = abs(calculated - reference)
             tol = tolerance(filepath, unit)
             status = "NO TOL" if tol is None else ("PASSED" if dev <= tol else "FAILED")
-            print(f"{term:<9} | {unit:<8} | {reference:>16.8f} | {calculated:>16.8f} | {dev:>10.2e} | {status}")
+            print(f"{term:<10} | {unit:<8} | {reference:>16.8f} | {calculated:>16.8f} | {dev:>10.2e} | {status}")
         print("-" * width)

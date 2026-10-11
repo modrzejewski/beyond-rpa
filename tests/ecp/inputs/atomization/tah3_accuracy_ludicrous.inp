@@ -1,0 +1,21 @@
+! test category: fast
+
+basis_assignment
+  Ta bse/cc-pVTZ-PP
+  H  cc-repo/cc-pVTZ
+end
+
+scf
+  xcfunc HF
+  eri_algorithm cholesky
+  maxniters 256
+end
+
+xyz
+4
+mult 3
+Ta     0.00000000    0.00000000    0.00000000
+H     -0.89830450   -1.55590904    0.00000000
+H     -0.89830450    1.55590904    0.00000000
+H      1.79660900    0.00000000    0.00000000
+end

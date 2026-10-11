@@ -1,0 +1,22 @@
+! test category: fast
+
+basis_assignment
+  Hf bse/cc-pVTZ-PP
+  H  cc-repo/cc-pVTZ
+end
+
+scf
+  xcfunc HF
+  eri_algorithm thc
+  thc_qrthresh 1.0E-4
+  lindepthresh 5.0E-6
+  maxniters 256
+end
+
+xyz
+3
+mult 3
+Hf     0.00000000    0.00000000   -0.74088040
+H      1.50747855    0.00000000    0.37044020
+H     -1.50747855    0.00000000    0.37044020
+end

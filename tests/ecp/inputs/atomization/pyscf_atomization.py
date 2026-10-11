@@ -1,86 +1,212 @@
 """
-PySCF reference energies for the atomization tests: HfO, TaO, and WO.
+PySCF reference energies for the atomization test set with PP basis sets.
 
-The cc-pVTZ-PP ECPs of Hf, Ta, and W contain r^2 Exp(-a r^2) terms (R^N
-exponent 4 in the library files). The test compares the HF atomization
-energies of the oxides, assembled from the single points of the molecules and
-the atoms. The basis sets are cc-pVTZ-PP on the metals and cc-pVTZ on O. The
-built-in PySCF basis sets and ECPs equal bse/cc-pVTZ-PP and cc-repo/cc-pVTZ
-of beyond-rpa.
+The basis sets are cc-pVTZ-PP on the elements with ECPs and cc-pVTZ on the
+others; the built-in PySCF data equal bse/cc-pVTZ-PP and cc-repo/cc-pVTZ of
+beyond-rpa. Closed shells are RHF, as in beyond-rpa, and open shells are UHF.
+Every species starts from several initial guesses, and each solution is
+followed through internal stability analysis until it is stable. The lowest
+stable energy is the reference.
 
-For each input, print the HF single-point energy. Closed shells are RHF, as in
-beyond-rpa. Open shells are UHF: the lowest energy over several initial
-guesses, each followed by internal stability analysis. The bond length is
-1.70 Angstrom for all oxides; it is a test geometry, not the equilibrium.
+The geometries and multiplicities of the hydrides are those of the DFT-D3
+reference molecules of the Grimme group, with the coordinates converted from
+bohr (1 bohr = 0.529177210903 Angstrom).
 
-Usage: python pyscf_atomization.py > pyscf_atomization.txt
-Then run inject_reference_preambles.py to update the input files.
+Usage: python pyscf_atomization.py
+Progress is printed on the screen and the references are written to
+pyscf_atomization.txt; then run inject_reference_preambles.py.
 Requires pyscf (references were generated with pyscf 2.12.0).
 """
 from __future__ import annotations
 
+import time
+from pathlib import Path
+
 from pyscf import gto, scf
 
-BOND_LENGTH = 1.70
-BASIS = {"Hf": "cc-pvtz-pp", "Ta": "cc-pvtz-pp", "W": "cc-pvtz-pp", "O": "cc-pvtz"}
+OUTPUT = Path(__file__).resolve().parent / "pyscf_atomization.txt"
+BASIS = {"Hf": "cc-pvtz-pp", "Ta": "cc-pvtz-pp", "W": "cc-pvtz-pp", "O": "cc-pvtz", "H": "cc-pvtz"}
 ECP = {"Hf": "cc-pvtz-pp", "Ta": "cc-pvtz-pp", "W": "cc-pvtz-pp"}
-INITIAL_GUESSES = ("minao", "atom", "huckel", "1e")
+INITIAL_GUESSES = ("minao", "atom", "huckel", "1e", "vsap")
+MAX_CYCLE = 256
+STABILITY_ROUNDS = 10
 SPECIES = [
-    {"name": "hfo", "geometry": f"Hf 0 0 0; O 0 0 {BOND_LENGTH}", "multiplicity": 1},
-    {"name": "tao", "geometry": f"Ta 0 0 0; O 0 0 {BOND_LENGTH}", "multiplicity": 2},
-    {"name": "wo", "geometry": f"W 0 0 0; O 0 0 {BOND_LENGTH}", "multiplicity": 3},
-    {"name": "hf", "geometry": "Hf 0 0 0", "multiplicity": 3},
-    {"name": "ta", "geometry": "Ta 0 0 0", "multiplicity": 4},
-    {"name": "w", "geometry": "W 0 0 0", "multiplicity": 5},
-    {"name": "o", "geometry": "O 0 0 0", "multiplicity": 3},
+    {
+        "name": "hfo",
+        "multiplicity": 1,
+        "geometry": """
+            Hf  0.00000000  0.00000000  0.00000000
+            O   0.00000000  0.00000000  1.70000000
+        """,
+    },
+    {
+        "name": "tao",
+        "multiplicity": 2,
+        "geometry": """
+            Ta  0.00000000  0.00000000  0.00000000
+            O   0.00000000  0.00000000  1.70000000
+        """,
+    },
+    {
+        "name": "wo",
+        "multiplicity": 3,
+        "geometry": """
+            W   0.00000000  0.00000000  0.00000000
+            O   0.00000000  0.00000000  1.70000000
+        """,
+    },
+    {
+        "name": "hfh2",
+        "multiplicity": 3,
+        "geometry": """
+            Hf  0.00000000  0.00000000 -0.74088040
+            H   1.50747855  0.00000000  0.37044020
+            H  -1.50747855  0.00000000  0.37044020
+        """,
+    },
+    {
+        "name": "hfh4",
+        "multiplicity": 1,
+        "geometry": """
+            Hf  0.00000000  0.00000000  0.00000000
+            H   1.06685503 -1.06685503  1.06685503
+            H  -1.06685503  1.06685503  1.06685503
+            H   1.06685503  1.06685503 -1.06685503
+            H  -1.06685503 -1.06685503 -1.06685503
+        """,
+    },
+    {
+        "name": "tah2",
+        "multiplicity": 4,
+        "geometry": """
+            Ta  0.00000000  0.00000000 -0.61701204
+            H   1.51541391  0.00000000  0.30850602
+            H  -1.51541391  0.00000000  0.30850602
+        """,
+    },
+    {
+        "name": "tah3",
+        "multiplicity": 3,
+        "geometry": """
+            Ta  0.00000000  0.00000000  0.00000000
+            H  -0.89830450 -1.55590904  0.00000000
+            H  -0.89830450  1.55590904  0.00000000
+            H   1.79660900  0.00000000  0.00000000
+        """,
+    },
+    #
+    # W(H2)6, six side-on H2 ligands: the DFT-D3 structure wh2.coord
+    # (0 unpaired electrons, coordination number 10.9)
+    #
+    {
+        "name": "wh12",
+        "multiplicity": 1,
+        "geometry": """
+            W   0.00000000  0.00000000  0.00000000
+            H   1.31759186 -1.04272642 -0.66598229
+            H  -0.38940854  1.27265455 -1.21878224
+            H   1.31759186  1.04272642  0.66598229
+            H   1.29685544 -0.29908959 -1.21878224
+            H  -0.38940854 -1.27265455  1.21878224
+            H   0.24423164  1.66243123 -0.66598229
+            H   1.29685544  0.29908959  1.21878224
+            H  -0.90744690  0.97356496  1.21878224
+            H  -0.90744690 -0.97356496 -1.21878224
+            H  -1.56182350  0.61970481  0.66598229
+            H   0.24423164 -1.66243123  0.66598229
+            H  -1.56182350 -0.61970481 -0.66598229
+        """,
+    },
+    {"name": "hf", "multiplicity": 3, "geometry": "Hf 0.0 0.0 0.0"},
+    {"name": "ta", "multiplicity": 4, "geometry": "Ta 0.0 0.0 0.0"},
+    {"name": "w", "multiplicity": 5, "geometry": "W 0.0 0.0 0.0"},
+    {"name": "o", "multiplicity": 3, "geometry": "O 0.0 0.0 0.0"},
+    {"name": "h", "multiplicity": 2, "geometry": "H 0.0 0.0 0.0"},
 ]
 
 
-def stable_energy(mean_field) -> float | None:
-    """Converge, follow internal instabilities, and return the energy."""
+def solve(mol: gto.Mole, guess: str) -> dict:
+    """Converge from one initial guess and follow internal instabilities."""
+    start = time.time()
+    mean_field = scf.RHF(mol) if mol.spin == 0 else scf.UHF(mol)
+    mean_field.init_guess = guess
     mean_field.conv_tol = 1.0e-12
-    mean_field.max_cycle = 256
-    try:
-        mean_field.kernel()
+    mean_field.max_cycle = MAX_CYCLE
+    mean_field.kernel()
+    rounds = 0
+    mo, _, stable, _ = mean_field.stability(return_status=True)
+    while not stable and rounds < STABILITY_ROUNDS:
+        rounds += 1
+        mean_field.kernel(mean_field.make_rdm1(mo, mean_field.mo_occ))
         mo, _, stable, _ = mean_field.stability(return_status=True)
-        for _ in range(10):
-            if stable:
-                break
-            mean_field.kernel(mean_field.make_rdm1(mo, mean_field.mo_occ))
-            mo, _, stable, _ = mean_field.stability(return_status=True)
-    except RuntimeError:
-        return None
-    return mean_field.e_tot if mean_field.converged and stable else None
+    solution = {
+        "energy": mean_field.e_tot,
+        "converged": mean_field.converged,
+        "stable": stable,
+        "rounds": rounds,
+        "seconds": time.time() - start,
+    }
+    if mol.spin == 0:
+        #
+        # beyond-rpa runs closed shells spin-restricted, so an RHF -> UHF
+        # instability is only reported
+        #
+        _, _, _, solution["stable_uhf"] = mean_field.stability(external=True, return_status=True)
+    else:
+        solution["s2"] = mean_field.spin_square()[0]
+    return solution
 
 
-def hartree_fock(mol: gto.Mole) -> float:
-    """Return the RHF energy of a closed shell, else the lowest UHF energy."""
+def describe(solution: dict) -> str:
+    status = "stable" if solution["converged"] and solution["stable"] else "NOT CONVERGED OR UNSTABLE"
+    text = f"E = {solution['energy']:.10f}  {status}, {solution['rounds']} stability rounds"
+    if "s2" in solution:
+        text += f", <S^2> = {solution['s2']:.4f}"
+    elif not solution["stable_uhf"]:
+        text += ", unstable toward UHF"
+    return text + f"  ({solution['seconds']:.1f} s)"
+
+
+def reference(system: dict) -> float:
+    """Return the lowest stable energy over the initial guesses."""
+    mol = gto.M(
+        atom=system["geometry"],
+        spin=system["multiplicity"] - 1,
+        basis=BASIS,
+        ecp=ECP,
+        verbose=0,
+    )
     energies = []
     for guess in INITIAL_GUESSES:
-        mean_field = scf.RHF(mol) if mol.spin == 0 else scf.UHF(mol)
-        mean_field.init_guess = guess
-        energy = stable_energy(mean_field)
-        if energy is not None:
-            energies.append(energy)
+        try:
+            solution = solve(mol, guess)
+        except Exception as error:
+            print(f"  {guess:<7} failed: {error.__class__.__name__}: {error}", flush=True)
+            continue
+        print(f"  {guess:<7} {describe(solution)}", flush=True)
+        if solution["converged"] and solution["stable"]:
+            energies.append((solution["energy"], guess))
     if not energies:
-        raise RuntimeError(f"no converged, stable HF solution for {mol.atom}")
-    return min(energies)
+        raise RuntimeError(f"{system['name']}: no converged, stable HF solution")
+    energy, guess = min(energies)
+    spread = max(e for e, _ in energies) - energy
+    print(f"  reference E = {energy:.10f} from {guess}; spread of stable solutions {spread:.1e}", flush=True)
+    return energy
 
 
 def main() -> None:
-    for system in SPECIES:
-        mol = gto.M(
-            atom=system["geometry"],
-            spin=system["multiplicity"] - 1,
-            basis=BASIS,
-            ecp=ECP,
-            verbose=0,
+    blocks = []
+    for k, system in enumerate(SPECIES, start=1):
+        kind = "RHF" if system["multiplicity"] == 1 else "UHF"
+        print(f"[{k}/{len(SPECIES)}] {system['name']}: 2S+1 = {system['multiplicity']}, {kind}", flush=True)
+        energy = reference(system)
+        blocks.append(
+            f"Input: {system['name']}\n"
+            f"Multiplicity:               {system['multiplicity']}\n"
+            f"HF single point (a.u.):     {energy:.10f}\n"
         )
-        energy = hartree_fock(mol)
-        print(f"Input: {system['name']}")
-        print(f"Multiplicity:               {system['multiplicity']}")
-        print(f"HF single point (a.u.):     {energy:.10f}")
-        print(flush=True)
+    OUTPUT.write_text("\n".join(blocks))
+    print(f"Wrote {OUTPUT}", flush=True)
 
 
 if __name__ == "__main__":

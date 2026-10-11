@@ -1,0 +1,15 @@
+! test category: fast
+
+basis cc-repo/cc-pVTZ
+
+scf
+  xcfunc HF
+  eri_algorithm cholesky
+  maxniters 256
+end
+
+xyz
+1
+mult 2
+H      0.00000000    0.00000000    0.00000000
+end
