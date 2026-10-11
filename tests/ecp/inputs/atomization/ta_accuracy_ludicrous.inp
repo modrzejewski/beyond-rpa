@@ -2,14 +2,14 @@
 ! reference values from pyscf
 ! Charge:                 0
 ! Multiplicity:           4
-! HF single point (a.u.): -56.7451654478
+! HF single point (a.u.): -56.7400497564
 
 basis bse/cc-pVTZ-PP
 
 scf
   xcfunc HF
   eri_algorithm cholesky
-  maxniters 256
+  maxniters 1024
 end
 
 xyz

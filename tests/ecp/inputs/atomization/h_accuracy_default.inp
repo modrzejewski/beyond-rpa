@@ -2,7 +2,7 @@
 ! reference values from pyscf
 ! Charge:                 0
 ! Multiplicity:           2
-! HF single point (a.u.): -0.4998098113
+! HF single point (a.u.): -0.4992784034
 
 basis cc-repo/cc-pVTZ
 
@@ -11,7 +11,7 @@ scf
   eri_algorithm thc
   thc_qrthresh 1.0E-4
   lindepthresh 5.0E-6
-  maxniters 256
+  maxniters 1024
 end
 
 xyz

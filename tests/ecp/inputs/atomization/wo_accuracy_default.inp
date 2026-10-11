@@ -2,7 +2,7 @@
 ! reference values from pyscf
 ! Charge:                 2
 ! Multiplicity:           1
-! HF single point (a.u.): -140.7220070127
+! HF single point (a.u.): -140.6858933584
 
 basis_assignment
   W  bse/cc-pVTZ-PP

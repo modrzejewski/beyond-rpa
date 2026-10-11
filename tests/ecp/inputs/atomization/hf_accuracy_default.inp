@@ -2,7 +2,7 @@
 ! reference values from pyscf
 ! Charge:                 0
 ! Multiplicity:           3
-! HF single point (a.u.): -47.9485566673
+! HF single point (a.u.): -47.9430878817
 
 basis bse/cc-pVTZ-PP
 
@@ -11,7 +11,7 @@ scf
   eri_algorithm thc
   thc_qrthresh 1.0E-4
   lindepthresh 5.0E-6
-  maxniters 256
+  maxniters 1024
 end
 
 xyz
