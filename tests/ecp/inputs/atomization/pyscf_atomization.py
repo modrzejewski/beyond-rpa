@@ -4,8 +4,9 @@ PySCF reference energies for the atomization test set with PP basis sets.
 The basis sets are cc-pVTZ-PP on the elements with ECPs and cc-pVTZ on the
 others; the built-in PySCF data equal bse/cc-pVTZ-PP and cc-repo/cc-pVTZ of
 beyond-rpa. Closed shells are RHF, as in beyond-rpa, and open shells are UHF.
-Every species starts from the default initial guess. A solution that is not
-converged or not stable is an error.
+Every species starts from the default initial guess. An unstable solution of
+an atom is followed until it is stable. A solution that is not converged or
+not stable is an error.
 
 The geometries and multiplicities of the hydrides are those of the DFT-D3
 reference molecules of the Grimme group, with the coordinates converted from
@@ -25,6 +26,7 @@ OUTPUT = Path(__file__).resolve().parent / "pyscf_atomization.txt"
 BASIS = {"Hf": "cc-pvtz-pp", "Ta": "cc-pvtz-pp", "W": "cc-pvtz-pp", "O": "cc-pvtz", "H": "cc-pvtz"}
 ECP = {"Hf": "cc-pvtz-pp", "Ta": "cc-pvtz-pp", "W": "cc-pvtz-pp"}
 MAX_CYCLE = 256
+STABILITY_ROUNDS = 10
 SPECIES = [
     {
         "name": "hfo",
@@ -108,7 +110,11 @@ SPECIES = [
 
 
 def reference(system):
-    """Return the HF energy; raise an error if it is not converged or not stable."""
+    """
+    Return the HF solution and the number of stability rounds. An unstable
+    solution of an atom is followed until it is stable. A solution that is
+    not converged or not stable is an error.
+    """
     mol = gto.M(
         atom=system["geometry"],
         charge=system["charge"],
@@ -121,12 +127,17 @@ def reference(system):
     mean_field.conv_tol = 1.0e-12
     mean_field.max_cycle = MAX_CYCLE
     mean_field.kernel()
+    mo, _, stable, _ = mean_field.stability(return_status=True)
+    rounds = 0
+    while not stable and mol.natm == 1 and rounds < STABILITY_ROUNDS:
+        rounds += 1
+        mean_field.kernel(mean_field.make_rdm1(mo, mean_field.mo_occ))
+        mo, _, stable, _ = mean_field.stability(return_status=True)
     if not mean_field.converged:
         raise RuntimeError(f"{system['name']}: SCF not converged")
-    _, _, stable, _ = mean_field.stability(return_status=True)
     if not stable:
         raise RuntimeError(f"{system['name']}: the HF solution is not stable")
-    return mean_field
+    return mean_field, rounds
 
 
 def main():
@@ -134,9 +145,10 @@ def main():
     for k, system in enumerate(SPECIES, start=1):
         print(f"[{k}/{len(SPECIES)}] {system['name']}... ", end="", flush=True)
         start = time.time()
-        mean_field = reference(system)
+        mean_field, rounds = reference(system)
         s2 = f", <S^2> = {mean_field.spin_square()[0]:.4f}" if mean_field.mol.spin != 0 else ""
-        print(f"E = {mean_field.e_tot:.10f}{s2}  ({time.time() - start:.1f} s)", flush=True)
+        followed = f", stable after {rounds} stability rounds" if rounds > 0 else ""
+        print(f"E = {mean_field.e_tot:.10f}{s2}{followed}  ({time.time() - start:.1f} s)", flush=True)
         blocks.append(
             f"Input: {system['name']}\n"
             f"Charge:                     {system['charge']}\n"
