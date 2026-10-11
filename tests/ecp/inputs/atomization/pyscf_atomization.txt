@@ -1,54 +1,54 @@
 Input: hfo
 Charge:                     0
 Multiplicity:               1
-HF single point (a.u.):     -122.9061717579
+HF single point (a.u.):     -122.9403032709
 
 Input: tao
 Charge:                     1
 Multiplicity:               1
-HF single point (a.u.):     -131.3595955224
+HF single point (a.u.):     -131.3942028729
 
 Input: wo
 Charge:                     2
 Multiplicity:               1
-HF single point (a.u.):     -140.6858933584
+HF single point (a.u.):     -140.7220070127
 
 Input: hfh2
 Charge:                     0
 Multiplicity:               3
-HF single point (a.u.):     -49.1122893358
+HF single point (a.u.):     -49.1195240379
 
 Input: hfh4
 Charge:                     0
 Multiplicity:               1
-HF single point (a.u.):     -50.3166661946
+HF single point (a.u.):     -50.3257665952
 
 Input: wh12
 Charge:                     0
 Multiplicity:               1
-HF single point (a.u.):     -73.4576181940
+HF single point (a.u.):     -73.4759694022
 
 Input: hf
 Charge:                     0
 Multiplicity:               3
-HF single point (a.u.):     -47.9430878817
+HF single point (a.u.):     -47.9485566673
 
 Input: ta
 Charge:                     0
 Multiplicity:               4
-HF single point (a.u.):     -56.7400497564
+HF single point (a.u.):     -56.7451654478
 
 Input: w
 Charge:                     0
 Multiplicity:               5
-HF single point (a.u.):     -66.6786085587
+HF single point (a.u.):     -66.6836210738
 
 Input: o
 Charge:                     0
 Multiplicity:               3
-HF single point (a.u.):     -74.7921660583
+HF single point (a.u.):     -74.8117566196
 
 Input: h
 Charge:                     0
 Multiplicity:               2
-HF single point (a.u.):     -0.4992784034
+HF single point (a.u.):     -0.4998098113

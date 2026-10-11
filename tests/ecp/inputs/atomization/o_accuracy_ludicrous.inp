@@ -2,7 +2,7 @@
 ! reference values from pyscf
 ! Charge:                 0
 ! Multiplicity:           3
-! HF single point (a.u.): -74.7921660583
+! HF single point (a.u.): -74.8117566196
 
 basis cc-repo/cc-pVTZ
 
