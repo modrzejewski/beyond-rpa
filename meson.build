@@ -120,6 +120,18 @@ if pytest.found()
     workdir: meson.project_source_root()
   )
 
+  test('ecp_atomization',
+    pytest,
+    args: [
+      '-v', '-s',
+      '--junitxml=ecp_atomization_report.xml',
+      meson.project_source_root() / 'tests' / 'ecp' / 'test_atomization.py'
+    ],
+    depends: post_build_target,
+    timeout: 1800,
+    workdir: meson.project_source_root()
+  )
+
   test('embedding',
     pytest,
     args: [

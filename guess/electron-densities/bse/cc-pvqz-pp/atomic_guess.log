@@ -1,0 +1,3206 @@
+% Job started at Sat Oct 10 08:42:35 UTC 2026
+% User                     modrzejewski
+% Node name                e1221
+% Executable               /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/bin/a
+% Launcher                 
+% Compiler command         ifort -qopenmp -O3 -xHost -no-prec-div -i8 -qmkl -coarray -warn all -I./obj/
+% Source compiled at       Fri Oct 09 17:08:07 UTC 2026
+% Process ID               674038
+% Job identifier           20261010084235_674038
+% Stack size (main thread) unlimited
+% Stack size (other)       65536 kB
+ ----------------------------------------------------------------------------
+ LOADED INPUT FILE
+ /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/atomic_guess.inp
+ ----------------------------------------------------------------------------
+ > jobtype atomic_guess
+ > basis file ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ > scf
+ > maxniters 1024 
+ > end
+ > xyz
+ > 39
+ > Cu       0.0000      0.0000      0.0000
+ > Zn       0.0000      0.0000     20.0000
+ > Ga       0.0000      0.0000     40.0000
+ > Ge       0.0000      0.0000     60.0000
+ > As       0.0000      0.0000     80.0000
+ > Se       0.0000      0.0000    100.0000
+ > Br       0.0000      0.0000    120.0000
+ > Kr       0.0000      0.0000    140.0000
+ > Y        0.0000      0.0000    160.0000
+ > Zr       0.0000      0.0000    180.0000
+ > Nb       0.0000      0.0000    200.0000
+ > Mo       0.0000      0.0000    220.0000
+ > Tc       0.0000      0.0000    240.0000
+ > Ru       0.0000      0.0000    260.0000
+ > Rh       0.0000      0.0000    280.0000
+ > Pd       0.0000      0.0000    300.0000
+ > Ag       0.0000      0.0000    320.0000
+ > Cd       0.0000      0.0000    340.0000
+ > In       0.0000      0.0000    360.0000
+ > Sn       0.0000      0.0000    380.0000
+ > Sb       0.0000      0.0000    400.0000
+ > Te       0.0000      0.0000    420.0000
+ > I        0.0000      0.0000    440.0000
+ > Xe       0.0000      0.0000    460.0000
+ > Hf       0.0000      0.0000    480.0000
+ > Ta       0.0000      0.0000    500.0000
+ > W        0.0000      0.0000    520.0000
+ > Re       0.0000      0.0000    540.0000
+ > Os       0.0000      0.0000    560.0000
+ > Ir       0.0000      0.0000    580.0000
+ > Pt       0.0000      0.0000    600.0000
+ > Au       0.0000      0.0000    620.0000
+ > Hg       0.0000      0.0000    640.0000
+ > Tl       0.0000      0.0000    660.0000
+ > Pb       0.0000      0.0000    680.0000
+ > Bi       0.0000      0.0000    700.0000
+ > Po       0.0000      0.0000    720.0000
+ > At       0.0000      0.0000    740.0000
+ > Rn       0.0000      0.0000    760.0000
+ > end
+ Skipped CU: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/cu.txt exists
+ Skipped ZN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/zn.txt exists
+ Skipped GA: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ga.txt exists
+ Skipped GE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ge.txt exists
+ Skipped AS: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/as.txt exists
+ Skipped SE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/se.txt exists
+ Skipped BR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/br.txt exists
+ Skipped KR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/kr.txt exists
+ Skipped Y: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/y.txt exists
+ Skipped ZR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/zr.txt exists
+ Skipped NB: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/nb.txt exists
+ Skipped MO: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/mo.txt exists
+ Skipped TC: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/tc.txt exists
+ Skipped RU: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ru.txt exists
+ Skipped RH: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/rh.txt exists
+ Skipped PD: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/pd.txt exists
+ Skipped AG: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ag.txt exists
+ Skipped CD: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/cd.txt exists
+ Skipped IN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/in.txt exists
+ Skipped SN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/sn.txt exists
+ Skipped SB: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/sb.txt exists
+ Skipped TE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/te.txt exists
+ Skipped I: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/i.txt exists
+ Skipped XE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/xe.txt exists
+ ----------------------------------------------------------------------------
+                             SCF for HF (2S+1=3)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=7.8E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.3E-016
+ Trace of exact Coulomb matrix: 8.7E+001
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.0E-002    5.7E+001       102         3    4.9E+000    
+ 2    3.3E-003    5.7E+001       344         10   2.4E+000    
+ 3    2.2E-004    7.4E+001       526         22   2.6E+000    
+ 4    1.2E-005    7.0E+001       630         62   2.3E+000    
+ 5    5.2E-007    5.1E+001       767         97   2.2E+000    
+ 6    9.7E-008    1.2E+001       807         100  2.0E-001    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 807 pivots
+ Largest residual Dpq: 9.7E-008
+ NCholesky/NAO = 8.2E+000
+ Step 1 of Cholesky decomposition completed in 1.5E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     7.6E-002
+ Subtract prev contribs II (Rk)          9.6E-002
+ Two-electron integrals                  1.4E+001
+ Reallocation                            6.0E-002
+
+ Step 2 of Cholesky decomposition completed in 7.9E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    7.8E-001
+ V=L*L**T                      2.5E-003
+ L**(-1)                       2.8E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 4.3E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 7
+ Beta electrons: 5
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ Invalid ECP parameter: R^N exponent outside of the allowed range 0..2
+% Job finished at Sat Oct 10 08:42:57 UTC 2026
+% Total wall clock time [hours]: 0.006
+% Job started at Sat Oct 10 15:54:12 UTC 2026
+% User                     modrzejewski
+% Node name                e1276
+% Executable               /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/bin/a
+% Launcher                 
+% Compiler command         ifort -qopenmp -O3 -xHost -no-prec-div -i8 -qmkl -coarray -warn all -I./obj/
+% Source compiled at       Sat Oct 10 15:19:14 UTC 2026
+% Process ID               1799856
+% Job identifier           20261010155412_1799856
+% Stack size (main thread) unlimited
+% Stack size (other)       65536 kB
+ ----------------------------------------------------------------------------
+ LOADED INPUT FILE
+ /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/atomic_guess.inp
+ ----------------------------------------------------------------------------
+ > jobtype atomic_guess
+ > basis file ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ > scf
+ > maxniters 1024 
+ > end
+ > xyz
+ > 39
+ > Cu       0.0000      0.0000      0.0000
+ > Zn       0.0000      0.0000     20.0000
+ > Ga       0.0000      0.0000     40.0000
+ > Ge       0.0000      0.0000     60.0000
+ > As       0.0000      0.0000     80.0000
+ > Se       0.0000      0.0000    100.0000
+ > Br       0.0000      0.0000    120.0000
+ > Kr       0.0000      0.0000    140.0000
+ > Y        0.0000      0.0000    160.0000
+ > Zr       0.0000      0.0000    180.0000
+ > Nb       0.0000      0.0000    200.0000
+ > Mo       0.0000      0.0000    220.0000
+ > Tc       0.0000      0.0000    240.0000
+ > Ru       0.0000      0.0000    260.0000
+ > Rh       0.0000      0.0000    280.0000
+ > Pd       0.0000      0.0000    300.0000
+ > Ag       0.0000      0.0000    320.0000
+ > Cd       0.0000      0.0000    340.0000
+ > In       0.0000      0.0000    360.0000
+ > Sn       0.0000      0.0000    380.0000
+ > Sb       0.0000      0.0000    400.0000
+ > Te       0.0000      0.0000    420.0000
+ > I        0.0000      0.0000    440.0000
+ > Xe       0.0000      0.0000    460.0000
+ > Hf       0.0000      0.0000    480.0000
+ > Ta       0.0000      0.0000    500.0000
+ > W        0.0000      0.0000    520.0000
+ > Re       0.0000      0.0000    540.0000
+ > Os       0.0000      0.0000    560.0000
+ > Ir       0.0000      0.0000    580.0000
+ > Pt       0.0000      0.0000    600.0000
+ > Au       0.0000      0.0000    620.0000
+ > Hg       0.0000      0.0000    640.0000
+ > Tl       0.0000      0.0000    660.0000
+ > Pb       0.0000      0.0000    680.0000
+ > Bi       0.0000      0.0000    700.0000
+ > Po       0.0000      0.0000    720.0000
+ > At       0.0000      0.0000    740.0000
+ > Rn       0.0000      0.0000    760.0000
+ > end
+ Skipped CU: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/cu.txt exists
+ Skipped ZN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/zn.txt exists
+ Skipped GA: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ga.txt exists
+ Skipped GE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ge.txt exists
+ Skipped AS: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/as.txt exists
+ Skipped SE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/se.txt exists
+ Skipped BR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/br.txt exists
+ Skipped KR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/kr.txt exists
+ Skipped Y: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/y.txt exists
+ Skipped ZR: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/zr.txt exists
+ Skipped NB: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/nb.txt exists
+ Skipped MO: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/mo.txt exists
+ Skipped TC: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/tc.txt exists
+ Skipped RU: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ru.txt exists
+ Skipped RH: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/rh.txt exists
+ Skipped PD: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/pd.txt exists
+ Skipped AG: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ag.txt exists
+ Skipped CD: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/cd.txt exists
+ Skipped IN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/in.txt exists
+ Skipped SN: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/sn.txt exists
+ Skipped SB: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/sb.txt exists
+ Skipped TE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/te.txt exists
+ Skipped I: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/i.txt exists
+ Skipped XE: /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/xe.txt exists
+ ----------------------------------------------------------------------------
+                             SCF for HF (2S+1=3)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=7.8E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.3E-016
+ Trace of exact Coulomb matrix: 8.7E+001
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.0E-002    5.7E+001       102         3    3.0E+000    
+ 2    3.3E-003    5.7E+001       344         10   2.0E+000    
+ 3    2.2E-004    7.4E+001       526         22   2.6E+000    
+ 4    1.2E-005    7.0E+001       630         62   1.8E+000    
+ 5    5.2E-007    5.1E+001       767         97   1.9E+000    
+ 6    9.7E-008    1.2E+001       807         100  1.6E-001    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 807 pivots
+ Largest residual Dpq: 9.7E-008
+ NCholesky/NAO = 8.2E+000
+ Step 1 of Cholesky decomposition completed in 1.2E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     3.2E-002
+ Subtract prev contribs II (Rk)          4.8E-002
+ Two-electron integrals                  1.1E+001
+ Reallocation                            1.0E-002
+
+ Step 2 of Cholesky decomposition completed in 6.6E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.6E-001
+ V=L*L**T                      1.4E-003
+ L**(-1)                       1.7E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.9E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 7
+ Beta electrons: 5
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ HAFNIUM     
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        478.23740400      2        10.24885600                                   
+          0.38802400      4        10.72912700                                   
+         -1.07123200      2         1.96485600                                   
+
+ L = 1
+
+        101.04681800      2         8.68346200                                   
+        212.19776100      2         7.91692000                                   
+          0.13264600      4         9.37924300                                   
+          0.45310800      4         8.24420900                                   
+         -0.40791400      2         1.59668600                                   
+         -0.56181700      2         1.71028100                                   
+
+ L = 2
+
+         43.11546700      2         5.18955700                                   
+         65.93473200      2         5.25322900                                   
+          0.02591200      4         5.93787100                                   
+          0.03374100      4         5.71290600                                   
+         -0.28057900      2         1.01485600                                   
+         -0.08484900      2         0.47371200                                   
+
+ L = 3
+
+          4.81180100      2         1.91260800                                   
+          6.41857400      2         1.88074000                                   
+
+ L = 4
+
+         -4.63658500      2         2.72418000                                   
+         -5.76728800      2         2.70895300                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           69.1149830942                                        0    2.3E-001 
+ 1          -44.6629366481           6.6E+02                      0    1.2E-001 
+ 2          -47.6323436065 -3.0E+00  5.5E-01  7.3E-01  9.9E-01    1    1.2E-001 
+ 3          -47.7387768544 -1.1E-01  2.4E-01  9.2E-02  0.0E+00    2    1.2E-001 
+ 4          -47.8310568148 -9.2E-02  3.9E-01  5.3E-02  1.6E-02    3    1.2E-001 
+ 5          -47.8485929763 -1.8E-02  9.6E-02  2.7E-02  0.0E+00    4    1.2E-001 
+ 6          -47.8521420779 -3.5E-03  4.4E-02  7.7E-03  0.0E+00    5    1.2E-001 
+ 7          -47.8549623759 -2.8E-03  3.7E-02  9.2E-03  0.0E+00    6    1.2E-001 
+ 8          -47.8597707468 -4.8E-03  4.5E-02  1.4E-02  0.0E+00    7    1.2E-001 
+ 9          -47.8682359603 -8.5E-03  6.2E-02  2.1E-02  0.0E+00    8    1.2E-001 
+ 10         -47.8990895198 -3.1E-02  2.1E-01  2.9E-02  1.6E-01    8    1.3E-001 
+ 11         -47.9354323412 -3.6E-02  2.5E-01  4.0E-02  1.2E-01    8    1.3E-001 
+ 12         -47.9462694450 -1.1E-02  2.0E-01  2.3E-02  0.0E+00    8    1.2E-001 
+ 13         -47.9477345067 -1.5E-03  2.9E-02  5.7E-03  0.0E+00    8    1.2E-001 
+ 14         -47.9484946292 -7.6E-04  3.6E-02  2.3E-03  0.0E+00    8    1.2E-001 
+ 15         -47.9488048664 -3.1E-04  2.6E-02  2.0E-03  0.0E+00    8    1.2E-001 
+ 16         -47.9490999069 -3.0E-04  3.1E-02  1.4E-03  0.0E+00    8    1.2E-001 
+ 17         -47.9492702913 -1.7E-04  2.7E-02  1.3E-03  0.0E+00    8    1.2E-001 
+ 18         -47.9492871336 -1.7E-05  6.3E-03  6.2E-04  0.0E+00    8    1.2E-001 
+ 19         -47.9492898725 -2.7E-06  1.5E-03  2.1E-04  0.0E+00    8    1.2E-001 
+ 20         -47.9492912090 -1.3E-06  1.3E-03  1.2E-04  0.0E+00    8    1.2E-001 
+ 21         -47.9492921398 -9.3E-07  1.5E-03  7.4E-05  0.0E+00    8    1.2E-001 
+ 22         -47.9492924156 -2.8E-07  1.0E-03  6.9E-05  0.0E+00    8    1.2E-001 
+ 23         -47.9492927157 -3.0E-07  1.1E-03  5.4E-05  0.0E+00    8    1.2E-001 
+ 24         -47.9492928642 -1.5E-07  1.0E-03  3.8E-05  0.0E+00    8    1.2E-001 
+ 25         -47.9492929069 -4.3E-08  6.5E-04  2.0E-05  0.0E+00    8    1.2E-001 
+ 26         -47.9492929130 -6.1E-09  7.9E-05  1.1E-05  0.0E+00    8    1.2E-001 
+ 27         -47.9492929146 -1.5E-09  8.4E-05  5.8E-06  0.0E+00    8    1.2E-001 
+ 28         -47.9492929155 -8.9E-10  4.3E-05  3.6E-06  0.0E+00    8    1.2E-001 
+ 29         -47.9492929168 -1.3E-09  6.5E-05  3.9E-06  0.0E+00    8    1.2E-001 
+ 30         -47.9492929174 -6.3E-10  6.5E-05  2.0E-06  0.0E+00    8    1.2E-001 
+ 31         -47.9492929174 -6.2E-11  1.6E-05  8.9E-07  0.0E+00    8    1.2E-001 
+ 32         -47.9492929175 -2.1E-11  6.4E-06  5.6E-07  0.0E+00    8    1.2E-001 
+ 33         -47.9492929175 -7.0E-12  6.0E-06  3.7E-07  0.0E+00    8    1.2E-001 
+ 34         -47.9492929175 -3.8E-12  5.3E-06  2.3E-07  0.0E+00    8    1.2E-001 
+ 35         -47.9492929175 -1.0E-12  1.6E-06  1.2E-07  0.0E+00    8    1.2E-001 
+ 36         -47.9492929175 -7.2E-13  2.4E-06  7.7E-08  0.0E+00    8    1.2E-001 
+ 37         -47.9492929175 -1.5E-13  1.2E-06  9.7E-08  0.0E+00    8    1.2E-001 
+ 38         -47.9492929175 -2.6E-13  5.2E-07  6.6E-08  0.0E+00    8    1.2E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -47.949292917480    
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -7.071147379710     
+ Elumo(Alpha) [eV]                       0.510531545218      
+ Ehomo(Beta) [eV]                        -5.827360351839     
+ Elumo(Beta) [eV]                        0.628404353453      
+
+ dipole moment (Debye)
+        x              y              z       
+      3.449E-007     3.508E-008     4.035E-007
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   2.317E-005     4.594E-006     3.232E-006
+ y                   4.594E-006     1.570E-005     2.451E-006
+ z                   3.232E-006     2.451E-006    -3.887E-005
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     4.6E+000
+ * solver (setting up eqns)   6.6E-002
+ * solver (energy estimate)   2.9E-003
+ * solver (orthogonalization) 2.6E-003
+ * solver (rotation matrix X) 2.8E-002
+ * solver (exponential of X)  2.3E-002
+ * solver (total)             1.3E-001
+ * total SCF                  4.9E+000
+ Atomic guess: HF, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -4.7949292917E+001
+ Tr(RhoAvg S), Cartesian AOs              1.2000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.2000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  5.55E-016
+ max|c(RhoAvg) - c(Rho)|                          6.66E-016
+ max|RhoAvg - Rho|                                4.52E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/hf.txt
+ ----------------------------------------------------------------------------
+                             SCF for TA (2S+1=4)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=8.0E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.3E-016
+ Trace of exact Coulomb matrix: 9.6E+001
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.5E-002    5.7E+001       121         3    3.3E+000    
+ 2    4.9E-003    5.7E+001       382         14   2.0E+000    
+ 3    1.5E-004    7.3E+001       517         24   2.3E+000    
+ 4    3.4E-006    6.7E+001       661         68   2.3E+000    
+ 5    4.8E-007    5.1E+001       784         99   2.1E+000    
+ 6    9.1E-008    3.6E+000       805         100  3.1E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 805 pivots
+ Largest residual Dpq: 9.1E-008
+ NCholesky/NAO = 8.1E+000
+ Step 1 of Cholesky decomposition completed in 1.2E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     4.0E-002
+ Subtract prev contribs II (Rk)          4.4E-002
+ Two-electron integrals                  1.2E+001
+ Reallocation                            9.0E-003
+
+ Step 2 of Cholesky decomposition completed in 6.8E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.8E-001
+ V=L*L**T                      1.1E-003
+ L**(-1)                       1.5E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.9E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 8
+ Beta electrons: 5
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ TANTALUM    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        454.60064900      2        10.31806900                                   
+          2.83797500      4        10.54026700                                   
+         -0.81473600      2         2.57472600                                   
+
+ L = 1
+
+         96.91078300      2         8.74334200                                   
+        195.85043200      2         7.91622300                                   
+          4.81252400      4         9.27573600                                   
+          6.33851200      4         8.10167500                                   
+         -0.45917300      2         2.07712700                                   
+         -0.64458600      2         2.75037200                                   
+
+ L = 2
+
+         45.96997600      2         5.44731400                                   
+         69.63897200      2         5.21254500                                   
+          0.80293300      4         5.88435800                                   
+          0.42959500      4         5.64957900                                   
+         -0.30722700      2         1.38818000                                   
+         -0.46156000      2         1.29439800                                   
+
+ L = 3
+
+          5.75777300      2         2.16127500                                   
+          7.67816700      2         2.12593900                                   
+
+ L = 4
+
+         -5.68406600      2         3.14592000                                   
+         -7.06231300      2         3.12794200                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           76.6524876166                                        0    2.3E-001 
+ 1          -52.9149642731           4.8E+02                      0    1.3E-001 
+ 2          -56.4697736393 -3.6E+00  3.4E-01  8.1E-01  1.1E+00    1    1.3E-001 
+ 3          -56.5645356893 -9.5E-02  1.4E-01  8.9E-02  0.0E+00    2    1.3E-001 
+ 4          -56.6372860263 -7.3E-02  3.5E-01  4.0E-02  0.0E+00    3    1.3E-001 
+ 5          -56.6713471149 -3.4E-02  2.1E-01  3.6E-02  0.0E+00    4    1.3E-001 
+ 6          -56.6745249689 -3.2E-03  2.7E-02  7.7E-03  0.0E+00    5    1.3E-001 
+ 7          -56.6781161764 -3.6E-03  3.8E-02  1.1E-02  2.1E-01    6    1.3E-001 
+ 8          -56.6833827742 -5.3E-03  5.6E-02  1.5E-02  2.5E-01    7    1.3E-001 
+ 9          -56.6909639049 -7.6E-03  7.7E-02  2.1E-02  2.5E-01    8    1.3E-001 
+ 10         -56.7013660602 -1.0E-02  1.0E-01  2.7E-02  2.3E-01    8    1.4E-001 
+ 11         -56.7145071668 -1.3E-02  1.2E-01  3.1E-02  2.0E-01    8    1.4E-001 
+ 12         -56.7286538129 -1.4E-02  1.2E-01  3.0E-02  1.4E-01    8    1.4E-001 
+ 13         -56.7392160958 -1.1E-02  1.2E-01  2.3E-02  5.4E-02    8    1.4E-001 
+ 14         -56.7415920175 -2.4E-03  7.5E-02  7.0E-03  0.0E+00    8    1.3E-001 
+ 15         -56.7426495723 -1.1E-03  3.8E-02  2.7E-03  0.0E+00    8    1.3E-001 
+ 16         -56.7438643132 -1.2E-03  5.8E-02  3.7E-03  0.0E+00    8    1.3E-001 
+ 17         -56.7451302806 -1.3E-03  8.6E-02  3.8E-03  0.0E+00    8    1.3E-001 
+ 18         -56.7455736308 -4.4E-04  3.6E-02  2.8E-03  0.0E+00    8    1.3E-001 
+ 19         -56.7457793153 -2.1E-04  1.8E-02  1.6E-03  0.0E+00    8    1.3E-001 
+ 20         -56.7458600995 -8.1E-05  1.4E-02  8.2E-04  0.0E+00    8    1.3E-001 
+ 21         -56.7458909545 -3.1E-05  6.0E-03  6.9E-04  0.0E+00    8    1.3E-001 
+ 22         -56.7459068587 -1.6E-05  6.7E-03  4.8E-04  0.0E+00    8    1.3E-001 
+ 23         -56.7459137691 -6.9E-06  4.3E-03  3.2E-04  0.0E+00    8    1.3E-001 
+ 24         -56.7459172215 -3.5E-06  2.5E-03  1.7E-04  0.0E+00    8    1.3E-001 
+ 25         -56.7459190070 -1.8E-06  2.4E-03  1.4E-04  0.0E+00    8    1.3E-001 
+ 26         -56.7459197366 -7.3E-07  1.8E-03  9.3E-05  0.0E+00    8    1.3E-001 
+ 27         -56.7459201151 -3.8E-07  1.1E-03  6.4E-05  0.0E+00    8    1.3E-001 
+ 28         -56.7459202856 -1.7E-07  9.6E-04  4.3E-05  0.0E+00    8    1.3E-001 
+ 29         -56.7459203130 -2.7E-08  2.4E-04  2.9E-05  0.0E+00    8    1.3E-001 
+ 30         -56.7459203300 -1.7E-08  2.5E-04  1.5E-05  0.0E+00    8    1.3E-001 
+ 31         -56.7459203359 -5.9E-09  1.6E-04  8.4E-06  0.0E+00    8    1.3E-001 
+ 32         -56.7459203363 -3.6E-10  2.7E-05  2.7E-06  0.0E+00    8    1.3E-001 
+ 33         -56.7459203365 -2.3E-10  2.3E-05  2.2E-06  0.0E+00    8    1.3E-001 
+ 34         -56.7459203366 -1.2E-10  2.2E-05  1.1E-06  0.0E+00    8    1.3E-001 
+ 35         -56.7459203367 -2.0E-11  7.2E-06  8.4E-07  0.0E+00    8    1.3E-001 
+ 36         -56.7459203367 -4.7E-12  2.9E-06  3.2E-07  0.0E+00    8    1.3E-001 
+ 37         -56.7459203367 -1.1E-12  1.6E-06  1.3E-07  0.0E+00    8    1.3E-001 
+ 38         -56.7459203367 -4.2E-13  8.6E-07  5.9E-08  0.0E+00    8    1.3E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -56.745920336672    
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -7.728066965250     
+ Elumo(Alpha) [eV]                       0.556877079995      
+ Ehomo(Beta) [eV]                        -5.932616886150     
+ Elumo(Beta) [eV]                        0.698498733088      
+
+ dipole moment (Debye)
+        x              y              z       
+      9.811E-009    -1.390E-009     1.220E-007
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -1.342E-005     1.250E-006    -1.652E-006
+ y                   1.250E-006     8.510E-006     2.123E-006
+ z                  -1.652E-006     2.123E-006     4.905E-006
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     4.9E+000
+ * solver (setting up eqns)   6.6E-002
+ * solver (energy estimate)   3.0E-003
+ * solver (orthogonalization) 2.6E-003
+ * solver (rotation matrix X) 4.8E-002
+ * solver (exponential of X)  2.4E-002
+ * solver (total)             1.5E-001
+ * total SCF                  5.2E+000
+ Atomic guess: TA, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -5.6745920337E+001
+ Tr(RhoAvg S), Cartesian AOs              1.3000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.3000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  7.77E-016
+ max|c(RhoAvg) - c(Rho)|                          8.88E-016
+ max|RhoAvg - Rho|                                4.72E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ta.txt
+ ----------------------------------------------------------------------------
+                              SCF for W (2S+1=5)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=8.2E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.2E-016
+ Trace of exact Coulomb matrix: 1.0E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.5E-002    5.7E+001       125         3    3.1E+000    
+ 2    4.0E-003    5.7E+001       354         12   1.9E+000    
+ 3    6.4E-005    7.3E+001       539         26   3.3E+000    
+ 4    3.7E-006    6.9E+001       727         86   1.6E+000    
+ 5    1.3E-007    3.4E+001       803         100  7.4E-001    
+ 6    6.5E-008    3.6E-001       806         100  5.4E-003    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 806 pivots
+ Largest residual Dpq: 6.5E-008
+ NCholesky/NAO = 8.1E+000
+ Step 1 of Cholesky decomposition completed in 1.1E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     3.6E-002
+ Subtract prev contribs II (Rk)          4.9E-002
+ Two-electron integrals                  1.1E+001
+ Reallocation                            7.9E-003
+
+ Step 2 of Cholesky decomposition completed in 4.5E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    4.5E-001
+ V=L*L**T                      1.0E-003
+ L**(-1)                       1.4E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.2E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 9
+ Beta electrons: 5
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ TUNGSTEN    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        419.22759900      2        11.06379500                                   
+         41.19130700      2         8.21764100                                   
+
+ L = 1
+
+        107.34811000      2         9.33818800                                   
+        214.69956800      2         8.43044800                                   
+          0.02544200      4         9.49002000                                   
+          0.05189500      4         9.48994700                                   
+         -0.11718400      2         1.88299700                                   
+          0.29668900      2         1.90697200                                   
+
+ L = 2
+
+         58.88127900      2         6.20543300                                   
+         98.68355600      2         6.12215700                                   
+          0.01953700      4         6.27455600                                   
+          0.02195600      4         6.22637500                                   
+         -0.08857700      2         1.96387500                                   
+         -0.20972600      2         1.88828700                                   
+
+ L = 3
+
+          6.23247200      2         2.30795300                                   
+          8.31134500      2         2.27060900                                   
+
+ L = 4
+
+         -6.80294400      2         3.58349100                                   
+         -8.44323200      2         3.56251500                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           80.1554396973                                        0    2.4E-001 
+ 1          -62.1169154397           3.6E+02                      0    1.4E-001 
+ 2          -66.4323045092 -4.3E+00  3.3E-01  8.9E-01  1.2E+00    1    1.4E-001 
+ 3          -66.5223900891 -9.0E-02  1.3E-01  1.2E-01  0.0E+00    2    1.4E-001 
+ 4          -66.5367162337 -1.4E-02  5.6E-02  4.3E-02  0.0E+00    3    1.4E-001 
+ 5          -66.5639740970 -2.7E-02  2.0E-01  2.3E-02  1.1E-01    4    1.4E-001 
+ 6          -66.6153718103 -5.1E-02  2.9E-01  4.1E-02  1.2E-01    5    1.4E-001 
+ 7          -66.6392898144 -2.4E-02  3.3E-01  3.5E-02  2.0E-02    6    1.4E-001 
+ 8          -66.6481102929 -8.8E-03  6.1E-02  2.0E-02  0.0E+00    7    1.4E-001 
+ 9          -66.6641085219 -1.6E-02  2.9E-01  1.2E-02  3.1E-02    8    1.4E-001 
+ 10         -66.6789984522 -1.5E-02  2.8E-01  1.6E-02  9.0E-03    8    1.5E-001 
+ 11         -66.6813933723 -2.4E-03  2.0E-02  1.5E-02  0.0E+00    8    1.4E-001 
+ 12         -66.6820823499 -6.9E-04  2.5E-02  4.1E-03  0.0E+00    8    1.4E-001 
+ 13         -66.6824278765 -3.5E-04  1.9E-02  3.5E-03  0.0E+00    8    1.4E-001 
+ 14         -66.6827224033 -2.9E-04  2.2E-02  3.3E-03  0.0E+00    8    1.4E-001 
+ 15         -66.6833098104 -5.9E-04  4.5E-02  3.1E-03  1.5E-02    8    1.5E-001 
+ 16         -66.6840054184 -7.0E-04  6.2E-02  2.8E-03  2.5E-02    8    1.5E-001 
+ 17         -66.6842604712 -2.6E-04  7.6E-02  2.0E-03  0.0E+00    8    1.4E-001 
+ 18         -66.6842934086 -3.3E-05  5.9E-03  1.5E-03  0.0E+00    8    1.4E-001 
+ 19         -66.6842981160 -4.7E-06  3.3E-03  2.6E-04  0.0E+00    8    1.4E-001 
+ 20         -66.6842995436 -1.4E-06  1.8E-03  2.0E-04  0.0E+00    8    1.4E-001 
+ 21         -66.6842997618 -2.2E-07  4.8E-04  1.3E-04  0.0E+00    8    1.4E-001 
+ 22         -66.6842997800 -1.8E-08  1.6E-04  3.0E-05  0.0E+00    8    1.4E-001 
+ 23         -66.6842997830 -3.0E-09  1.7E-04  9.9E-06  0.0E+00    8    1.4E-001 
+ 24         -66.6842997838 -7.3E-10  3.8E-05  4.7E-06  0.0E+00    8    1.4E-001 
+ 25         -66.6842997838 -4.6E-11  8.0E-06  1.9E-06  0.0E+00    8    1.4E-001 
+ 26         -66.6842997838 -5.5E-12  2.7E-06  4.0E-07  0.0E+00    8    1.4E-001 
+ 27         -66.6842997838 -3.7E-13  5.7E-07  1.1E-07  0.0E+00    8    1.4E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -66.684299783803    
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -8.324058185017     
+ Elumo(Alpha) [eV]                       0.547704357813      
+ Ehomo(Beta) [eV]                        -6.232080517375     
+ Elumo(Beta) [eV]                        0.591711559070      
+
+ dipole moment (Debye)
+        x              y              z       
+     -1.287E-010    -2.721E-011    -1.583E-010
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   1.012E-001     1.938E-002     5.495E-002
+ y                   1.938E-002     7.571E-002    -1.017E-001
+ z                   5.495E-002    -1.017E-001    -1.769E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     3.8E+000
+ * solver (setting up eqns)   4.7E-002
+ * solver (energy estimate)   1.9E-003
+ * solver (orthogonalization) 1.8E-003
+ * solver (rotation matrix X) 4.0E-002
+ * solver (exponential of X)  1.8E-002
+ * solver (total)             1.1E-001
+ * total SCF                  4.0E+000
+ Atomic guess: W, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ----------------------------------------------------------
+ E(HF) [a.u.]                            -6.6684299784E+001
+ Tr(RhoAvg S), Cartesian AOs              1.4000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.4000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  1.11E-015
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                3.69E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/w.txt
+ ----------------------------------------------------------------------------
+                             SCF for RE (2S+1=6)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=8.5E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.2E-016
+ Trace of exact Coulomb matrix: 1.1E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.7E-002    5.7E+001       126         3    3.2E+000    
+ 2    4.8E-003    5.7E+001       359         11   2.8E+000    
+ 3    1.6E-004    7.3E+001       521         23   2.5E+000    
+ 4    1.1E-005    7.0E+001       685         70   1.7E+000    
+ 5    5.0E-007    5.4E+001       787         98   1.7E+000    
+ 6    9.6E-008    4.3E+000       804         100  3.5E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 804 pivots
+ Largest residual Dpq: 9.6E-008
+ NCholesky/NAO = 8.1E+000
+ Step 1 of Cholesky decomposition completed in 1.2E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     5.0E-002
+ Subtract prev contribs II (Rk)          5.7E-002
+ Two-electron integrals                  1.2E+001
+ Reallocation                            9.5E-003
+
+ Step 2 of Cholesky decomposition completed in 6.2E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.2E-001
+ V=L*L**T                      1.0E-003
+ L**(-1)                       1.3E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.6E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 10
+ Beta electrons: 5
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ RHENIUM     
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        421.97030000      2        12.16381400                                   
+         50.13443900      2         7.10759500                                   
+
+ L = 1
+
+         88.48191000      2         9.68459700                                   
+        176.78722000      2         9.47621400                                   
+         10.43433800      2         7.66806600                                   
+         20.45874300      2         5.05515600                                   
+
+ L = 2
+
+         43.16243100      2         6.50988800                                   
+         64.76775900      2         6.09121600                                   
+          5.34030100      2         4.16400600                                   
+          8.24333200      2         4.40737900                                   
+
+ L = 3
+
+          7.24454300      2         2.56265800                                   
+          9.65926600      2         2.52154900                                   
+
+ L = 4
+
+         -7.97494000      2         4.03459900                                   
+         -9.88273600      2         4.00962800                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           27.6199310177                                        0    2.5E-001 
+ 1          -71.4653148417           3.2E+02                      0    1.5E-001 
+ 2          -77.4795308229 -6.0E+00  3.8E-01  1.4E+00  1.7E+00    1    1.5E-001 
+ 3          -77.7021652969 -2.2E-01  2.4E-01  1.7E-01  0.0E+00    2    1.5E-001 
+ 4          -77.7669695787 -6.5E-02  1.2E-01  8.3E-02  0.0E+00    3    1.5E-001 
+ 5          -77.7700362144 -3.1E-03  3.1E-02  2.0E-02  0.0E+00    4    1.5E-001 
+ 6          -77.7704231987 -3.9E-04  2.5E-02  6.9E-03  0.0E+00    5    1.5E-001 
+ 7          -77.7704512530 -2.8E-05  4.3E-03  1.9E-03  0.0E+00    6    1.5E-001 
+ 8          -77.7704528563 -1.6E-06  1.2E-03  3.1E-04  0.0E+00    7    1.5E-001 
+ 9          -77.7704584367 -5.6E-06  4.9E-03  1.7E-04  0.0E+00    8    1.5E-001 
+ 10         -77.7704619087 -3.5E-06  1.5E-03  4.1E-04  0.0E+00    8    1.5E-001 
+ 11         -77.7704655678 -3.7E-06  1.7E-03  5.0E-04  0.0E+00    8    1.5E-001 
+ 12         -77.7704703895 -4.8E-06  2.1E-03  6.0E-04  0.0E+00    8    1.5E-001 
+ 13         -77.7705080715 -3.8E-05  1.1E-02  7.1E-04  1.0E-01    8    1.5E-001 
+ 14         -77.7705807708 -7.3E-05  1.3E-02  1.4E-03  1.4E-01    8    1.5E-001 
+ 15         -77.7707078878 -1.3E-04  1.5E-02  2.2E-03  1.6E-01    8    1.5E-001 
+ 16         -77.7709184950 -2.1E-04  1.8E-02  3.2E-03  1.9E-01    8    1.5E-001 
+ 17         -77.7712557170 -3.4E-04  2.2E-02  4.3E-03  2.0E-01    8    1.5E-001 
+ 18         -77.7717833072 -5.3E-04  2.5E-02  5.7E-03  2.2E-01    8    1.5E-001 
+ 19         -77.7725935570 -8.1E-04  3.0E-02  7.3E-03  2.3E-01    8    1.5E-001 
+ 20         -77.7738257972 -1.2E-03  3.4E-02  9.4E-03  2.4E-01    8    1.5E-001 
+ 21         -77.7756762950 -1.9E-03  3.8E-02  1.2E-02  2.5E-01    8    1.5E-001 
+ 22         -77.7784337804 -2.8E-03  4.3E-02  1.5E-02  2.6E-01    8    1.5E-001 
+ 23         -77.7824881370 -4.1E-03  5.9E-02  1.8E-02  2.7E-01    8    1.5E-001 
+ 24         -77.7883380867 -5.8E-03  7.9E-02  2.2E-02  2.7E-01    8    1.5E-001 
+ 25         -77.7965269799 -8.2E-03  1.0E-01  2.6E-02  2.6E-01    8    1.5E-001 
+ 26         -77.8073686701 -1.1E-02  1.2E-01  2.9E-02  2.3E-01    8    1.5E-001 
+ 27         -77.8202666326 -1.3E-02  1.3E-01  3.0E-02  1.9E-01    8    1.5E-001 
+ 28         -77.8325531319 -1.2E-02  1.2E-01  2.7E-02  1.1E-01    8    1.5E-001 
+ 29         -77.8381812366 -5.6E-03  1.8E-01  1.6E-02  9.1E-03    8    1.5E-001 
+ 30         -77.8383336302 -1.5E-04  6.8E-03  3.0E-03  0.0E+00    8    1.5E-001 
+ 31         -77.8383525110 -1.9E-05  3.4E-03  1.3E-03  0.0E+00    8    1.5E-001 
+ 32         -77.8383534850 -9.7E-07  9.1E-04  2.7E-04  0.0E+00    8    1.5E-001 
+ 33         -77.8383535464 -6.1E-08  2.6E-04  5.4E-05  0.0E+00    8    1.5E-001 
+ 34         -77.8383535719 -2.5E-08  2.7E-04  3.4E-05  0.0E+00    8    1.5E-001 
+ 35         -77.8383535736 -1.8E-09  6.7E-05  8.5E-06  0.0E+00    8    1.5E-001 
+ 36         -77.8383535738 -1.5E-10  5.5E-06  2.5E-06  0.0E+00    8    1.5E-001 
+ 37         -77.8383535738 -2.9E-11  3.0E-06  1.1E-06  0.0E+00    8    1.5E-001 
+ 38         -77.8383535738 -4.3E-13  6.8E-07  1.7E-07  0.0E+00    8    1.5E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -77.838353573828    
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -8.883474440610     
+ Elumo(Alpha) [eV]                       0.640085546217      
+ Ehomo(Beta) [eV]                        -6.085752295745     
+ Elumo(Beta) [eV]                        0.803562167070      
+
+ dipole moment (Debye)
+        x              y              z       
+     -9.945E-013     1.279E-012    -6.447E-013
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   3.191E-006    -3.656E-007     5.964E-007
+ y                  -3.656E-007     2.140E-006    -5.881E-007
+ z                   5.964E-007    -5.881E-007    -5.332E-006
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     5.6E+000
+ * solver (setting up eqns)   6.8E-002
+ * solver (energy estimate)   3.1E-003
+ * solver (orthogonalization) 2.5E-003
+ * solver (rotation matrix X) 1.2E-001
+ * solver (exponential of X)  2.3E-002
+ * solver (total)             2.2E-001
+ * total SCF                  6.0E+000
+ Atomic guess: RE, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -7.7838353574E+001
+ Tr(RhoAvg S), Cartesian AOs              1.5000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.5000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  9.99E-016
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                5.23E-007
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/re.txt
+ ----------------------------------------------------------------------------
+                             SCF for OS (2S+1=5)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=8.7E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.2E-016
+ Trace of exact Coulomb matrix: 1.2E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.7E-002    5.7E+001       130         3    2.8E+000    
+ 2    5.0E-003    5.7E+001       367         12   2.2E+000    
+ 3    2.6E-004    7.4E+001       526         24   2.3E+000    
+ 4    4.9E-006    7.0E+001       659         57   2.8E+000    
+ 5    9.1E-007    6.1E+001       790         98   1.3E+000    
+ 6    7.9E-008    5.1E+000       818         100  1.1E-001    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 818 pivots
+ Largest residual Dpq: 7.9E-008
+ NCholesky/NAO = 8.3E+000
+ Step 1 of Cholesky decomposition completed in 1.1E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     6.0E-002
+ Subtract prev contribs II (Rk)          6.8E-002
+ Two-electron integrals                  1.1E+001
+ Reallocation                            9.4E-003
+
+ Step 2 of Cholesky decomposition completed in 5.9E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.8E-001
+ V=L*L**T                      1.1E-003
+ L**(-1)                       1.3E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.7E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 10
+ Beta electrons: 6
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ OSMIUM      
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        424.39037600      2        13.00200100                                   
+         57.12250300      2         6.96276300                                   
+
+ L = 1
+
+         88.27900300      2        10.49894100                                   
+        176.48606400      2         9.99252300                                   
+         11.71501200      2         6.58824800                                   
+         22.91500600      2         5.03716700                                   
+
+ L = 2
+
+         44.77770800      2         7.08344100                                   
+         67.15364800      2         6.72117900                                   
+          5.55038700      2         3.79462600                                   
+          8.22010400      2         3.74812500                                   
+
+ L = 3
+
+          8.32833200      2         2.82627600                                   
+         11.10310200      2         2.78119800                                   
+
+ L = 4
+
+         -9.18134300      2         4.49698100                                   
+        -11.36160400      2         4.46773800                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0            1.9898237114                                        0    2.6E-001 
+ 1          -81.8540178851           1.9E+02                      0    1.6E-001 
+ 2          -89.6328746478 -7.8E+00  3.2E-01  1.6E+00  2.0E+00    1    1.6E-001 
+ 3          -89.8516585293 -2.2E-01  2.9E-01  2.0E-01  1.4E-02    2    1.6E-001 
+ 4          -90.0066897519 -1.6E-01  1.5E-01  1.3E-01  0.0E+00    3    1.6E-001 
+ 5          -90.0152434979 -8.6E-03  3.9E-02  3.1E-02  0.0E+00    4    1.6E-001 
+ 6          -90.0181794101 -2.9E-03  3.6E-02  8.5E-03  0.0E+00    5    1.6E-001 
+ 7          -90.0230529389 -4.9E-03  8.8E-02  7.8E-03  9.6E-02    6    1.6E-001 
+ 8          -90.0290818388 -6.0E-03  1.1E-01  7.4E-03  1.0E-01    7    1.6E-001 
+ 9          -90.0348397717 -5.8E-03  1.3E-01  7.1E-03  6.2E-02    8    1.6E-001 
+ 10         -90.0379940701 -3.2E-03  1.6E-01  5.5E-03  1.1E-02    8    1.7E-001 
+ 11         -90.0383710573 -3.8E-04  2.8E-02  2.6E-03  0.0E+00    8    1.6E-001 
+ 12         -90.0417866808 -3.4E-03  9.1E-02  2.6E-03  1.7E-02    8    1.7E-001 
+ 13         -90.0482144460 -6.4E-03  1.3E-01  5.1E-03  3.7E-02    8    1.7E-001 
+ 14         -90.0546571152 -6.4E-03  1.7E-01  9.4E-03  2.7E-02    8    1.7E-001 
+ 15         -90.0614698711 -6.8E-03  1.8E-01  1.3E-02  1.4E-02    8    1.7E-001 
+ 16         -90.0678309351 -6.4E-03  1.2E-01  1.5E-02  0.0E+00    8    1.6E-001 
+ 17         -90.0710257905 -3.2E-03  1.2E-01  7.5E-03  0.0E+00    8    1.6E-001 
+ 18         -90.0712939368 -2.7E-04  1.3E-02  3.0E-03  0.0E+00    8    1.6E-001 
+ 19         -90.0713833534 -8.9E-05  1.4E-02  1.3E-03  0.0E+00    8    1.6E-001 
+ 20         -90.0713967826 -1.3E-05  6.0E-03  5.5E-04  0.0E+00    8    1.6E-001 
+ 21         -90.0713995003 -2.7E-06  2.0E-03  3.1E-04  0.0E+00    8    1.6E-001 
+ 22         -90.0714007077 -1.2E-06  1.4E-03  2.0E-04  0.0E+00    8    1.6E-001 
+ 23         -90.0714011549 -4.5E-07  1.3E-03  1.1E-04  0.0E+00    8    1.6E-001 
+ 24         -90.0714012665 -1.1E-07  3.3E-04  7.1E-05  0.0E+00    8    1.6E-001 
+ 25         -90.0714013452 -7.9E-08  2.3E-04  5.4E-05  0.0E+00    8    1.6E-001 
+ 26         -90.0714015972 -2.5E-07  9.9E-04  5.5E-05  0.0E+00    8    1.6E-001 
+ 27         -90.0714020227 -4.3E-07  1.8E-03  5.8E-05  0.0E+00    8    1.6E-001 
+ 28         -90.0714029580 -9.4E-07  3.8E-03  5.6E-05  0.0E+00    8    1.6E-001 
+ 29         -90.0714080662 -5.1E-06  2.5E-02  7.4E-05  0.0E+00    8    1.6E-001 
+ 30         -90.0714110455 -3.0E-06  1.4E-02  2.0E-04  0.0E+00    8    1.6E-001 
+ 31         -90.0714137229 -2.7E-06  3.0E-02  1.2E-04  2.2E-04    8    1.7E-001 
+ 32         -90.0714141693 -4.5E-07  2.9E-03  1.6E-04  0.0E+00    8    1.6E-001 
+ 33         -90.0714143017 -1.3E-07  5.2E-03  8.1E-05  0.0E+00    8    1.6E-001 
+ 34         -90.0714143287 -2.7E-08  1.5E-03  1.7E-05  0.0E+00    8    1.6E-001 
+ 35         -90.0714143328 -4.1E-09  7.2E-04  1.5E-05  0.0E+00    8    1.6E-001 
+ 36         -90.0714143336 -8.3E-10  2.5E-04  5.7E-06  0.0E+00    8    1.6E-001 
+ 37         -90.0714143337 -8.5E-11  2.3E-05  1.7E-06  0.0E+00    8    1.6E-001 
+ 38         -90.0714143337 -4.8E-11  1.7E-05  1.3E-06  0.0E+00    8    1.6E-001 
+ 39         -90.0714143337 -3.5E-11  4.2E-05  7.5E-07  0.0E+00    8    1.6E-001 
+ 40         -90.0714143338 -2.0E-11  3.3E-05  5.3E-07  0.0E+00    8    1.6E-001 
+ 41         -90.0714143338 -6.0E-12  2.8E-05  2.6E-07  0.0E+00    8    1.6E-001 
+ 42         -90.0714143338 -2.3E-12  1.1E-05  3.0E-07  0.0E+00    8    1.6E-001 
+ 43         -90.0714143338 -8.5E-14  6.2E-07  7.8E-08  0.0E+00    8    1.6E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -90.071414333775    
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -8.855720144300     
+ Elumo(Alpha) [eV]                       0.610005786472      
+ Ehomo(Beta) [eV]                        -6.751707396663     
+ Elumo(Beta) [eV]                        0.811620322109      
+
+ dipole moment (Debye)
+        x              y              z       
+      1.987E-007    -7.795E-008    -1.726E-007
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   8.913E-001    -5.925E-001    -9.440E-001
+ y                  -5.925E-001    -6.043E-001     3.287E-001
+ z                  -9.440E-001     3.287E-001    -2.870E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     6.9E+000
+ * solver (setting up eqns)   7.8E-002
+ * solver (energy estimate)   3.5E-003
+ * solver (orthogonalization) 2.8E-003
+ * solver (rotation matrix X) 7.6E-002
+ * solver (exponential of X)  2.6E-002
+ * solver (total)             1.9E-001
+ * total SCF                  7.2E+000
+ Atomic guess: OS, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -9.0071414334E+001
+ Tr(RhoAvg S), Cartesian AOs              1.6000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.6000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  1.33E-015
+ max|c(RhoAvg) - c(Rho)|                          4.44E-016
+ max|RhoAvg - Rho|                                3.83E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/os.txt
+ ----------------------------------------------------------------------------
+                             SCF for IR (2S+1=4)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=8.9E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.1E-016
+ Trace of exact Coulomb matrix: 1.2E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.9E-002    5.7E+001       131         3    3.2E+000    
+ 2    5.4E-003    5.7E+001       370         13   2.9E+000    
+ 3    1.0E-004    7.4E+001       512         22   2.4E+000    
+ 4    3.0E-006    7.1E+001       698         76   1.8E+000    
+ 5    5.6E-007    4.8E+001       789         99   1.4E+000    
+ 6    9.1E-008    2.5E+000       803         100  4.5E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 803 pivots
+ Largest residual Dpq: 9.1E-008
+ NCholesky/NAO = 8.1E+000
+ Step 1 of Cholesky decomposition completed in 1.2E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     3.3E-002
+ Subtract prev contribs II (Rk)          4.6E-002
+ Two-electron integrals                  1.2E+001
+ Reallocation                            9.4E-003
+
+ Step 2 of Cholesky decomposition completed in 4.3E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    4.2E-001
+ V=L*L**T                      1.1E-003
+ L**(-1)                       1.5E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.2E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 10
+ Beta electrons: 7
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ IRIDIUM     
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        426.95814900      2        13.83147400                                   
+         65.33881300      2         7.04791400                                   
+
+ L = 1
+
+         88.07544200      2        11.10643300                                   
+        176.12477000      2        10.45655200                                   
+         12.68226000      2         6.37961400                                   
+         24.63594900      2         5.06472600                                   
+
+ L = 2
+
+         46.43325800      2         7.54875400                                   
+         69.63807400      2         7.26530800                                   
+          6.15024800      2         3.80096900                                   
+          9.46356000      2         3.71828000                                   
+
+ L = 3
+
+          9.48361000      2         3.09870600                                   
+         12.64274200      2         3.04946100                                   
+
+ L = 4
+
+        -10.41069700      2         4.96979000                                   
+        -12.86319600      2         4.93561400                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           -3.5431513946                                        0    2.7E-001 
+ 1          -94.3002051301           1.8E+02                      0    1.7E-001 
+ 2         -103.1804766382 -8.9E+00  3.2E-01  1.6E+00  2.2E+00    1    1.6E-001 
+ 3         -103.3915748820 -2.1E-01  3.1E-01  2.0E-01  0.0E+00    2    1.6E-001 
+ 4         -103.5775315186 -1.9E-01  1.0E-01  1.3E-01  0.0E+00    3    1.7E-001 
+ 5         -103.5863977367 -8.9E-03  5.5E-02  3.2E-02  0.0E+00    4    1.6E-001 
+ 6         -103.5896688022 -3.3E-03  7.5E-02  1.2E-02  0.0E+00    5    1.6E-001 
+ 7         -103.5944898193 -4.8E-03  1.2E-01  1.1E-02  1.1E-01    6    1.7E-001 
+ 8         -103.6005170268 -6.0E-03  1.5E-01  1.3E-02  1.2E-01    7    1.7E-001 
+ 9         -103.6072483662 -6.7E-03  1.8E-01  1.4E-02  8.6E-02    8    1.7E-001 
+ 10        -103.6134997781 -6.3E-03  2.1E-01  1.1E-02  5.2E-02    8    1.7E-001 
+ 11        -103.6167697980 -3.3E-03  2.6E-01  6.9E-03  4.3E-03    8    1.7E-001 
+ 12        -103.6170665334 -3.0E-04  2.1E-02  4.4E-03  0.0E+00    8    1.7E-001 
+ 13        -103.6174342644 -3.7E-04  4.2E-02  3.2E-03  0.0E+00    8    1.7E-001 
+ 14        -103.6178777505 -4.4E-04  6.3E-02  2.6E-03  0.0E+00    8    1.6E-001 
+ 15        -103.6179465813 -6.9E-05  2.4E-02  1.5E-03  0.0E+00    8    1.7E-001 
+ 16        -103.6179549624 -8.4E-06  3.2E-03  6.4E-04  0.0E+00    8    1.7E-001 
+ 17        -103.6179703822 -1.5E-05  1.3E-02  5.9E-04  0.0E+00    8    1.7E-001 
+ 18        -103.6179736107 -3.2E-06  5.6E-03  2.7E-04  0.0E+00    8    1.7E-001 
+ 19        -103.6179741078 -5.0E-07  1.1E-03  2.4E-04  0.0E+00    8    1.7E-001 
+ 20        -103.6179742326 -1.2E-07  4.2E-04  1.1E-04  0.0E+00    8    1.6E-001 
+ 21        -103.6179742416 -9.0E-09  7.0E-05  1.9E-05  0.0E+00    8    1.6E-001 
+ 22        -103.6179742457 -4.1E-09  8.2E-05  1.3E-05  0.0E+00    8    1.7E-001 
+ 23        -103.6179742525 -6.8E-09  2.1E-04  1.1E-05  0.0E+00    8    1.7E-001 
+ 24        -103.6179742537 -1.2E-09  7.8E-05  5.9E-06  0.0E+00    8    1.7E-001 
+ 25        -103.6179742538 -1.3E-10  2.7E-05  1.5E-06  0.0E+00    8    1.6E-001 
+ 26        -103.6179742538 -1.2E-11  5.2E-06  6.9E-07  0.0E+00    8    1.6E-001 
+ 27        -103.6179742539 -2.5E-11  9.8E-06  6.3E-07  0.0E+00    8    1.6E-001 
+ 28        -103.6179742539 -8.6E-12  5.6E-06  3.1E-07  0.0E+00    8    1.6E-001 
+ 29        -103.6179742539 -1.3E-12  2.6E-06  2.0E-07  0.0E+00    8    1.6E-001 
+ 30        -103.6179742539 -2.6E-13  5.8E-07  1.7E-07  0.0E+00    8    1.6E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -103.617974253879   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -7.957353249641     
+ Elumo(Alpha) [eV]                       0.856758112210      
+ Ehomo(Beta) [eV]                        -9.204736031048     
+ Elumo(Beta) [eV]                        0.261264679785      
+
+ dipole moment (Debye)
+        x              y              z       
+     -4.178E-011     6.850E-012    -1.601E-011
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   3.517E-007     6.768E-006     3.404E-007
+ y                   6.768E-006    -1.087E-005    -7.147E-007
+ z                   3.404E-007    -7.147E-007     1.051E-005
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     5.0E+000
+ * solver (setting up eqns)   5.3E-002
+ * solver (energy estimate)   2.3E-003
+ * solver (orthogonalization) 2.0E-003
+ * solver (rotation matrix X) 4.0E-002
+ * solver (exponential of X)  1.8E-002
+ * solver (total)             1.2E-001
+ * total SCF                  5.3E+000
+ Atomic guess: IR, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.0361797425E+002
+ Tr(RhoAvg S), Cartesian AOs              1.7000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.7000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.22E-015
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                5.84E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/ir.txt
+ ----------------------------------------------------------------------------
+                             SCF for PT (2S+1=3)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=9.2E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.1E-016
+ Trace of exact Coulomb matrix: 1.3E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.8E-002    5.7E+001       137         3    2.8E+000    
+ 2    5.7E-003    5.7E+001       371         13   2.5E+000    
+ 3    1.0E-004    7.3E+001       523         24   2.6E+000    
+ 4    4.9E-006    7.0E+001       694         70   2.3E+000    
+ 5    3.3E-007    4.9E+001       790         99   1.0E+000    
+ 6    9.2E-008    7.2E+000       814         100  1.4E-001    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 814 pivots
+ Largest residual Dpq: 9.2E-008
+ NCholesky/NAO = 8.2E+000
+ Step 1 of Cholesky decomposition completed in 1.1E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     2.8E-002
+ Subtract prev contribs II (Rk)          4.4E-002
+ Two-electron integrals                  1.1E+001
+ Reallocation                            9.1E-003
+
+ Step 2 of Cholesky decomposition completed in 4.8E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    4.7E-001
+ V=L*L**T                      1.1E-003
+ L**(-1)                       1.5E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.2E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 10
+ Beta electrons: 8
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ PLATINUM    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        429.64608700      2        14.60450000                                   
+         73.15688400      2         7.21828700                                   
+
+ L = 1
+
+         88.02291700      2        11.57716200                                   
+        175.99819600      2        10.88384300                                   
+         13.68227400      2         6.42440300                                   
+         27.41465100      2         5.22419800                                   
+
+ L = 2
+
+         43.55785200      2         7.69961000                                   
+         65.36910800      2         7.55080800                                   
+          7.01859600      2         3.96116400                                   
+         11.39173300      2         3.87277700                                   
+
+ L = 3
+
+         10.71022000      2         3.37986900                                   
+         14.27812500      2         3.32625500                                   
+
+ L = 4
+
+        -11.65174900      2         5.45202000                                   
+        -14.37552500      2         5.41258500                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0            2.4136432424                                        0    2.8E-001 
+ 1         -107.8674373543           1.1E+02                      0    1.7E-001 
+ 2         -118.0068054217 -1.0E+01  3.1E-01  1.8E+00  2.5E+00    1    1.8E-001 
+ 3         -118.2010932136 -1.9E-01  3.7E-01  2.3E-01  0.0E+00    2    1.8E-001 
+ 4         -118.5021939545 -3.0E-01  1.5E-01  1.6E-01  0.0E+00    3    1.8E-001 
+ 5         -118.5154686657 -1.3E-02  3.4E-02  4.8E-02  0.0E+00    4    1.8E-001 
+ 6         -118.5159540696 -4.9E-04  1.3E-02  5.5E-03  0.0E+00    5    1.8E-001 
+ 7         -118.5160339120 -8.0E-05  1.0E-02  2.2E-03  0.0E+00    6    1.8E-001 
+ 8         -118.5161217017 -8.8E-05  2.6E-02  1.8E-03  0.0E+00    7    1.8E-001 
+ 9         -118.5161481798 -2.6E-05  1.5E-02  1.3E-03  0.0E+00    8    1.8E-001 
+ 10        -118.5161485996 -4.2E-07  4.0E-04  1.6E-04  0.0E+00    8    1.8E-001 
+ 11        -118.5161486742 -7.5E-08  2.2E-04  5.5E-05  0.0E+00    8    1.8E-001 
+ 12        -118.5161487988 -1.2E-07  1.0E-03  5.2E-05  0.0E+00    8    1.8E-001 
+ 13        -118.5161498172 -1.0E-06  1.1E-02  5.0E-05  0.0E+00    8    1.8E-001 
+ 14        -118.5161503046 -4.9E-07  1.1E-02  8.6E-05  0.0E+00    8    1.8E-001 
+ 15        -118.5161503906 -8.6E-08  2.4E-03  7.4E-05  0.0E+00    8    1.8E-001 
+ 16        -118.5161504495 -5.9E-08  1.0E-03  5.6E-05  0.0E+00    8    1.8E-001 
+ 17        -118.5161504572 -7.8E-09  3.6E-04  2.1E-05  0.0E+00    8    1.8E-001 
+ 18        -118.5161504577 -4.1E-10  1.1E-04  5.7E-06  0.0E+00    8    1.8E-001 
+ 19        -118.5161504577 -4.8E-11  4.0E-05  1.4E-06  0.0E+00    8    1.8E-001 
+ 20        -118.5161504577 -3.0E-11  7.4E-06  1.2E-06  0.0E+00    8    1.8E-001 
+ 21        -118.5161504578 -2.6E-11  1.1E-05  8.5E-07  0.0E+00    8    1.8E-001 
+ 22        -118.5161504578 -7.0E-12  6.5E-06  5.0E-07  0.0E+00    8    1.8E-001 
+ 23        -118.5161504578 -7.7E-13  6.5E-06  2.5E-07  0.0E+00    8    1.8E-001 
+ 24        -118.5161504578  8.5E-14  4.0E-06  3.3E-08  0.0E+00    8    1.8E-001 
+ 24*       -118.5161504578  2.8E-14  2.8E-06  3.3E-08  1.1E-03    8    1.8E-001 
+ 24*       -118.5161504578  2.0E-13  1.9E-06  3.3E-08  2.9E-03    8    1.8E-001 
+ 24*       -118.5161504578  2.0E-13  1.3E-06  3.3E-08  5.6E-03    8    1.8E-001 
+ 24*       -118.5161504578  1.4E-13  8.7E-07  3.3E-08  9.7E-03    8    1.8E-001 
+ 24*       -118.5161504578  2.0E-13  5.7E-07  3.3E-08  1.7E-02    8    1.8E-001 
+ 24*       -118.5161504578  1.4E-13  3.5E-07  3.3E-08  2.8E-02    8    1.8E-001 
+ 24*       -118.5161504578  1.7E-13  2.0E-07  3.3E-08  5.0E-02    8    1.8E-001 
+ 24*       -118.5161504578  5.7E-14  1.3E-07  3.3E-08  9.1E-02    8    1.8E-001 
+ 24*       -118.5161504578  8.5E-14  8.7E-08  3.3E-08  1.6E-01    8    1.8E-001 
+ 24*       -118.5161504578  2.0E-13  5.6E-08  3.3E-08  2.8E-01    8    1.8E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -118.516150457772   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -7.904001605416     
+ Elumo(Alpha) [eV]                       0.848594075392      
+ Ehomo(Beta) [eV]                        -10.094026299749    
+ Elumo(Beta) [eV]                        0.062142682159      
+
+ dipole moment (Debye)
+        x              y              z       
+     -3.201E-011    -1.130E-011     6.328E-011
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   7.677E-001     6.439E-004     2.076E-001
+ y                   6.439E-004     7.861E-001    -7.167E-003
+ z                   2.076E-001    -7.167E-003    -1.554E+000
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     6.1E+000
+ * solver (setting up eqns)   5.9E-002
+ * solver (energy estimate)   2.7E-003
+ * solver (orthogonalization) 2.4E-003
+ * solver (rotation matrix X) 7.8E-002
+ * solver (exponential of X)  1.9E-002
+ * solver (total)             1.6E-001
+ * total SCF                  6.3E+000
+ Atomic guess: PT, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.1851615046E+002
+ Tr(RhoAvg S), Cartesian AOs              1.8000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.8000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.00E-015
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                7.81E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/pt.txt
+ ----------------------------------------------------------------------------
+                             SCF for AU (2S+1=2)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=9.4E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.1E-016
+ Trace of exact Coulomb matrix: 1.4E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    2.9E-002    5.7E+001       137         3    2.8E+000    
+ 2    5.9E-003    5.7E+001       361         12   2.0E+000    
+ 3    2.1E-004    7.3E+001       516         22   3.3E+000    
+ 4    7.9E-006    6.9E+001       653         57   2.7E+000    
+ 5    7.5E-007    5.7E+001       792         99   1.6E+000    
+ 6    9.5E-008    6.8E+000       813         100  1.4E-001    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 813 pivots
+ Largest residual Dpq: 9.5E-008
+ NCholesky/NAO = 8.2E+000
+ Step 1 of Cholesky decomposition completed in 1.3E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     3.9E-002
+ Subtract prev contribs II (Rk)          4.6E-002
+ Two-electron integrals                  1.2E+001
+ Reallocation                            9.3E-003
+
+ Step 2 of Cholesky decomposition completed in 6.2E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.1E-001
+ V=L*L**T                      1.1E-003
+ L**(-1)                       1.5E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 3.9E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 10
+ Beta electrons: 9
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 2.6E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ GOLD        
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        426.64186700      2        13.52321800                                   
+         36.80066800      2         6.26438400                                   
+
+ L = 1
+
+         87.00209100      2        11.41386700                                   
+        174.00437000      2        10.32921500                                   
+          8.87061000      2         5.70742400                                   
+         17.90243800      2         4.82816500                                   
+
+ L = 2
+
+         49.88365500      2         7.43096300                                   
+         74.68454900      2         8.32199000                                   
+          6.48622700      2         4.60964200                                   
+          9.54682100      2         3.51150700                                   
+
+ L = 3
+
+          8.79164000      2         3.08463900                                   
+         11.65845600      2         3.02474300                                   
+
+ L = 4
+
+         -5.23433700      2         3.97844200                                   
+         -6.73814200      2         4.01149100                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           39.2479562850                                        0    2.9E-001 
+ 1         -123.1419284617           1.6E+02                      0    1.8E-001 
+ 2         -134.1668977307 -1.1E+01  3.7E-01  2.1E+00  2.7E+00    1    1.8E-001 
+ 3         -134.5063033083 -3.4E-01  3.7E-01  3.3E-01  5.8E-02    2    1.8E-001 
+ 4         -134.7721002261 -2.7E-01  1.2E-01  1.6E-01  0.0E+00    3    1.8E-001 
+ 5         -134.7815510906 -9.5E-03  2.8E-02  4.2E-02  0.0E+00    4    1.8E-001 
+ 6         -134.7817868911 -2.4E-04  1.0E-02  3.6E-03  0.0E+00    5    1.8E-001 
+ 7         -134.7817976788 -1.1E-05  4.2E-03  1.0E-03  0.0E+00    6    1.8E-001 
+ 8         -134.7817978411 -1.6E-07  3.5E-04  1.4E-04  0.0E+00    7    1.8E-001 
+ 9         -134.7817978415 -4.2E-10  4.9E-06  9.6E-06  0.0E+00    8    1.8E-001 
+ 10        -134.7817978416 -5.2E-11  2.4E-06  2.1E-06  0.0E+00    8    1.9E-001 
+ 11        -134.7817978416 -1.0E-11  8.9E-07  7.6E-07  0.0E+00    8    1.9E-001 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -134.781797841573   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -7.952411409929     
+ Elumo(Alpha) [eV]                       0.978566212174      
+ Ehomo(Beta) [eV]                        -12.190580304197    
+ Elumo(Beta) [eV]                        -0.141902650227     
+
+ dipole moment (Debye)
+        x              y              z       
+      5.457E-014     1.366E-014     6.853E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -1.168E-007     1.040E-015    -2.055E-015
+ y                   1.040E-015    -4.739E-009     1.031E-014
+ z                  -2.055E-015     1.031E-014     1.216E-007
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     2.2E+000
+ * solver (setting up eqns)   1.6E-002
+ * solver (energy estimate)   5.8E-004
+ * solver (orthogonalization) 7.2E-004
+ * solver (rotation matrix X) 3.6E-003
+ * solver (exponential of X)  6.3E-003
+ * solver (total)             2.9E-002
+ * total SCF                  2.3E+000
+ Atomic guess: AU, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.3478179784E+002
+ Tr(RhoAvg S), Cartesian AOs              1.9000000000E+001
+ Tr(RhoAvg S), spherical AOs              1.9000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.22E-015
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                2.31E-007
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/au.txt
+ ----------------------------------------------------------------------------
+                                  SCF for HG                                 
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=9.8E-001
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=1.0E-016
+ Trace of exact Coulomb matrix: 1.4E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 276 shell pairs
+ (0 out of 4950 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (4950,4950)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1485
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (4950,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    3.4E-002    5.7E+001       138         3    2.8E+000    
+ 2    7.4E-003    5.7E+001       353         12   2.1E+000    
+ 3    1.7E-004    7.4E+001       513         22   3.7E+000    
+ 4    6.4E-006    7.0E+001       675         63   2.3E+000    
+ 5    8.0E-007    5.4E+001       800         99   1.6E+000    
+ 6    9.7E-008    4.8E+000       820         100  4.9E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 820 pivots
+ Largest residual Dpq: 9.7E-008
+ NCholesky/NAO = 8.3E+000
+ Step 1 of Cholesky decomposition completed in 1.3E+001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     4.9E-002
+ Subtract prev contribs II (Rk)          7.4E-002
+ Two-electron integrals                  1.2E+001
+ Reallocation                            9.0E-003
+
+ Step 2 of Cholesky decomposition completed in 6.8E-001 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.8E-001
+ V=L*L**T                      1.0E-003
+ L**(-1)                       1.2E-003
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 4.3E+000 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         23
+ spherical AOs                                99
+ max angular momentum                         5
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-restricted singlet)
+ Alpha+beta electrons: 20
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.4E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ MERCURY     
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        275.77479700      2        12.41307100                                   
+         49.26789800      2         6.89791300                                   
+
+ L = 1
+
+         80.50698400      2        11.31032000                                   
+        161.03482400      2        10.21077300                                   
+          9.08341600      2         5.93980400                                   
+         18.36777300      2         5.01975500                                   
+
+ L = 2
+
+         51.13725600      2         8.40789500                                   
+         76.70745900      2         8.21408600                                   
+          6.56182100      2         4.01261200                                   
+          9.81807000      2         3.79539800                                   
+
+ L = 3
+
+          9.42900100      2         3.27310600                                   
+         12.49485600      2         3.20832100                                   
+
+ L = 4
+
+         -6.33841400      2         4.48529600                                   
+         -8.09986300      2         4.51320000                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 99 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 99 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          -25.2173624537                                        0    2.0E-001 
+ 1         -137.5274622449           2.0E+02                      0    9.8E-002 
+ 2         -151.8605803314 -1.4E+01  7.0E-01  2.1E+00  3.0E+00    1    9.8E-002 
+ 3         -152.2840076753 -4.2E-01  6.7E-01  2.8E-01  1.5E-02    2    9.8E-002 
+ 4         -152.5319749908 -2.5E-01  2.3E-01  1.5E-01  0.0E+00    3    9.8E-002 
+ 5         -152.5407637185 -8.8E-03  4.4E-02  3.6E-02  0.0E+00    4    9.8E-002 
+ 6         -152.5408307271 -6.7E-05  5.9E-03  2.1E-03  0.0E+00    5    9.8E-002 
+ 7         -152.5408326996 -2.0E-06  1.2E-03  3.8E-04  0.0E+00    6    9.8E-002 
+ 8         -152.5408327251 -2.5E-08  1.6E-04  5.9E-05  0.0E+00    7    9.8E-002 
+ 9         -152.5408327251 -3.4E-11  6.0E-06  2.5E-06  0.0E+00    8    9.8E-002 
+ 10        -152.5408327251 -7.4E-13  5.6E-07  2.2E-07  0.0E+00    8    9.9E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -152.540832725089   
+ ------------------------------------------------------------------------------
+ Ehomo [eV]                              -8.887666798425     
+ Elumo [eV]                              1.027369981424      
+
+ dipole moment (Debye)
+        x              y              z       
+     -2.225E-015     5.715E-015    -5.604E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -7.157E-008     7.572E-010    -1.496E-008
+ y                   7.572E-010    -3.428E-007    -7.305E-010
+ z                  -1.496E-008    -7.305E-010     4.143E-007
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     1.1E+000
+ * solver (setting up eqns)   7.7E-003
+ * solver (energy estimate)   2.6E-004
+ * solver (orthogonalization) 3.6E-004
+ * solver (rotation matrix X) 1.5E-003
+ * solver (exponential of X)  2.9E-003
+ * solver (total)             1.3E-002
+ * total SCF                  1.2E+000
+ Atomic guess: HG, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.5254083273E+002
+ Tr(RhoAvg S), Cartesian AOs              2.0000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.0000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.89E-015
+ max|c(RhoAvg) - c(Rho)|                          2.22E-016
+ max|RhoAvg - Rho|                                9.15E-007
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/hg.txt
+ ----------------------------------------------------------------------------
+                             SCF for TL (2S+1=2)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.1E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=9.4E-017
+ Trace of exact Coulomb matrix: 8.4E+001
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.5E-002    2.6E+001       82          4    3.4E-001    
+ 2    1.2E-003    2.6E+001       270         17   1.7E-001    
+ 3    1.6E-005    2.5E+001       354         55   8.4E-002    
+ 4    2.9E-007    2.0E+001       450         99   6.3E-002    
+ 5    3.6E-008    9.5E-001       457         100  5.8E-003    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 457 pivots
+ Largest residual Dpq: 3.6E-008
+ NCholesky/NAO = 6.8E+000
+ Step 1 of Cholesky decomposition completed in 6.7E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     9.3E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  6.4E-001
+ Reallocation                            3.2E-003
+
+ Step 2 of Cholesky decomposition completed in 5.9E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.8E-002
+ V=L*L**T                      4.5E-004
+ L**(-1)                       6.4E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.5E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 11
+ Beta electrons: 10
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.0E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ THALLIUM    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        281.28466300      2        12.16780500                                   
+         62.43425100      2         8.29490900                                   
+
+ L = 1
+
+          4.63340800      2         7.15149200                                   
+          9.34175600      2         5.17286500                                   
+         72.29925300      2         9.89107200                                   
+        144.55803700      2         9.00339100                                   
+
+ L = 2
+
+         35.94303900      2         7.13021800                                   
+         53.90959300      2         6.92690600                                   
+         10.38193900      2         5.41757000                                   
+         15.58382200      2         5.13868100                                   
+
+ L = 3
+
+         15.82548800      2         5.62639900                                   
+         21.10402100      2         5.54895200                                   
+          2.91512700      2         2.87494600                                   
+          3.89690300      2         2.82145100                                   
+
+ L = 4
+
+         -7.49453400      2         6.67905700                                   
+         -9.54057500      2         6.70683500                                   
+         -7.79799200      2         7.20928400                                   
+         -9.25952400      2         7.07096400                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          179.1066815356                                        0    1.2E-001 
+ 1         -169.4726049555           5.9E+02                      0    5.6E-002 
+ 2         -171.4053221623 -1.9E+00  3.9E+00  7.1E-01  5.7E-01    1    5.7E-002 
+ 3         -171.4993525536 -9.4E-02  6.7E-01  1.7E-01  0.0E+00    2    5.6E-002 
+ 4         -171.5151793969 -1.6E-02  1.2E-01  4.2E-02  0.0E+00    3    5.6E-002 
+ 5         -171.5155010614 -3.2E-04  1.7E-02  5.5E-03  0.0E+00    4    5.6E-002 
+ 6         -171.5155265518 -2.5E-05  1.1E-02  1.4E-03  0.0E+00    5    5.7E-002 
+ 7         -171.5155277561 -1.2E-06  2.0E-03  2.7E-04  0.0E+00    6    5.7E-002 
+ 8         -171.5155277876 -3.2E-08  2.2E-04  8.2E-05  0.0E+00    7    5.7E-002 
+ 9         -171.5155277889 -1.3E-09  6.2E-05  1.3E-05  0.0E+00    8    5.7E-002 
+ 10        -171.5155277890 -8.5E-11  1.7E-05  3.5E-06  0.0E+00    8    5.7E-002 
+ 11        -171.5155277890 -7.2E-12  6.0E-06  9.6E-07  0.0E+00    8    5.7E-002 
+ 12        -171.5155277890 -2.0E-13  4.4E-07  1.2E-07  0.0E+00    8    5.7E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -171.515527789021   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -5.248624068769     
+ Elumo(Alpha) [eV]                       0.323711689403      
+ Ehomo(Beta) [eV]                        -11.504842679602    
+ Elumo(Beta) [eV]                        0.555560177774      
+
+ dipole moment (Debye)
+        x              y              z       
+      1.028E-014    -1.133E-014    -3.739E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -5.113E+000     6.373E+000     1.182E+000
+ y                   6.373E+000     5.583E-001    -7.681E-001
+ z                   1.182E+000    -7.681E-001     4.555E+000
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     7.2E-001
+ * solver (setting up eqns)   9.2E-003
+ * solver (energy estimate)   6.2E-004
+ * solver (orthogonalization) 4.6E-004
+ * solver (rotation matrix X) 3.1E-003
+ * solver (exponential of X)  4.3E-003
+ * solver (total)             1.8E-002
+ * total SCF                  8.0E-001
+ Atomic guess: TL, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.7151552779E+002
+ Tr(RhoAvg S), Cartesian AOs              2.1000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.1000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.22E-015
+ max|c(RhoAvg) - c(Rho)|                          4.44E-016
+ max|RhoAvg - Rho|                                9.60E-002
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/tl.txt
+ ----------------------------------------------------------------------------
+                             SCF for PB (2S+1=3)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.1E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=9.1E-017
+ Trace of exact Coulomb matrix: 9.3E+001
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.7E-002    2.6E+001       79          4    3.4E-001    
+ 2    1.1E-003    2.6E+001       270         17   1.4E-001    
+ 3    1.0E-005    2.6E+001       351         50   2.5E-001    
+ 4    3.7E-007    2.1E+001       452         100  7.6E-002    
+ 5    2.9E-008    6.3E-002       457         100  2.4E-003    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 457 pivots
+ Largest residual Dpq: 2.9E-008
+ NCholesky/NAO = 6.8E+000
+ Step 1 of Cholesky decomposition completed in 8.1E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     7.7E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  7.9E-001
+ Reallocation                            3.0E-003
+
+ Step 2 of Cholesky decomposition completed in 5.5E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.4E-002
+ V=L*L**T                      4.4E-004
+ L**(-1)                       5.6E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.4E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 12
+ Beta electrons: 10
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.0E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ LEAD        
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        281.28549900      2        12.29630300                                   
+         62.52021700      2         8.63263400                                   
+
+ L = 1
+
+         72.27689700      2        10.24179000                                   
+        144.59108300      2         8.92417600                                   
+          4.75869300      2         6.58134200                                   
+          9.94062100      2         6.25540300                                   
+
+ L = 2
+
+         35.84850700      2         7.75433600                                   
+         53.72434200      2         7.72028100                                   
+         10.11525600      2         4.97026400                                   
+         14.83373100      2         4.56378900                                   
+
+ L = 3
+
+         12.20989200      2         3.88751200                                   
+         16.19029100      2         3.81196300                                   
+
+ L = 4
+
+         -9.09666500      2         5.69157700                                   
+        -11.53199600      2         5.71556700                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          168.7825050322                                        0    1.2E-001 
+ 1         -189.1268172964           5.1E+02                      0    5.8E-002 
+ 2         -191.6808883113 -2.6E+00  4.3E+00  7.9E-01  6.8E-01    1    5.9E-002 
+ 3         -191.8137419150 -1.3E-01  9.5E-01  2.0E-01  0.0E+00    2    5.9E-002 
+ 4         -191.8358340554 -2.2E-02  1.6E-01  5.6E-02  0.0E+00    3    5.9E-002 
+ 5         -191.8361496177 -3.2E-04  3.3E-02  6.2E-03  0.0E+00    4    5.9E-002 
+ 6         -191.8361600893 -1.0E-05  6.6E-03  1.5E-03  0.0E+00    5    5.9E-002 
+ 7         -191.8361603533 -2.6E-07  6.6E-04  1.7E-04  0.0E+00    6    5.9E-002 
+ 8         -191.8361603615 -8.3E-09  1.0E-04  3.0E-05  0.0E+00    7    6.0E-002 
+ 9         -191.8361603618 -2.6E-10  3.9E-05  5.0E-06  0.0E+00    8    5.9E-002 
+ 10        -191.8361603618 -1.6E-11  9.8E-06  1.1E-06  0.0E+00    8    5.9E-002 
+ 11        -191.8361603618 -1.6E-12  2.9E-06  3.0E-07  0.0E+00    8    5.9E-002 
+ 12        -191.8361603618 -5.7E-14  2.3E-07  8.1E-08  0.0E+00    8    5.9E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -191.836160361824   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -6.941150688380     
+ Elumo(Alpha) [eV]                       -0.412061082176     
+ Ehomo(Beta) [eV]                        -13.696328540554    
+ Elumo(Beta) [eV]                        0.215209152414      
+
+ dipole moment (Debye)
+        x              y              z       
+     -2.673E-015     3.879E-015     9.471E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -3.434E+000     8.259E-001     4.112E-001
+ y                   8.259E-001     4.871E+000     4.175E+000
+ z                   4.112E-001     4.175E+000    -1.437E+000
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     7.5E-001
+ * solver (setting up eqns)   9.3E-003
+ * solver (energy estimate)   6.3E-004
+ * solver (orthogonalization) 4.5E-004
+ * solver (rotation matrix X) 3.2E-003
+ * solver (exponential of X)  4.1E-003
+ * solver (total)             1.8E-002
+ * total SCF                  8.3E-001
+ Atomic guess: PB, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -1.9183616036E+002
+ Tr(RhoAvg S), Cartesian AOs              2.2000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.2000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.00E-015
+ max|c(RhoAvg) - c(Rho)|                          8.88E-016
+ max|RhoAvg - Rho|                                1.07E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/pb.txt
+ ----------------------------------------------------------------------------
+                             SCF for BI (2S+1=4)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.1E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=8.8E-017
+ Trace of exact Coulomb matrix: 1.0E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.7E-002    2.6E+001       80          4    3.2E-001    
+ 2    1.9E-003    2.6E+001       268         17   2.0E-001    
+ 3    1.8E-005    2.6E+001       338         47   2.0E-001    
+ 4    7.6E-007    2.1E+001       437         99   8.7E-002    
+ 5    9.7E-008    1.1E+000       449         100  3.5E-003    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 449 pivots
+ Largest residual Dpq: 9.7E-008
+ NCholesky/NAO = 6.7E+000
+ Step 1 of Cholesky decomposition completed in 8.2E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     8.1E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  7.9E-001
+ Reallocation                            3.3E-003
+
+ Step 2 of Cholesky decomposition completed in 6.3E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    6.2E-002
+ V=L*L**T                      4.2E-004
+ L**(-1)                       5.7E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.3E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 13
+ Beta electrons: 10
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.0E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ BISMUTH     
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        283.26422700      2        13.04309000                                   
+         62.47195900      2         8.22168200                                   
+
+ L = 1
+
+         72.00149900      2        10.46777700                                   
+        144.00227700      2         9.11890100                                   
+          5.00794500      2         6.75479100                                   
+          9.99155000      2         6.25259200                                   
+
+ L = 2
+
+         36.39625900      2         8.08147400                                   
+         54.59766400      2         7.89059500                                   
+          9.98429400      2         4.95555600                                   
+         14.98148500      2         4.70455900                                   
+
+ L = 3
+
+         13.71338300      2         4.21454600                                   
+         18.19430800      2         4.13340000                                   
+
+ L = 4
+
+        -10.24744300      2         6.20570900                                   
+        -12.95571000      2         6.22778200                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          202.6349129368                                        0    1.2E-001 
+ 1         -211.5451696232           3.4E+02                      0    6.0E-002 
+ 2         -213.4767753143 -1.9E+00  2.5E+00  6.9E-01  3.5E-01    1    6.0E-002 
+ 3         -213.5739724686 -9.7E-02  6.4E-01  1.6E-01  0.0E+00    2    6.0E-002 
+ 4         -213.5939475896 -2.0E-02  1.5E-01  5.7E-02  0.0E+00    3    6.0E-002 
+ 5         -213.5945141452 -5.7E-04  5.0E-02  7.1E-03  0.0E+00    4    6.0E-002 
+ 6         -213.5945179175 -3.8E-06  3.2E-03  8.5E-04  0.0E+00    5    6.0E-002 
+ 7         -213.5945180002 -8.3E-08  3.9E-04  1.1E-04  0.0E+00    6    6.0E-002 
+ 8         -213.5945180033 -3.0E-09  3.8E-05  1.6E-05  0.0E+00    7    6.1E-002 
+ 9         -213.5945180035 -2.5E-10  3.5E-05  4.4E-06  0.0E+00    8    6.0E-002 
+ 10        -213.5945180035 -5.1E-12  5.6E-06  9.8E-07  0.0E+00    8    6.1E-002 
+ 11        -213.5945180035 -4.0E-13  9.5E-07  2.3E-07  0.0E+00    8    6.1E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -213.594518003547   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -8.681587688396     
+ Elumo(Alpha) [eV]                       3.411455289960      
+ Ehomo(Beta) [eV]                        -15.700719881913    
+ Elumo(Beta) [eV]                        0.766236906121      
+
+ dipole moment (Debye)
+        x              y              z       
+     -4.219E-015    -3.577E-014    -2.754E-016
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   8.762E-007     8.483E-008     2.153E-007
+ y                   8.483E-008    -8.713E-006    -1.629E-007
+ z                   2.153E-007    -1.629E-007     7.837E-006
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     7.1E-001
+ * solver (setting up eqns)   8.5E-003
+ * solver (energy estimate)   5.3E-004
+ * solver (orthogonalization) 4.0E-004
+ * solver (rotation matrix X) 2.8E-003
+ * solver (exponential of X)  3.8E-003
+ * solver (total)             1.6E-002
+ * total SCF                  7.9E-001
+ Atomic guess: BI, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -2.1359451800E+002
+ Tr(RhoAvg S), Cartesian AOs              2.3000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.3000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  1.55E-015
+ max|c(RhoAvg) - c(Rho)|                          4.44E-016
+ max|RhoAvg - Rho|                                2.10E-005
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/bi.txt
+ ----------------------------------------------------------------------------
+                             SCF for PO (2S+1=3)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.2E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=8.6E-017
+ Trace of exact Coulomb matrix: 1.0E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.8E-002    2.6E+001       71          3    3.2E-001    
+ 2    9.6E-004    2.6E+001       273         17   6.8E-002    
+ 3    9.0E-006    2.6E+001       349         53   2.7E-001    
+ 4    8.6E-008    2.2E+001       441         100  7.7E-002    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 441 pivots
+ Largest residual Dpq: 8.6E-008
+ NCholesky/NAO = 6.6E+000
+ Step 1 of Cholesky decomposition completed in 7.4E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     8.0E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  7.2E-001
+ Reallocation                            2.9E-003
+
+ Step 2 of Cholesky decomposition completed in 5.1E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.0E-002
+ V=L*L**T                      4.3E-004
+ L**(-1)                       5.7E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.4E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 13
+ Beta electrons: 11
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.0E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ POLONIUM    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+        283.24470600      2        13.27722700                                   
+         62.39646100      2         8.39951800                                   
+
+ L = 1
+
+         71.99171600      2        10.66568200                                   
+        143.97187100      2         9.28375300                                   
+          4.94961500      2         6.87274900                                   
+          9.74049900      2         6.32615000                                   
+
+ L = 2
+
+         36.37838300      2         8.21486600                                   
+         54.56271500      2         8.00869600                                   
+          9.88949900      2         5.05522700                                   
+         14.69387700      2         4.78255300                                   
+
+ L = 3
+
+         17.42829500      2         5.01327000                                   
+         23.38035300      2         4.98464000                                   
+          0.16339200      2         1.32676000                                   
+          0.32456600      2         1.52875800                                   
+
+ L = 4
+
+        -11.56329400      2         6.77152600                                   
+        -14.50978800      2         6.77792500                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          123.7679983270                                        0    1.2E-001 
+ 1         -232.5707338682           3.3E+02                      0    6.1E-002 
+ 2         -236.5117962762 -3.9E+00  4.7E+00  9.5E-01  9.1E-01    1    6.2E-002 
+ 3         -236.7000853726 -1.9E-01  1.2E+00  2.3E-01  0.0E+00    2    6.1E-002 
+ 4         -236.7263104122 -2.6E-02  1.8E-01  6.4E-02  0.0E+00    3    6.1E-002 
+ 5         -236.7267535006 -4.4E-04  3.5E-02  6.9E-03  0.0E+00    4    6.1E-002 
+ 6         -236.7268101156 -5.7E-05  8.3E-03  2.4E-03  0.0E+00    5    6.2E-002 
+ 7         -236.7268119766 -1.9E-06  1.9E-03  4.1E-04  0.0E+00    6    6.2E-002 
+ 8         -236.7268120375 -6.1E-08  2.7E-04  8.2E-05  0.0E+00    7    6.2E-002 
+ 9         -236.7268120386 -1.1E-09  4.1E-05  1.5E-05  0.0E+00    8    6.2E-002 
+ 10        -236.7268120387 -7.4E-11  1.1E-05  2.8E-06  0.0E+00    8    6.2E-002 
+ 11        -236.7268120387 -9.2E-12  3.6E-06  1.1E-06  0.0E+00    8    6.2E-002 
+ 12        -236.7268120387 -8.8E-13  1.3E-06  3.5E-07  0.0E+00    8    6.2E-002 
+ 13        -236.7268120387 -5.7E-14  2.3E-07  7.3E-08  0.0E+00    8    6.2E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -236.726812038714   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -8.879012305840     
+ Elumo(Alpha) [eV]                       3.680389592588      
+ Ehomo(Beta) [eV]                        -7.961173467930     
+ Elumo(Beta) [eV]                        -0.199889359393     
+
+ dipole moment (Debye)
+        x              y              z       
+      5.025E-015    -5.185E-015     3.120E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                   2.119E+000    -1.098E+000     9.458E-001
+ y                  -1.098E+000    -1.574E+000     3.442E+000
+ z                   9.458E-001     3.442E+000    -5.455E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     8.4E-001
+ * solver (setting up eqns)   1.0E-002
+ * solver (energy estimate)   7.1E-004
+ * solver (orthogonalization) 5.0E-004
+ * solver (rotation matrix X) 3.9E-003
+ * solver (exponential of X)  4.6E-003
+ * solver (total)             2.0E-002
+ * total SCF                  9.3E-001
+ Atomic guess: PO, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -2.3672681204E+002
+ Tr(RhoAvg S), Cartesian AOs              2.4000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.4000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.44E-015
+ max|c(RhoAvg) - c(Rho)|                          8.88E-016
+ max|RhoAvg - Rho|                                1.01E-001
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/po.txt
+ ----------------------------------------------------------------------------
+                             SCF for AT (2S+1=2)                             
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.2E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=8.3E-017
+ Trace of exact Coulomb matrix: 1.1E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.7E-002    2.6E+001       81          4    3.2E-001    
+ 2    6.2E-004    2.6E+001       266         20   1.2E-001    
+ 3    1.5E-005    2.5E+001       345         59   9.8E-002    
+ 4    1.5E-007    1.9E+001       430         99   1.2E-001    
+ 5    9.8E-008    9.9E-001       445         100  1.5E-003    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 445 pivots
+ Largest residual Dpq: 9.8E-008
+ NCholesky/NAO = 6.6E+000
+ Step 1 of Cholesky decomposition completed in 6.7E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     7.9E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  6.4E-001
+ Reallocation                            3.0E-003
+
+ Step 2 of Cholesky decomposition completed in 5.1E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.0E-002
+ V=L*L**T                      4.1E-004
+ L**(-1)                       6.1E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.4E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-unrestricted)
+ Alpha electrons: 13
+ Beta electrons: 12
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 1.0E-003 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ ASTATINE    
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+         49.95715800      2        30.20083200                                   
+        283.21037100      2        13.61230600                                   
+         62.28105200      2         8.52934000                                   
+
+ L = 1
+
+         71.98237100      2        10.85406500                                   
+        143.90353200      2         9.46822900                                   
+          4.87175900      2         7.03111400                                   
+          8.98305900      2         6.14385800                                   
+
+ L = 2
+
+         36.36323700      2         8.31351500                                   
+         54.54897000      2         7.99896500                                   
+          9.77628500      2         5.17996600                                   
+         14.26475500      2         4.94222600                                   
+
+ L = 3
+
+         19.87019800      2         5.81216300                                   
+         26.41645200      2         5.75371500                                   
+          0.99497000      2         2.51347200                                   
+          1.49070100      2         2.53626100                                   
+
+ L = 4
+
+        -22.22320300      2         9.89577800                                   
+        -26.71547600      2         9.73733400                                   
+         -0.37304400      2         3.01333100                                   
+         -0.48594600      2         3.09776300                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0          174.0243442208                                        0    1.2E-001 
+ 1         -258.0393486329           3.5E+02                      0    6.4E-002 
+ 2         -261.0808392137 -3.0E+00  3.3E+00  7.6E-01  6.1E-01    1    6.5E-002 
+ 3         -261.3089787774 -2.3E-01  6.8E-01  2.2E-01  0.0E+00    2    6.4E-002 
+ 4         -261.3606756015 -5.2E-02  2.5E-01  9.2E-02  0.0E+00    3    6.4E-002 
+ 5         -261.3612210250 -5.5E-04  3.7E-02  6.1E-03  0.0E+00    4    6.4E-002 
+ 6         -261.3612388004 -1.8E-05  3.2E-03  1.1E-03  0.0E+00    5    6.4E-002 
+ 7         -261.3612400196 -1.2E-06  7.1E-04  3.1E-04  0.0E+00    6    6.4E-002 
+ 8         -261.3612400376 -1.8E-08  1.1E-04  4.0E-05  0.0E+00    7    6.4E-002 
+ 9         -261.3612400386 -9.5E-10  1.1E-05  7.9E-06  0.0E+00    8    6.5E-002 
+ 10        -261.3612400386 -5.1E-11  2.7E-06  2.1E-06  0.0E+00    8    6.5E-002 
+ 11        -261.3612400386 -4.6E-12  1.3E-06  6.2E-07  0.0E+00    8    6.5E-002 
+ 12        -261.3612400386 -2.8E-13  6.1E-07  1.2E-07  0.0E+00    8    6.5E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -261.361240038648   
+ ------------------------------------------------------------------------------
+ Ehomo(Alpha) [eV]                       -10.267363928109    
+ Elumo(Alpha) [eV]                       3.958832350439      
+ Ehomo(Beta) [eV]                        -9.771147427413     
+ Elumo(Beta) [eV]                        -1.286821232872     
+
+ dipole moment (Debye)
+        x              y              z       
+     -1.058E-014     2.057E-014    -2.128E-014
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -1.949E+000    -4.913E-001    -3.242E-001
+ y                  -4.913E-001     2.147E+000     2.741E+000
+ z                  -3.242E-001     2.741E+000    -1.983E-001
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     8.2E-001
+ * solver (setting up eqns)   9.2E-003
+ * solver (energy estimate)   6.3E-004
+ * solver (orthogonalization) 4.5E-004
+ * solver (rotation matrix X) 3.5E-003
+ * solver (exponential of X)  4.3E-003
+ * solver (total)             1.8E-002
+ * total SCF                  9.0E-001
+ Atomic guess: AT, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -2.6136124004E+002
+ Tr(RhoAvg S), Cartesian AOs              2.5000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.5000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  1.78E-015
+ max|c(RhoAvg) - c(Rho)|                          4.44E-016
+ max|RhoAvg - Rho|                                9.92E-002
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/at.txt
+ ----------------------------------------------------------------------------
+                                  SCF for RN                                 
+ ----------------------------------------------------------------------------
+ NUMBER OF ATOMS                         1
+ CHARGE                                  0
+ Prescreening (pq|pq) integrals for the Cholesky decomposition
+ Shell pairs will be sorted according to their max elements
+ Max diagonal integral MaxDrs=1.2E+000
+ Applying Eq. 15 in J. Chem. Phys. 150, 194112 (2019); doi: 10.1063/1.5083802
+ Schwarz inequality: Dpq<min(10**(-8),Tau)**2/MaxDrs=8.1E-017
+ Trace of exact Coulomb matrix: 1.2E+002
+ Trace of discarded integrals: 0.0E+000
+ Discarded 0 out of 190 shell pairs
+ (0 out of 2278 orbital pairs)
+
+ Step 1 of Cholesky decomposition: locating pivots
+ -------------------------------------------------
+ Dimensions of the Coulomb matrix: (2278,2278)
+ Threshold for diagonal matrix elements: Dpq > 1.0E-007
+ Max number of Cholesky vectors: 1005
+ Rk storage block size: 500
+ Max dimension of 2e integrals buffer: (2278,1000)
+
+ ----------------------------------------------------------------------------
+ #    Dmax        Memory (MB)    NPivots     %    Time        
+ ----------------------------------------------------------------------------
+ 1    1.8E-002    2.6E+001       80          4    3.2E-001    
+ 2    1.8E-003    2.6E+001       264         17   2.1E-001    
+ 3    1.8E-005    2.6E+001       340         53   1.2E-001    
+ 4    1.8E-007    2.2E+001       431         98   1.2E-001    
+ 5    8.8E-008    9.1E-001       446         100  9.2E-004    
+
+ Step 1 of the Cholesky decomposition completed
+ Computed 446 pivots
+ Largest residual Dpq: 8.8E-008
+ NCholesky/NAO = 6.7E+000
+ Step 1 of Cholesky decomposition completed in 7.8E-001 seconds
+ Detailed timings in seconds
+ Subtract prev contribs I (M-R**T*R)     7.1E-003
+ Subtract prev contribs II (Rk)          1.1E-002
+ Two-electron integrals                  7.5E-001
+ Reallocation                            3.4E-003
+
+ Step 2 of Cholesky decomposition completed in 6.0E-002 seconds
+ Detailed timings in seconds
+ Reduced-dimension matrix V    5.9E-002
+ V=L*L**T                      4.0E-004
+ L**(-1)                       6.1E-004
+
+ Full-dimension Cholesky vectors of the Coulomb matrix will be stored in memory
+ Cholesky vectors computed in 1.2E-001 seconds
+
+ ┌─────────────────────────────────────────┐
+ │          Self-consistent field          │
+ └─────────────────────────────────────────┘
+
+ Atomic orbital basis set
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ atomic centers                               1
+ shell parameter sets                         19
+ spherical AOs                                67
+ max angular momentum                         4
+ parameter set                                ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+ SCF guess: bare nuclei Hamiltonian
+ Starting self-consistent field iterations (spin-restricted singlet)
+ Alpha+beta electrons: 26
+ ----------------------------------------------------------------------------
+ Exchange-correlation: Hartree-Fock
+ ----------------------------------------------------------------------------
+ Replicated-data parallel SCF
+ ----------------------------
+ Processes                               1
+ Threads/process                         16
+ Allocated 5.5E-004 GiB of scratch space for the KS matrix build
+ ----------------------------------------------------------------------------
+ Loaded pseudopotential parameters
+ ----------------------------------------------------------------------------
+
+ RADON       
+ Parameters file: ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ ECP accounts for 60 core electrons
+
+          Coeff         R^n       Exponent                                       
+
+ Local part
+
+ (Local part not present)
+          0.00000000      2         1.00000000                                   
+
+ L = 0
+
+         49.96555100      2        30.15124200                                   
+        283.07000000      2        14.52124100                                   
+         62.00287000      2         8.05203800                                   
+
+ L = 1
+
+         71.96911900      2        11.00994200                                   
+        143.86055900      2         9.61762500                                   
+          4.71476100      2         7.33600800                                   
+          9.01306500      2         6.40625300                                   
+
+ L = 2
+
+         36.36836500      2         8.36922000                                   
+         54.55176100      2         8.11697500                                   
+          9.63448700      2         5.35365600                                   
+         14.38790200      2         5.09721200                                   
+
+ L = 3
+
+         21.79729000      2         6.34857100                                   
+         28.94680500      2         6.29594900                                   
+          1.44736500      2         2.88211800                                   
+          2.17796400      2         2.90804800                                   
+
+ L = 4
+
+        -25.22809500      2        11.01520500                                   
+        -30.56612100      2        10.90985300                                   
+         -0.57480000      2         3.48276100                                   
+         -0.77953800      2         3.60041800                                   
+
+ ----------------------------------------------------------------------------
+ Spherical harmonic basis contains 67 vectors
+ Linear independence thresh: Eig(S) > 1.0E-006
+ Computations will be carried out in the space of 67 MOs
+ Threshold for J, K: |Rho(r,s)*(pq|rs)|,|Rho(q,s)*(pq|rs)| > 1.0E-011
+ Convergence conditions
+ ----------------------
+ RhoDiff < 1.0E-006
+ OrbGrad < 1.0E-006
+ Max number of macroiters: 1024
+ ------------------------------------------------------------------------------
+ #           Energy        EDiff    RhoDiff  OrbGrad  OrbShift NStored Time     
+ ------------------------------------------------------------------------------
+ 0           75.5049667300                                        0    9.2E-002 
+ 1         -281.7562115730           7.1E+02                      0    3.3E-002 
+ 2         -286.9716737262 -5.2E+00  1.1E+01  1.1E+00  1.0E+00    1    3.4E-002 
+ 3         -287.4190036886 -4.5E-01  1.7E+00  2.8E-01  0.0E+00    2    3.3E-002 
+ 4         -287.5432183208 -1.2E-01  7.1E-01  1.4E-01  0.0E+00    3    3.3E-002 
+ 5         -287.5434767721 -2.6E-04  4.6E-02  5.4E-03  0.0E+00    4    3.3E-002 
+ 6         -287.5434941833 -1.7E-05  4.1E-03  1.3E-03  0.0E+00    5    3.3E-002 
+ 7         -287.5434942810 -9.8E-08  6.8E-04  1.1E-04  0.0E+00    6    3.3E-002 
+ 8         -287.5434942813 -3.2E-10  4.4E-05  8.7E-06  0.0E+00    7    3.3E-002 
+ 9         -287.5434942813 -2.3E-12  5.4E-06  9.6E-07  0.0E+00    8    3.4E-002 
+ 10        -287.5434942813  0.0E+00  6.7E-07  1.2E-07  0.0E+00    8    3.4E-002 
+ ------------------------------------------------------------------------------
+ SCF converged
+ Converged energy                        -287.543494281314   
+ ------------------------------------------------------------------------------
+ Ehomo [eV]                              -11.631028154810    
+ Elumo [eV]                              4.362768530759      
+
+ dipole moment (Debye)
+        x              y              z       
+      5.720E-015    -1.400E-015     3.323E-015
+
+ traceless quadrupole moment (Debye*Angs)
+                       x              y              z       
+ x                  -2.069E-006     1.708E-015    -1.261E-014
+ y                   1.708E-015    -3.994E-006     1.292E-014
+ z                  -1.261E-014     1.292E-014     6.063E-006
+
+ ----------------------------------------------------------------------------
+ Timings (seconds)
+ * mean-field hamiltonian     3.6E-001
+ * solver (setting up eqns)   3.7E-003
+ * solver (energy estimate)   2.2E-004
+ * solver (orthogonalization) 1.9E-004
+ * solver (rotation matrix X) 1.2E-003
+ * solver (exponential of X)  1.7E-003
+ * solver (total)             7.2E-003
+ * total SCF                  4.3E-001
+ Atomic guess: RN, ../../../../basis-sets/bse/cc-pvqz-pp.txt
+ -----------------------------------------------------------
+ E(HF) [a.u.]                            -2.8754349428E+002
+ Tr(RhoAvg S), Cartesian AOs              2.6000000000E+001
+ Tr(RhoAvg S), spherical AOs              2.6000000000E+001
+ max|T RhoAvg T**T - RhoAvg_sao|                  2.44E-015
+ max|c(RhoAvg) - c(Rho)|                          5.55E-016
+ max|RhoAvg - Rho|                                6.46E-006
+ Saved /mnt/storage_6/project_data/pl0415-03/marcin/beyond-rpa/guess/electron-densities/bse/cc-pvqz-pp/rn.txt
+0
+% Job finished at Sat Oct 10 15:57:45 UTC 2026
+% Total wall clock time [hours]: 0.059

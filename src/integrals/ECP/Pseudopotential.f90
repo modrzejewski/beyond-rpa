@@ -39,7 +39,7 @@
 !       The linear expansion coefficient of U_l(r). C_{KL} is stored in
 !       the global array ECP_COEFF.
 !
-! r^{n_{kl}}, 0 <= n_{kl} <= 2
+! r^{n_{kl}}, n_{kl} >= 0
 !       Radial prefactor. The exponent n_{kl} is stored in the global
 !       array ECP_NKL. r^{n_{kl}} includes the r^2 part of the Jacobian
 !       of Cartesian->spherical transformation.
@@ -2853,22 +2853,19 @@ contains
             integer, intent(in)                  :: k0
 
             integer :: ngauss
-            real(F64) :: e, alpha, c
-            real(F64), dimension(0:2) :: rn
+            real(F64) :: e, alpha, c, r2
             integer :: nkl
             integer :: k
-            
-            rn(0) = ONE
-            rn(1) = r
-            rn(2) = r**2
+
+            r2 = r**2
             ngauss = ECP_NGAUSS(2+l, ecpcenter)
             pp_ulpot = ZERO
             do k = k0, k0 + ngauss - 1
                   alpha = ECP_EXPN(k)
                   c = ECP_COEFF(k)
                   nkl = ECP_NKL(k)
-                  e = exp(-alpha * rn(2))
-                  pp_ulpot = pp_ulpot + c * rn(nkl) * e
+                  e = exp(-alpha * r2)
+                  pp_ulpot = pp_ulpot + c * r**nkl * e
             end do
       end function pp_ulpot
 

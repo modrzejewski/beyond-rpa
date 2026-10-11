@@ -1,0 +1,24 @@
+! test category: fast
+! reference values from pyscf
+! Charge:                 1
+! Multiplicity:           1
+! HF single point (a.u.): -131.3942028729
+
+basis_assignment
+  Ta bse/cc-pVTZ-PP
+  O  cc-repo/cc-pVTZ
+end
+
+scf
+  xcfunc HF
+  eri_algorithm cholesky
+  maxniters 256
+end
+
+xyz
+2
+charge 1
+mult 1
+Ta     0.000000    0.000000    0.000000
+O      0.000000    0.000000    1.700000
+end

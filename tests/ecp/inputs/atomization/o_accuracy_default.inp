@@ -1,0 +1,21 @@
+! test category: fast
+! reference values from pyscf
+! Charge:                 0
+! Multiplicity:           3
+! HF single point (a.u.): -74.8117566196
+
+basis cc-repo/cc-pVTZ
+
+scf
+  xcfunc HF
+  eri_algorithm thc
+  thc_qrthresh 1.0E-4
+  lindepthresh 5.0E-6
+  maxniters 1024
+end
+
+xyz
+1
+mult 3
+O      0.000000    0.000000    0.000000
+end

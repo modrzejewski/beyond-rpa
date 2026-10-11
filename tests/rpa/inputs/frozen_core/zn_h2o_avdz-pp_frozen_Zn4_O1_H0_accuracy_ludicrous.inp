@@ -10,7 +10,10 @@
 ! HF interaction A...B (kcal/mol):   0.010294
 ! dRPA interaction A...B (kcal/mol): -0.232376
 
-basis aug-cc-pVDZ-PP
+basis_assignment
+ Zn aug-cc-pVDZ-PP
+ *  aug-cc-pVDZ
+end
 
 scf
   xcfunc HF

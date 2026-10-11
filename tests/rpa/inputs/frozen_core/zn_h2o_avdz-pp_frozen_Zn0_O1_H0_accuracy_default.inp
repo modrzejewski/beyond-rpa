@@ -10,15 +10,24 @@
 ! HF interaction A...B (kcal/mol):   0.010294
 ! dRPA interaction A...B (kcal/mol): -0.233445
 
-basis aug-cc-pVDZ-PP
+basis_assignment
+ Zn aug-cc-pVDZ-PP
+ *  aug-cc-pVDZ
+end
 
 scf
   xcfunc HF
+  eri_algorithm thc
+  lindepthresh 1.0E-5
 end
 
 rpa
   TheoryLevel RPA+ph
-  accuracy default
+  accuracy custom
+  ! The default THC Becke grid (SG1) is the bottleneck for accuracy when
+  ! semicore electrons are correlated (FrozenOrbitals Zn 0); we perturb
+  ! the default baseline to a finer grid.
+  THC_BeckeGridKind medium
   FrozenOrbitals Zn 0
   FrozenOrbitals O 1
   FrozenOrbitals H 0
