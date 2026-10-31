@@ -1,0 +1,33 @@
+Input: h2o_h2o_vdz_frozen_O0_H0
+Frozen orbitals AB/A/B:             0/0/0
+HF single point AB (a.u.):          -152.06220207
+dRPA single point AB (a.u.):        -0.46451870
+HF single point A (a.u.):           -76.02670615
+dRPA single point A (a.u.):         -0.23187625
+HF single point B (a.u.):           -76.02932110
+dRPA single point B (a.u.):         -0.23289187
+HF interaction A...B (kcal/mol):    -3.874757
+dRPA interaction A...B (kcal/mol):  0.156509
+
+Input: h2o_h2o_vdz_frozen_O1_H0
+Frozen orbitals AB/A/B:             2/1/1
+HF single point AB (a.u.):          -152.06220207
+dRPA single point AB (a.u.):        -0.45914869
+HF single point A (a.u.):           -76.02670615
+dRPA single point A (a.u.):         -0.22920150
+HF single point B (a.u.):           -76.02932110
+dRPA single point B (a.u.):         -0.23019657
+HF interaction A...B (kcal/mol):    -3.874757
+dRPA interaction A...B (kcal/mol):  0.156491
+
+Input: h2o_h2o_vdz_coreorbthresh
+Frozen orbitals AB/A/B:             2/1/1
+HF single point AB (a.u.):          -152.06220207
+dRPA single point AB (a.u.):        -0.45914869
+HF single point A (a.u.):           -76.02670615
+dRPA single point A (a.u.):         -0.22920150
+HF single point B (a.u.):           -76.02932110
+dRPA single point B (a.u.):         -0.23019657
+HF interaction A...B (kcal/mol):    -3.874757
+dRPA interaction A...B (kcal/mol):  0.156491
+

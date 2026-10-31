@@ -1,0 +1,22 @@
+Input: zn_h2o_avdz_frozen_Zn5_O1_H0
+Frozen orbitals AB/A/B:             6/5/1
+HF single point AB (a.u.):          -1853.88828171
+dRPA single point AB (a.u.):        -0.86467116
+HF single point A (a.u.):           -1777.84675113
+dRPA single point A (a.u.):         -0.61854151
+HF single point B (a.u.):           -76.04155710
+dRPA single point B (a.u.):         -0.24576858
+HF interaction A...B (kcal/mol):    0.016638
+dRPA interaction A...B (kcal/mol):  -0.226567
+
+Input: zn_h2o_avdz_frozen_Zn9_O1_H0
+Frozen orbitals AB/A/B:             10/9/1
+HF single point AB (a.u.):          -1853.88828171
+dRPA single point AB (a.u.):        -0.68288257
+HF single point A (a.u.):           -1777.84675113
+dRPA single point A (a.u.):         -0.43675493
+HF single point B (a.u.):           -76.04155710
+dRPA single point B (a.u.):         -0.24576858
+HF interaction A...B (kcal/mol):    0.016638
+dRPA interaction A...B (kcal/mol):  -0.225317
+

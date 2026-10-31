@@ -132,6 +132,8 @@ contains
                         RPAParams)
                   RPAOutput%Energy(RPA_ENERGY_T2_DIRECT_RING) = sum(RPAOutput%EigRPA)
                   deallocate(Rkai)
+                  deallocate(PiUEigenvecs)
+                  deallocate(PiUEigenvals)
                   t_T2 = clock_readwall(timer)
                   if (RPAParams%ComputeNaturalOrbitals) then
                         call blankline()
@@ -154,12 +156,15 @@ contains
                         ! SOSEX + higher-order contributions to the correlation energy derived from
                         ! the non-ring part of the expectation value of the hamiltonian
                         !
-                        ! Variant with T's in the full canonical orbital basis
+                        ! Variant with T's in the full canonical orbital basis on entry.
+                        ! The RPA+ph branch transforms Uaim in place to the localized
+                        ! occupied orbital basis, so Uaim is freed right after the call.
                         ! ---------------------------------------------------------------------------------
                         call clock_start(timer)
-                        call rpa_THC_Corrections(RPAOutput, THC_ZgkFull, THC_Xga(:, :, s), THC_Xgi(:, :, s), &
-                              Uaim, Am, OccCoeffs(:, 1:NOcc(s), s), NOcc(s), NVirt(s), NVecsT2, NGridTHC, &
-                              RPAParams, AOBasis)
+                        call rpa_THC_Corrections(RPAOutput, Uaim, Am, THC_ZgkFull, THC_Xga(:, :, s), &
+                              THC_Xgi(:, :, s), OccCoeffs(:, 1:NOcc(s), s), NOcc(s), NVirt(s), &
+                              NVecsT2, NGridTHC, RPAParams, AOBasis)
+                        deallocate(Uaim)
                         t_Corrections = clock_readwall(timer)
                   end if
                   call move_alloc(from=Am, to=RPAOutput%Am)
@@ -191,22 +196,31 @@ contains
       end subroutine rpa_THC_MBPT3
 
 
-      subroutine rpa_THC_Corrections(RPAOutput, Zgk, Yga, Xgi, &
-            Uaim, Am, Cpi, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams, AOBasis)
-            
-            integer, intent(in)                                    :: NOcc
-            integer, intent(in)                                    :: NVirt
-            integer, intent(in)                                    :: NVecsT2
-            integer, intent(in)                                    :: NGridTHC
-            type(TRPAOutput), intent(inout)                        :: RPAOutput
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
-            real(F64), dimension(NGridTHC, NVirt), intent(in)      :: Yga
-            real(F64), dimension(NGridTHC, NOcc), intent(in)       :: Xgi
-            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(in) :: Uaim
-            real(F64), dimension(:), intent(in)                    :: Am
-            real(F64), dimension(:, :), intent(in)                 :: Cpi
-            type(TRPAParams), intent(in)                           :: RPAParams
-            type(TAOBasis), intent(in)                             :: AOBasis
+      subroutine rpa_THC_Corrections(RPAOutput, Uaim, Am, Zgk, Yga, Xgi, &
+            Cpi, NOcc, NVirt, NVecsT2, NGridTHC, RPAParams, AOBasis)
+            !
+            ! Compute the beyond-direct-ring corrections to the RPA
+            ! correlation energy. The theory level selects the terms:
+            ! particle-hole corrections (RPA+ph), the experimental
+            ! ph+pp+hh set, or the CCD-based cumulant corrections.
+            !
+            ! Uaim holds the canonical basis on entry. The RPA+ph branch
+            ! returns it in the localized occupied orbital basis. The other
+            ! branches leave it unchanged.
+            !
+            integer, intent(in)                                       :: NOcc
+            integer, intent(in)                                       :: NVirt
+            integer, intent(in)                                       :: NVecsT2
+            integer, intent(in)                                       :: NGridTHC
+            type(TRPAOutput), intent(inout)                           :: RPAOutput
+            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(inout) :: Uaim
+            real(F64), dimension(:), intent(in)                       :: Am
+            real(F64), dimension(:, :), intent(in)                    :: Zgk
+            real(F64), dimension(NGridTHC, NVirt), intent(in)         :: Yga
+            real(F64), dimension(NGridTHC, NOcc), intent(in)          :: Xgi
+            real(F64), dimension(:, :), intent(in)                    :: Cpi
+            type(TRPAParams), intent(in)                              :: RPAParams
+            type(TAOBasis), intent(in)                                :: AOBasis
 
             real(F64), dimension(:, :), allocatable :: YXUggm, Zgh
             type(TClock) :: timer_total, timer            
@@ -215,7 +229,7 @@ contains
             logical, parameter :: Compute_2bcd = .false.
 
             if (RPAParams%TheoryLevel==RPA_THEORY_PH) then
-                  call rpa_JCTC2025_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+                  call rpa_JCTC2025_Corrections(RPAOutput, Uaim, Am, Zgk, Xgi, Yga, Cpi, &
                         RPAParams, AOBasis)
             else if (RPAParams%TheoryLevel==RPA_THEORY_PH_PP_HH) then
                   !
