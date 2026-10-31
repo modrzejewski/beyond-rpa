@@ -76,5 +76,22 @@ module thc_definitions
             ! in aug-cc-pVDZ basis require PhiSquaredThresh=1.0E-11 to converge.
             !
             real(F64) :: PhiSquaredThresh = 1.0E-11_F64
+            !
+            ! Minimum Lebedev order of every radial shell of the parent
+            ! grid. The order is the degree L of the spherical harmonics
+            ! integrated exactly by the Lebedev grid (3, 5, 7, ..., 65),
+            ! not the index of the grid in the Lebedev table. An order
+            ! between two table values selects the next larger grid.
+            ! Zero keeps the orders of THC_BeckeGridKind. The default
+            ! orders of the innermost shells are designed for nearly
+            ! spherical integrands and do not resolve products of core
+            ! orbitals with d and f functions.
+            !
+            integer   :: LebedevLmin = 0
+            !
+            ! Number of radial shells of the parent grid. Zero keeps
+            ! the number defined by THC_BeckeGridKind.
+            !
+            integer   :: NRadial = 0
       end type TTHCParams
 end module thc_definitions
