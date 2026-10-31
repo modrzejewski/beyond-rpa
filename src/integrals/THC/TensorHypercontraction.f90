@@ -257,6 +257,8 @@ contains
                   THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
                   THCParams%QRThreshReduced, &    ! threshold for the reduced-size grid
                   THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
+                  THCParams%LebedevLmin, &        ! minimum Lebedev order of the parent grid
+                  THCParams%NRadial, &            ! number of radial shells of the parent grid
                   AOBasis, System)
             call thc_Z( &
                   THCGrid%Zgk, &
@@ -293,7 +295,7 @@ contains
       
 
       subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, PhiSquaredThresh, &
-            QRThresh, QRThreshReduced, BlockDim, AOBasis, System)
+            QRThresh, QRThreshReduced, BlockDim, LebedevLmin, NRadial, AOBasis, System)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
             !
@@ -338,6 +340,8 @@ contains
             real(F64), intent(in)                                :: QRThresh
             real(F64), intent(in)                                :: QRThreshReduced
             integer, intent(in)                                  :: BlockDim
+            integer, intent(in)                                  :: LebedevLmin
+            integer, intent(in)                                  :: NRadial
             type(TAOBasis), intent(in)                           :: AOBasis
             type(TSystem), intent(in)                            :: System
 
@@ -363,7 +367,7 @@ contains
                   NAO = AOBasis%NAOCart
             end if
             call becke_MolecularGrid(X, Y, Z, W, NGrid, BeckeGridKind, &
-                  System, AOBasis, PhiSquaredThresh)
+                  System, AOBasis, PhiSquaredThresh, LebedevLmin, NRadial)
             deallocate(W)
             !
             ! Molecular grid pruning by rank-revealing Cholesky decomposition.
