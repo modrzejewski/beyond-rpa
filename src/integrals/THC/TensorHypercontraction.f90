@@ -9,7 +9,8 @@ module TensorHypercontraction
       use sys_definitions
       use thc_definitions
       use TwoStepCholesky_definitions
-      
+      use periodic
+
       implicit none
 
       type TCompressedVecs
@@ -257,9 +258,9 @@ contains
                   THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
                   THCParams%QRThreshReduced, &    ! threshold for the reduced-size grid
                   THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
-                  THCParams%LebedevLmin, &        ! minimum Lebedev order of the parent grid
                   THCParams%NRadial, &            ! number of radial shells of the parent grid
-                  AOBasis, System)
+                  AOBasis, System, &
+                  THCParams%LebedevLmin)          ! minimum Lebedev order of the parent grid
             call thc_Z( &
                   THCGrid%Zgk, &
                   THCGrid%ZgkReduced, &
@@ -295,7 +296,7 @@ contains
       
 
       subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, PhiSquaredThresh, &
-            QRThresh, QRThreshReduced, BlockDim, LebedevLmin, NRadial, AOBasis, System)
+            QRThresh, QRThreshReduced, BlockDim, NRadial, AOBasis, System, LebedevLmin)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
             !
@@ -332,25 +333,26 @@ contains
             !    repulsion integrals, J. Chem. Phys. 150, 194112 (2019);
             !    doi: 10.1063/1.5083802
             !
-            real(F64), dimension(:, :), allocatable, intent(out) :: Xgp
-            integer, intent(out)                                 :: NGrid
-            integer, intent(out)                                 :: NGridReduced
-            integer, intent(in)                                  :: BeckeGridKind
-            real(F64), intent(in)                                :: PhiSquaredThresh
-            real(F64), intent(in)                                :: QRThresh
-            real(F64), intent(in)                                :: QRThreshReduced
-            integer, intent(in)                                  :: BlockDim
-            integer, intent(in)                                  :: LebedevLmin
-            integer, intent(in)                                  :: NRadial
-            type(TAOBasis), intent(in)                           :: AOBasis
-            type(TSystem), intent(in)                            :: System
+            real(F64), dimension(:, :), allocatable, intent(out)     :: Xgp
+            integer, intent(out)                                     :: NGrid
+            integer, intent(out)                                     :: NGridReduced
+            integer, intent(in)                                      :: BeckeGridKind
+            real(F64), intent(in)                                    :: PhiSquaredThresh
+            real(F64), intent(in)                                    :: QRThresh
+            real(F64), intent(in)                                    :: QRThreshReduced
+            integer, intent(in)                                      :: BlockDim
+            integer, intent(in)                                      :: NRadial
+            type(TAOBasis), intent(in)                               :: AOBasis
+            type(TSystem), intent(in)                                :: System
+            integer, dimension(KNOWN_ELEMENTS), optional, intent(in) :: LebedevLmin
 
             real(F64), dimension(:), allocatable :: X, Y, Z, W
+            integer, dimension(KNOWN_ELEMENTS) :: LebedevLmin_
             integer :: NAO
             integer :: ThisImage
             real(F64) :: t_Grid
             type(TClock) :: timer_Grid
-            
+
             ThisImage = this_image()
             call clock_start(timer_Grid)
             call blankline()
@@ -366,8 +368,11 @@ contains
             else
                   NAO = AOBasis%NAOCart
             end if
+            LebedevLmin_ = 0
+            if (present(LebedevLmin)) LebedevLmin_ = LebedevLmin
+            call thc_CoreLebedevLmin(LebedevLmin_, AOBasis, System)
             call becke_MolecularGrid(X, Y, Z, W, NGrid, BeckeGridKind, &
-                  System, AOBasis, PhiSquaredThresh, LebedevLmin, NRadial)
+                  System, AOBasis, PhiSquaredThresh, LebedevLmin_, NRadial)
             deallocate(W)
             !
             ! Molecular grid pruning by rank-revealing Cholesky decomposition.
@@ -388,7 +393,64 @@ contains
             call msg("THC grid completed in " // str(t_Grid,d=1) // " seconds")
       end subroutine thc_Grid
 
-      
+
+      pure function thc_CoreL(Z)
+            !
+            ! Highest angular momentum of the shells below the valence
+            ! shell of element Z. These compact shells, multiplied by
+            ! basis functions of high angular momentum, set the Lebedev
+            ! order the THC parent grid needs around the nucleus.
+            !
+            integer :: thc_CoreL
+            integer, intent(in) :: Z
+
+            select case (Z)
+            case (1:2)
+                  thc_CoreL = 0   ! no core
+            case (3:10)
+                  thc_CoreL = 0   ! 1s
+            case (11:20)
+                  thc_CoreL = 1   ! 2p, 3p
+            case (21:57)
+                  thc_CoreL = 2   ! 3d, 4d
+            case default
+                  thc_CoreL = 3   ! 4f
+            end select
+      end function thc_CoreL
+
+
+      subroutine thc_CoreLebedevLmin(LebedevLmin, AOBasis, System)
+            !
+            ! Raise the minimum Lebedev order of each element from sodium on
+            ! to 2*(Lcore + Lmax) + 1, the order that integrates the products
+            ! of its core shells with its basis functions exactly. Lmax is
+            ! the highest angular momentum over all atoms of the element,
+            ! ghosts included.
+            !
+            integer, dimension(:), intent(inout) :: LebedevLmin
+            type(TAOBasis), intent(in)           :: AOBasis
+            type(TSystem), intent(in)            :: System
+
+            integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap, LmaxElements
+            integer :: a, k, NElements, Z
+
+            allocate(AtomElementMap(System%NAtoms))
+            call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
+            allocate(LmaxElements(NElements))
+            LmaxElements = 0
+            do a = 1, System%NAtoms
+                  k = AtomElementMap(a)
+                  LmaxElements(k) = max(LmaxElements(k), AOBasis%MaxAtomL(a))
+            end do
+            do k = 1, NElements
+                  Z = ZList(k)
+                  if (Z >= THC_CORE_FLOOR_ZMIN) then
+                        LebedevLmin(Z) = max(LebedevLmin(Z), 2 * (thc_CoreL(Z) + LmaxElements(k)) + 1)
+                  end if
+            end do
+      end subroutine thc_CoreLebedevLmin
+
+
       subroutine thc_Z(Zgk, ZgkReduced, NGrid, NGridReduced, Xgp, Rkpq, Chol2Vecs, &
             Chol2Params, AOBasis, THCParams)
             !

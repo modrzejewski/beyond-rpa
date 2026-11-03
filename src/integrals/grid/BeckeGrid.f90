@@ -15,18 +15,18 @@ contains
       
       subroutine becke_MolecularGrid(Xk, Yk, Zk, Wk, NPoints, GridType, System, AOBasis, &
             Phi2Thresh, LebedevLmin, NRadial)
-            real(F64), dimension(:), allocatable, intent(out)  :: Xk
-            real(F64), dimension(:), allocatable, intent(out)  :: Yk
-            real(F64), dimension(:), allocatable, intent(out)  :: Zk
-            real(F64), dimension(:), allocatable, intent(out)  :: Wk
-            integer, intent(out)                               :: NPoints            
-            integer, intent(in)                                :: GridType
-            type(TSystem), intent(in)                          :: System
-            type(TAOBasis), intent(in)                         :: AOBasis
-            real(F64), optional, intent(in)                    :: Phi2Thresh
-            integer, optional, intent(in)                      :: LebedevLmin
-            integer, optional, intent(in)                      :: NRadial
-            
+            real(F64), dimension(:), allocatable, intent(out)        :: Xk
+            real(F64), dimension(:), allocatable, intent(out)        :: Yk
+            real(F64), dimension(:), allocatable, intent(out)        :: Zk
+            real(F64), dimension(:), allocatable, intent(out)        :: Wk
+            integer, intent(out)                                     :: NPoints
+            integer, intent(in)                                      :: GridType
+            type(TSystem), intent(in)                                :: System
+            type(TAOBasis), intent(in)                               :: AOBasis
+            real(F64), optional, intent(in)                          :: Phi2Thresh
+            integer, dimension(KNOWN_ELEMENTS), optional, intent(in) :: LebedevLmin
+            integer, optional, intent(in)                            :: NRadial
+
             type(TLebedevGrid), dimension(LEBEDEV_NGRIDS) :: LebedevGrids
             integer, dimension(LEBEDEV_LMAX) :: LebedevLMap
             integer :: k, l, m, Z
@@ -49,7 +49,8 @@ contains
             real(F64), parameter :: WkBeckeThresh = ZERO
             real(F64), parameter :: Phi2ThreshDefault = 1.0E-24_F64
             real(F64) :: PhiSquaredThresh
-            integer :: LebedevLmin_, NRadial_
+            integer :: NRadial_
+            integer, dimension(:), allocatable :: LebedevLmin_
 
             ThisImage = this_image()
             NImages = num_images()
@@ -62,14 +63,21 @@ contains
             else
                   PhiSquaredThresh = Phi2ThreshDefault
             end if
-            LebedevLmin_ = 0
-            if (present(LebedevLmin)) LebedevLmin_ = LebedevLmin
             NRadial_ = 0
             if (present(NRadial)) NRadial_ = NRadial
-            if (LebedevLmin_ < 0 .or. LebedevLmin_ > LEBEDEV_LMAX) then
-                  call msg("Invalid minimum Lebedev order: expected a positive value " &
-                        // "not larger than " // str(LEBEDEV_LMAX), MSG_ERROR)
-                  error stop
+            !
+            ! Minimum Lebedev order of each element present in the system,
+            ! indexed like ZList. Zero keeps the orders of GridType.
+            !
+            allocate(LebedevLmin_(NElements))
+            LebedevLmin_ = 0
+            if (present(LebedevLmin)) then
+                  if (any(LebedevLmin < 0) .or. any(LebedevLmin > LEBEDEV_LMAX)) then
+                        call msg("Invalid minimum Lebedev order: expected a positive value " &
+                              // "not larger than " // str(LEBEDEV_LMAX), MSG_ERROR)
+                        error stop
+                  end if
+                  LebedevLmin_ = LebedevLmin(ZList(1:NElements))
             end if
             if (NRadial_ < 0) then
                   call msg("Invalid number of radial shells: expected a positive value", &
@@ -88,9 +96,9 @@ contains
                         IsolatedAtomGrids(k)%NPoints, &
                         Z, GridType, &
                         LebedevGrids, LebedevLMap, &
-                        LebedevLmin_, NRadial_)
+                        LebedevLmin_(k), NRadial_)
                   MaxNPoints = max(MaxNPoints, IsolatedAtomGrids(k)%NPoints)
-            end do                        
+            end do
             !
             ! Compute the number of grid points for each atom.
             ! This is the initial number of points which might be
@@ -220,10 +228,14 @@ contains
             end associate
             if (ThisImage == 1) then
                   call msg("Initial Becke grid: " // trim(BECKE_PARAMS_LABEL(GridType)) // " " // str(NPointsBecke) // " points")
-                  if (LebedevLmin_ > 0) then
-                        call msg("Lebedev order of every radial shell raised to at least " &
-                              // str(LebedevLmin_))
-                  end if
+                  do k = 1, NElements
+                        if (LebedevLmin_(k) > 0) then
+                              Z = ZList(k)
+                              call msg("Lebedev order of the spherical quadrature of " &
+                                    // trim(ELNAME_SHORT(Z)(1:1) // lowercase(ELNAME_SHORT(Z)(2:2))) &
+                                    // " raised to at least " // str(LebedevLmin_(k)))
+                        end if
+                  end do
                   if (NRadial_ > 0) then
                         call msg("Number of radial shells set to " // str(NRadial_))
                   end if

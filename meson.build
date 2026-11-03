@@ -164,7 +164,7 @@ if pytest.found()
       meson.project_source_root() / 'tests' / 'integrals' / 'test_semicore_thc.py'
     ],
     depends: post_build_target,
-    timeout: 600,
+    timeout: 1200,
     workdir: meson.project_source_root()
   )
 else

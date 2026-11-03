@@ -93,9 +93,9 @@ contains
                               THCParams%QRThresh, &          
                               THCParams%QRThreshReduced, &
                               THCParams%THC_BlockDim, &
-                              THCParams%LebedevLmin, &
                               THCParams%NRadial, &
-                              AOBasis, System)
+                              AOBasis, System, &
+                              THCParams%LebedevLmin)
                         call thc_Z( &
                               THCGrid%Zgk, &
                               THCGrid%ZgkReduced, &
