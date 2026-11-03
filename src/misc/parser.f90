@@ -3194,6 +3194,22 @@ contains
          read(val, *) i
          RPAParams%THC_BlockDim = i
          THCParams%THC_BlockDim = i
+       case ("THC_LEBEDEVLMIN")
+         read(val, *) i
+         if (i > 0) then
+            THCParams%LebedevLmin = i
+         else
+            call msg("Invalid value of THC_LebedevLmin", MSG_ERROR)
+            error stop
+         end if
+       case ("THC_NRADIAL")
+         read(val, *) i
+         if (i > 0) then
+            THCParams%NRadial = i
+         else
+            call msg("Invalid value of THC_NRadial", MSG_ERROR)
+            error stop
+         end if
        case ("THC_BECKEGRIDKIND")
          select case (uppercase(val))
           case ("SG1", "SG-1")

@@ -11,13 +11,18 @@ co_mgo: CO on MgO, linear O-Mg-C-O, C and O aug-cc-pVTZ, Mg cc-pwCVTZ
         interaction energies. Geometry: minimum of DF-PBE0-D3(BJ) with C and O
         aug-cc-pVTZ and Mg cc-pwCVTZ.
 
+mgo, so2: single points for the semicore correction of the MP2 correlation
+        energy, cc-pwCVXZ with the semicore shell correlated (semicore) and
+        cc-pVXZ with the valence shell only (valence), X = T, Q. Geometries:
+        minima of PBE0/def2-TZVP.
+
 The output has one block per test case: a line "Input: <name>" followed by
 "<quantity> (<unit>): <value>" lines. Single points are in a.u., interaction
 energies in kcal/mol, as in the beyond-rpa output.
 
 Usage: python pyscf_semicore_thc.py > pyscf_semicore_thc.txt
 Then run inject_reference_preambles.py to update the inputs. The calculation
-takes about a minute.
+takes a few minutes.
 """
 from pyscf import gto, mp, scf
 
@@ -31,12 +36,32 @@ CO_MGO_GEOMETRY = [
     ("Mg", 0.0, 0.0, 0.0, "B"),
     ("O", 0.0, 0.0, -1.732093, "B"),
 ]
-NAMES = {"C": "CARBON", "O": "OXYGEN", "Mg": "MAGNESIUM"}
+NAMES = {"C": "CARBON", "O": "OXYGEN", "Mg": "MAGNESIUM", "S": "SULFUR"}
 FROZEN = {
     "semicore": {"C": 1, "O": 1, "Mg": 1},
     "valence": {"C": 1, "O": 1, "Mg": 5},
 }
 SUBSYSTEMS = ["AB", "A", "B"]
+#
+# Semicore correction: the heavy atom keeps 1s frozen (semicore) or
+# 1s2s2p (valence); O keeps 1s frozen in both.
+#
+DELTA_GEOMETRIES = {
+    "mgo": [
+        ("Mg", 0.0, 0.0, 0.0, "A"),
+        ("O", 0.0, 0.0, 1.732766, "A"),
+    ],
+    "so2": [
+        ("S", 0.0, 0.0, 0.0, "A"),
+        ("O", 1.232592, 0.0, 0.727532, "A"),
+        ("O", -1.232592, 0.0, 0.727532, "A"),
+    ],
+}
+DELTA_FROZEN = {
+    "mgo": {"semicore": {"Mg": 1, "O": 1}, "valence": {"Mg": 5, "O": 1}},
+    "so2": {"semicore": {"S": 1, "O": 1}, "valence": {"S": 5, "O": 1}},
+}
+DELTA_BASIS = {"semicore": "cc-pwcv{x}", "valence": "cc-pv{x}"}
 
 
 def library_basis(
@@ -142,5 +167,30 @@ def co_mgo() -> None:
         )
 
 
+def semicore_delta() -> None:
+    for system, atoms in DELTA_GEOMETRIES.items():
+        symbols = sorted({symbol for symbol, *_ in atoms})
+        for x in ("tz", "qz"):
+            for variant, frozen in DELTA_FROZEN[system].items():
+                basis = library_basis(
+                    {symbol: DELTA_BASIS[variant].format(x=x) for symbol in symbols}
+                )
+                energy_hf, energy_mp2_correlation = hf_mp2(
+                    atoms=atoms,
+                    real="A",
+                    basis=basis,
+                    frozen=frozen,
+                )
+                print_block(
+                    name=f"{system}_{x}_{variant}",
+                    entries=[
+                        ("Frozen orbitals", str(frozen_orbitals(atoms=atoms, real="A", frozen=frozen))),
+                        ("HF single point (a.u.)", f"{energy_hf:.10f}"),
+                        ("MP2 correlation (a.u.)", f"{energy_mp2_correlation:.10f}"),
+                    ],
+                )
+
+
 if __name__ == "__main__":
     co_mgo()
+    semicore_delta()

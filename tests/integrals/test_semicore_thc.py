@@ -17,6 +17,13 @@ same accuracy level, is tested as well. The valence inputs use Mg
 cc-pVTZ instead of cc-pwCVTZ, so the correction includes the change
 of the Mg basis set.
 
+δSemicore, the semicore correction to the MP2 correlation energy of a
+molecule, is tested for MgO and SO2 in cc-pwCVXZ against cc-pVXZ,
+X = T, Q:
+
+    δSemicore = Ec(semicore shell correlated, cc-pwCVXZ)
+              - Ec(valence shell only, cc-pVXZ)
+
 To run the test suite:
 - Pytest Mode: `pytest tests/integrals/test_semicore_thc.py [--full]`
 - Standalone Mode: `python tests/integrals/test_semicore_thc.py [--full]`
@@ -47,6 +54,15 @@ TOLERANCES = {
     "ludicrous": {"HF A...B": 1.0e-5, "MP2 A...B": 7.0e-5, "MP2 CV A...B": 7.0e-5},
 }
 
+#
+# Tolerances of δSemicore (kcal/mol) for each system
+#
+DELTA_TOLERANCES = {
+    "mgo": 1.0e-2,  # kcal/mol
+    "so2": 1.0e-2,  # kcal/mol
+}
+HARTREE_TO_KCAL = 627.5094688043
+
 FLOAT_REGEX = r"([-+]?\d*\.\d+(?:[Ee][-+]?\d+)?)"
 
 # (term, reference key in the preamble)
@@ -65,11 +81,30 @@ CV_INPUTS = {
     for level in TOLERANCES
 }
 
+#
+# δSemicore: MP2 correlation energy of the semicore input (cc-pwCVXZ,
+# semicore shell correlated) minus that of the valence input (cc-pVXZ,
+# valence shell only)
+#
+DELTA_TERM = "δSemicore"
+DELTA_INPUTS = {
+    (system, x): (
+        INPUTS_DIR / f"{system}_{x}_semicore_accuracy_default.inp",
+        INPUTS_DIR / f"{system}_{x}_valence_accuracy_default.inp",
+    )
+    for system in DELTA_TOLERANCES
+    for x in ("tz", "qz")
+}
+MP2_CORRELATION_KEY = "MP2 correlation (a.u.)"
+
 INTERACTION_KEYS = ["Eint(HF)", "Eint(1-RDM linear)", "Eint(1-RDM quadratic)", "Eint(total MP2)"]
 
 
 def get_reference_inputs() -> list[Path]:
-    return sorted(INPUTS_DIR.glob("*_accuracy_*.inp"))
+    """
+    The CO/MgO cluster inputs. The δSemicore inputs are paired in DELTA_INPUTS.
+    """
+    return sorted(INPUTS_DIR.glob("co_mgo_*_accuracy_*.inp"))
 
 
 @functools.cache
@@ -124,6 +159,32 @@ def core_valence_correction(semicore: Path, valence: Path, nthreads: int) -> tup
     return ref[semicore] - ref[valence], calc[semicore] - calc[valence]
 
 
+def extract_ref_mp2_correlation(filepath: Path) -> float:
+    for line in filepath.read_text().splitlines():
+        if not line.startswith("!"):
+            break
+        if line[1:].strip().startswith(MP2_CORRELATION_KEY + ":"):
+            return float(line.split(":", 1)[1])
+    raise KeyError(f"{MP2_CORRELATION_KEY} missing in {filepath.name}")
+
+
+def extract_calc_mp2_correlation(text: str) -> float:
+    match = re.search(r"^\s*E\(total MP2\)\s+" + FLOAT_REGEX, text, re.MULTILINE)
+    if not match:
+        raise KeyError("E(total MP2) missing from output")
+    return float(match.group(1))
+
+
+def semicore_delta(semicore: Path, valence: Path, nthreads: int) -> tuple[float, float]:
+    """
+    Reference and calculated δSemicore (kcal/mol): MP2 correlation energy
+    of the semicore input minus that of the valence input
+    """
+    ref = {f: extract_ref_mp2_correlation(f) for f in (semicore, valence)}
+    calc = {f: extract_calc_mp2_correlation(run(f, nthreads).stdout) for f in (semicore, valence)}
+    return HARTREE_TO_KCAL * (ref[semicore] - ref[valence]), HARTREE_TO_KCAL * (calc[semicore] - calc[valence])
+
+
 @pytest.mark.parametrize("filepath", get_reference_inputs(), ids=lambda p: p.stem)
 def test_semicore_thc(filepath: Path, record_property):
     ref = extract_ref_energies(filepath)
@@ -162,6 +223,25 @@ def test_core_valence_correction(filepath: Path, valence: Path, record_property)
         f"{CV_TERM} deviation ({dev:.2e} kcal/mol) exceeds {tol:.1e}"
 
 
+@pytest.mark.parametrize("filepath, valence", [
+    pytest.param(semicore, valence, id=f"{system}_{x}_delta_semicore_accuracy_default")
+    for (system, x), (semicore, valence) in DELTA_INPUTS.items()
+])
+def test_semicore_delta(filepath: Path, valence: Path, record_property):
+    nthreads = utils.get_thread_count()
+    for f in (filepath, valence):
+        result = run(f, nthreads)
+        assert result.returncode == 0, f"beyond-rpa failed for {f.name}:\n{result.stderr}"
+    ref, calc = semicore_delta(filepath, valence, nthreads)
+    dev = abs(calc - ref)
+    record_property(f"reference {DELTA_TERM}", ref)
+    record_property(f"calculated {DELTA_TERM}", calc)
+    record_property(f"deviation {DELTA_TERM}", dev)
+    tol = DELTA_TOLERANCES[filepath.stem.split("_", 1)[0]]
+    assert calc == pytest.approx(ref, abs=tol), \
+        f"{DELTA_TERM} deviation ({dev:.2e} kcal/mol) exceeds {tol:.1e}"
+
+
 def table_row(term: str, ref: float, calc: float, tol: float) -> str:
     dev = abs(calc - ref)
     status = "PASSED" if dev <= tol else "FAILED"
@@ -180,6 +260,8 @@ if __name__ == "__main__":
     for accuracy, tolerances in TOLERANCES.items():
         shown = ", ".join(f"{term} {tol:.1e}" for term, tol in tolerances.items())
         print(f"  {accuracy + ':':<11} {shown} kcal/mol")
+    shown = ", ".join(f"{system} {tol:.1e}" for system, tol in DELTA_TOLERANCES.items())
+    print(f"  {DELTA_TERM + ':':<11} {shown} kcal/mol")
 
     files = get_reference_inputs()
     if not args.full:
@@ -221,4 +303,18 @@ if __name__ == "__main__":
             continue
         print(f"done ({time.time() - start_time:.2f}s)")
         print(table_row(CV_TERM, ref, calc, tolerance(semicore, CV_TERM)))
+        print("-" * width)
+    for (system, x), (semicore, valence) in DELTA_INPUTS.items():
+        if not args.full and not utils.is_fast_test(semicore):
+            continue
+        print(f"Running {system}_{x}_delta_semicore... ", end="", flush=True)
+        start_time = time.time()
+        try:
+            ref, calc = semicore_delta(semicore, valence, nthreads)
+        except KeyError:
+            print(f"ERROR ({time.time() - start_time:.2f}s)")
+            print("-" * width)
+            continue
+        print(f"done ({time.time() - start_time:.2f}s)")
+        print(table_row(DELTA_TERM, ref, calc, DELTA_TOLERANCES[system]))
         print("-" * width)
