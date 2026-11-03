@@ -18,11 +18,24 @@ end
 
 scf
   xcfunc HF
+  eri_algorithm thc
+  lindepthresh 1.0E-5
+  thc_qrthresh 1.0E-4
 end
 
 rpa
   TheoryLevel RPA+ph
-  accuracy default
+  !
+  ! The default profile with a tighter Cholesky threshold of the Coulomb
+  ! integrals. That threshold sets the noise floor of the correlation
+  ! energy: the semicore pair energies are large and the interaction
+  ! energy is a small difference of them. At the default 1.0E-5 the
+  ! noise is a few 1E-3 kcal/mol and no THC threshold lowers it; at
+  ! 1.0E-6 it is below 1E-3 kcal/mol at the same cost.
+  !
+  accuracy custom
+  THC_QRThresh 1.0E-3
+  choleskytauthresh 1.0E-6
   FrozenOrbitals C 1
   FrozenOrbitals Mg 1
   FrozenOrbitals O 1

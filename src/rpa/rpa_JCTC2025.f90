@@ -21,24 +21,26 @@ module rpa_JCTC2025
       
 contains
 
-      subroutine rpa_JCTC2025_Corrections(RPAOutput, Zgk, Xgi, Yga, Uaim, Am, Cpi, &
+      subroutine rpa_JCTC2025_Corrections(RPAOutput, Uaim, Am, Zgk, Xgi, Yga, Cpi, &
             RPAParams, AOBasis)
-            
-            type(TRPAOutput), intent(inout)                        :: RPAOutput
-            real(F64), dimension(:, :), intent(in)                 :: Zgk
-            real(F64), dimension(:, :), intent(in)                 :: Xgi
-            real(F64), dimension(:, :), intent(in)                 :: Yga
-            real(F64), dimension(:, :, :), intent(in)              :: Uaim
-            real(F64), dimension(:), intent(in)                    :: Am
-            real(F64), dimension(:, :), intent(in)                 :: Cpi
-            type(TRPAParams), intent(in)                           :: RPAParams
-            type(TAOBasis), intent(in)                             :: AOBasis
+            !
+            ! Uaim: T2 eigenvectors in the canonical basis on entry,
+            ! in the localized occupied orbital basis on exit.
+            !
+            type(TRPAOutput), intent(inout)                          :: RPAOutput
+            real(F64), dimension(:, :, :), contiguous, intent(inout) :: Uaim
+            real(F64), dimension(:), intent(in)                      :: Am
+            real(F64), dimension(:, :), intent(in)                   :: Zgk
+            real(F64), dimension(:, :), intent(in)                   :: Xgi
+            real(F64), dimension(:, :), intent(in)                   :: Yga
+            real(F64), dimension(:, :), intent(in)                   :: Cpi
+            type(TRPAParams), intent(in)                             :: RPAParams
+            type(TAOBasis), intent(in)                               :: AOBasis
 
             real(F64), dimension(:, :), allocatable :: Tabij
             real(F64), dimension(:, :), allocatable :: Pam, Qam
-            real(F64), dimension(:, :, :), allocatable :: UaimLoc
             real(F64), dimension(:, :), allocatable :: XgiLoc, Lik
-            integer :: i, j, mu, x
+            integer :: i, j, x
             real(F64) :: EcRPA, Ec1b, Ec2bcd, Ec2ghij
             integer :: NVecsT2, NCholesky, NGridTHC, NOcc, NVirt
             integer :: MaxNVirtPNO, NVirtPNO
@@ -96,7 +98,6 @@ contains
             ! basis
             !
             call clock_start(timer_LO)
-            allocate(UaimLoc(NVirt, NOcc, NVecsT2))
             allocate(XgiLoc(NGridTHC, NOcc))
             allocate(Lik(NOcc, NOcc))
             if (RPAParams%LocalizedOrbitals == RPA_LOCALIZED_ORBITALS_BOYS) then
@@ -109,11 +110,7 @@ contains
                   call rpa_LocalizeOrbitals_AquilanteJCP2006(Lik, Cpi, NOcc, RPAParams, AOBasis)
             end if
             call real_ab(XgiLoc, Xgi, Lik)
-            !$omp parallel do private(mu)
-            do mu = 1, NVecsT2
-                  call real_ab(UaimLoc(:, :, mu), Uaim(:, :, mu), Lik)
-            end do
-            !$omp end parallel do
+            call rpa_JCTC2025_LocalizeUaim(Uaim, Lik, NOcc, NVirt, NVecsT2)
             t_LO = clock_readwall(timer_LO)
             !
             ! Diagonal Coulomb matrix elements needed for the Schwarz
@@ -168,7 +165,7 @@ contains
             SumNVirtPNO = 0
             do j = 1, NOcc
                   do i = j, NOcc
-                        call rpa_JCTC2025_Tabij(Tabij, Pam, Qam, UaimLoc, Am, i, j, &
+                        call rpa_JCTC2025_Tabij(Tabij, Pam, Qam, Uaim, Am, i, j, &
                               NOcc, NVirt, NVecsT2)
                         call rsvd_Decompose(U, V, Sigma, NVirtPNO, Tabij, RSVDWorkspace)
                         if (NVirtPNO > 0) then
@@ -684,6 +681,35 @@ contains
             end if
       end subroutine rpa_JCTC2025_phRPA_Gab_jik
       
+
+      subroutine rpa_JCTC2025_LocalizeUaim(Uaim, Lik, NOcc, NVirt, NVecsT2)
+            !
+            ! Transform the occupied index of the T2 eigenvectors to the
+            ! localized orbital basis, U(a,i,mu) <- Sum(k) U(a,k,mu) L(k,i).
+            ! The transformation is done in place. On exit Uaim no longer
+            ! holds the canonical-basis vectors.
+            !
+            integer, intent(in)                                       :: NOcc
+            integer, intent(in)                                       :: NVirt
+            integer, intent(in)                                       :: NVecsT2
+            real(F64), dimension(NVirt, NOcc, NVecsT2), intent(inout) :: Uaim
+            real(F64), dimension(NOcc, NOcc), intent(in)              :: Lik
+
+            real(F64), dimension(:, :), allocatable :: UaiLoc
+            integer :: mu
+
+            !$omp parallel private(mu, UaiLoc)
+            allocate(UaiLoc(NVirt, NOcc))
+            !$omp do
+            do mu = 1, NVecsT2
+                  call real_ab(UaiLoc, Uaim(:, :, mu), Lik)
+                  Uaim(:, :, mu) = UaiLoc
+            end do
+            !$omp end do
+            deallocate(UaiLoc)
+            !$omp end parallel
+      end subroutine rpa_JCTC2025_LocalizeUaim
+
 
       subroutine rpa_JCTC2025_Tabij(Tabij, Pam, Qam, Uaim, Am, i, j, NOcc, NVirt, NVecsT2)
             integer, intent(in)                                    :: NOcc, NVirt, NVecsT2
