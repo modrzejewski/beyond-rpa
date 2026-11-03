@@ -258,9 +258,9 @@ contains
                   THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
                   THCParams%QRThreshReduced, &    ! threshold for the reduced-size grid
                   THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
-                  THCParams%NRadial, &            ! number of radial shells of the parent grid
                   AOBasis, System, &
-                  THCParams%LebedevLmin)          ! minimum Lebedev order of the parent grid
+                  THCParams%LebedevLmin, &        ! minimum Lebedev order of the parent grid
+                  THCParams%NRadial)              ! number of radial shells of the parent grid
             call thc_Z( &
                   THCGrid%Zgk, &
                   THCGrid%ZgkReduced, &
@@ -296,7 +296,7 @@ contains
       
 
       subroutine thc_Grid(Xgp, NGrid, NGridReduced, BeckeGridKind, PhiSquaredThresh, &
-            QRThresh, QRThreshReduced, BlockDim, NRadial, AOBasis, System, LebedevLmin)
+            QRThresh, QRThreshReduced, BlockDim, AOBasis, System, LebedevLmin, NRadial)
             !
             ! Cholesky/rank-revealing QR pruned molecular grid for the THC decomposition
             !
@@ -341,13 +341,14 @@ contains
             real(F64), intent(in)                                    :: QRThresh
             real(F64), intent(in)                                    :: QRThreshReduced
             integer, intent(in)                                      :: BlockDim
-            integer, intent(in)                                      :: NRadial
             type(TAOBasis), intent(in)                               :: AOBasis
             type(TSystem), intent(in)                                :: System
             integer, dimension(KNOWN_ELEMENTS), optional, intent(in) :: LebedevLmin
+            integer, optional, intent(in)                            :: NRadial
 
             real(F64), dimension(:), allocatable :: X, Y, Z, W
             integer, dimension(KNOWN_ELEMENTS) :: LebedevLmin_
+            integer :: NRadial_
             integer :: NAO
             integer :: ThisImage
             real(F64) :: t_Grid
@@ -371,8 +372,10 @@ contains
             LebedevLmin_ = 0
             if (present(LebedevLmin)) LebedevLmin_ = LebedevLmin
             call thc_CoreLebedevLmin(LebedevLmin_, AOBasis, System)
+            NRadial_ = 0
+            if (present(NRadial)) NRadial_ = NRadial
             call becke_MolecularGrid(X, Y, Z, W, NGrid, BeckeGridKind, &
-                  System, AOBasis, PhiSquaredThresh, LebedevLmin_, NRadial)
+                  System, AOBasis, PhiSquaredThresh, LebedevLmin_, NRadial_)
             deallocate(W)
             !
             ! Molecular grid pruning by rank-revealing Cholesky decomposition.
