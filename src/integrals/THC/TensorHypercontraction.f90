@@ -437,7 +437,7 @@ contains
 
             integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap, LmaxElements
             integer :: a, k, L, NElements, Z
-            integer, parameter :: Lextra = 1
+            integer, parameter :: Lextra = 2
 
             allocate(AtomElementMap(System%NAtoms))
             call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
