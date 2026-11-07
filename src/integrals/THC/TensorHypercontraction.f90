@@ -10,6 +10,7 @@ module TensorHypercontraction
       use thc_definitions
       use TwoStepCholesky_definitions
       use periodic
+      use LebedevGrid
 
       implicit none
 
@@ -425,17 +426,18 @@ contains
       subroutine thc_CoreLebedevLmin(LebedevLmin, AOBasis, System)
             !
             ! Raise the minimum Lebedev order of each element from sodium on
-            ! to 2*(Lcore + Lmax) + 1, the order that integrates the products
-            ! of its core shells with its basis functions exactly. Lmax is
-            ! the highest angular momentum over all atoms of the element,
-            ! ghosts included.
+            ! to 2*(Lcore + Lmax + Lextra) + 1. Lmax is the highest angular
+            ! momentum over all atoms of the element, ghosts included. Lextra
+            ! covers the products of the core shells with diffuse functions
+            ! of other centres.
             !
             integer, dimension(:), intent(inout) :: LebedevLmin
             type(TAOBasis), intent(in)           :: AOBasis
             type(TSystem), intent(in)            :: System
 
             integer, dimension(:), allocatable :: ZList, ZCount, AtomElementMap, LmaxElements
-            integer :: a, k, NElements, Z
+            integer :: a, k, L, NElements, Z
+            integer, parameter :: Lextra = 2
 
             allocate(AtomElementMap(System%NAtoms))
             call sys_ElementsList(ZList, ZCount, AtomElementMap, NElements, System, SYS_ALL_ATOMS)
@@ -448,7 +450,9 @@ contains
             do k = 1, NElements
                   Z = ZList(k)
                   if (Z >= THC_CORE_FLOOR_ZMIN) then
-                        LebedevLmin(Z) = max(LebedevLmin(Z), 2 * (thc_CoreL(Z) + LmaxElements(k)) + 1)
+                        L = 2 * (thc_CoreL(Z) + LmaxElements(k) + Lextra) + 1
+                        L = max(L, LebedevLmin(Z))
+                        LebedevLmin(Z) = min(L, LEBEDEV_LMAX)
                   end if
             end do
       end subroutine thc_CoreLebedevLmin
