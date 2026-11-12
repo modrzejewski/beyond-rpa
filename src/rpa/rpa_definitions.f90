@@ -2,6 +2,7 @@ module rpa_definitions
    use arithmetic
    use grid_definitions
    use scf_definitions
+   use thc_definitions, only: TTHCParams
    use TwoStepCholesky_definitions
    use periodic, only: KNOWN_ELEMENTS, ELNAME_SHORT
 
@@ -460,27 +461,11 @@ module rpa_definitions
       !
       integer :: ChiOrbitals = RPA_ORBITALS_CANONICAL
       integer :: MeanField = RPA_MEAN_FIELD_HF_TYPE
-      ! --------------------------------------------------------------------
-      ! Tensor hypercontraction of the Coulomb integrals
-      ! --------------------------------------------------------------------
-      ! 1. Robert M. Parrish, Edward G. Hohenstein, Todd J. Martinez,
-      !    and C. David Sherrill, Tensor hypercontraction. II. Least-squares
-      !    renormalization, J. Chem. Phys. 137, 224106 (2012);
-      !     doi: 10.1063/1.4768233
       !
-      ! 2. Devin A. Matthews, Improved Grid Optimization and
-      !    Fitting in Least Squares Tensor Hypercontraction
-      !    J. Chem. Theory Comput. 16, 1382 (2020);
-      !    doi: 10.1021/acs.jctc.9b01205
+      ! Number of occupied-virtual pairs per batch in the post-SCF
+      ! contractions with the THC vectors
       !
-      logical :: TensorHypercontraction = .true.
-      integer   :: THC_BeckeGridKind = BECKE_PARAMS_SG1
-      !
-      ! THC decomposition threshold for RPA. This can differ
-      ! from the THC threshold for the SCF step.
-      !
-      real(F64) :: THC_QRThresh = 1.0E-3_F64
-      integer   :: THC_BlockDim = 500
+      integer :: BlockDim = 500
       integer :: TheoryLevel = RPA_THEORY_DIRECT_RING
       !
       ! Code path selected to compute the properties at
@@ -697,7 +682,7 @@ contains
       end select
    end subroutine select_orbitals
 
-   subroutine rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params)
+   subroutine rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params, THCParams)
       !
       ! Synchronize accuracy thresholds across the entire SCF and post-SCF
       ! workflow in accordance with the selected accuracy baseline level
@@ -705,18 +690,19 @@ contains
       type(TRPAParams), intent(inout) :: RPAParams
       type(TSCFParams), intent(inout) :: SCFParams
       type(TChol2Params), intent(inout) :: Chol2Params
+      type(TTHCParams), intent(inout) :: THCParams
 
       if (RPAParams%Initialized) then
          call RPAParams%select_algorithm()
          call RPAParams%select_orbitals()
-         
+
          select case (RPAParams%Accuracy)
           case (RPA_ACCURACY_DEFAULT)
-            call rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+            call rpa_Params_Default(RPAParams, SCFParams, Chol2Params, THCParams)
           case (RPA_ACCURACY_TIGHT)
-            call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+            call rpa_Params_Tight(RPAParams, SCFParams, Chol2Params, THCParams)
           case (RPA_ACCURACY_LUDICROUS)
-            call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+            call rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params, THCParams)
           case (RPA_ACCURACY_CUSTOM)
             !
             ! Undocumented feature for developers to provide
@@ -798,10 +784,11 @@ contains
    end subroutine FrozenCoreRule
 
 
-   subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params)
+   subroutine rpa_Params_Default(RPAParams, SCFParams, Chol2Params, THCParams)
       type(TRPAParams), intent(inout)   :: RPAParams
       type(TSCFParams), intent(inout)   :: SCFParams
       type(TChol2Params), intent(inout) :: Chol2Params
+      type(TTHCParams), intent(inout)   :: THCParams
 
       RPAParams%TargetErrorRandom = sqrt(1.0E-5_F64)
       RPAParams%T2CutoffThresh = 1.0E-5_F64
@@ -824,12 +811,20 @@ contains
             error stop
       end select
 
-      SCFParams%THC_QRThresh = 1.0E-4_F64
-      RPAParams%THC_QRThresh = 1.0E-3_F64
+      THCParams%QRThresh = 1.0E-4_F64
+      THCParams%QRThreshReduced = 1.0E-3_F64
       !
       ! If the THC Coulomb integrals are used,
       ! an aggressive removal of linear dependencies
       ! is required for SCF convergence.
+      !
+      ! A THC threshold of 1.0E-3 gives accurate
+      ! correlation energy components, but frequently results
+      ! in a poorly converging SCF (example: dimers and trimers
+      ! of acetylene in the AVQZ basis). The convergence is
+      ! improved by setting LinDepThresh=1.0E-5. A threshold
+      ! of 1.0E-4 is reliable for the SCF, but it's an overkill
+      ! for the correlation energy.
       !
       ! The error due to to the removal
       ! of basis vectors is corrected in the post-SCF
@@ -847,10 +842,11 @@ contains
    end subroutine rpa_Params_Default
 
 
-   subroutine rpa_Params_Tight(RPAParams, SCFParams, Chol2Params)
+   subroutine rpa_Params_Tight(RPAParams, SCFParams, Chol2Params, THCParams)
       type(TRPAParams), intent(inout)   :: RPAParams
       type(TSCFParams), intent(inout)   :: SCFParams
       type(TChol2Params), intent(inout) :: Chol2Params
+      type(TTHCParams), intent(inout)   :: THCParams
 
       RPAParams%TargetErrorRandom = sqrt(1.0E-7_F64)
       RPAParams%T2CutoffThresh = 1.0E-6_F64
@@ -873,8 +869,8 @@ contains
             error stop
       end select
 
-      SCFParams%THC_QRThresh = 1.0E-4_F64
-      RPAParams%THC_QRThresh = 1.0E-3_F64
+      THCParams%QRThresh = 1.0E-4_F64
+      THCParams%QRThreshReduced = 1.0E-3_F64
       
       if (SCFParams%ERI_Algorithm == SCF_ERI_THC) then
          SCFParams%LinDepThresh = 1.0E-5_F64
@@ -884,10 +880,11 @@ contains
    end subroutine rpa_Params_Tight
 
 
-   subroutine rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params)
+   subroutine rpa_Params_Ludicrous(RPAParams, SCFParams, Chol2Params, THCParams)
       type(TRPAParams), intent(inout)   :: RPAParams
       type(TSCFParams), intent(inout)   :: SCFParams
       type(TChol2Params), intent(inout) :: Chol2Params
+      type(TTHCParams), intent(inout)   :: THCParams
 
       RPAParams%TargetErrorRandom = 1.0E-5_F64
       RPAParams%T2CutoffThresh = 1.0E-6_F64
@@ -906,7 +903,8 @@ contains
       ! crystalline benzene. QRThresh=1.0E-4 results in the same
       ! EcRPA and EcSOSEX as in the variant without THC.
       !
-      RPAParams%THC_QRThresh = 1.0E-4_F64
+      THCParams%QRThresh = 1.0E-4_F64
+      THCParams%QRThreshReduced = 1.0E-4_F64
       SCFParams%ERI_Algorithm = SCF_ERI_CHOLESKY
       SCFParams%ConvThreshRho = 1.0E-6_F64
       Chol2Params%CholeskyTauThresh = 1.0E-7_F64

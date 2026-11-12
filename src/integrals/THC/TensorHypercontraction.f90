@@ -241,7 +241,7 @@ contains
 
             real(F64), dimension(1, 1, 1) :: Rkpq
 
-            if (.not. THCParams%THC_QuadraticMemory) then
+            if (.not. THCParams%QuadraticMemory) then
                   call msg("Invalid value of QuadraticMemory", MSG_ERROR)
                   error stop
             end if
@@ -254,11 +254,11 @@ contains
                   THCGrid%Xgp, &
                   THCGrid%NGrid, &
                   THCGrid%NGridReduced, &
-                  THCParams%THC_BeckeGridKind, &  ! parent molecular grid
+                  THCParams%BeckeGridKind, &      ! parent molecular grid
                   THCParams%PhiSquaredThresh, &   ! threshold for small values of atomic orbitals
                   THCParams%QRThresh, &           ! Threshold for rank-revealing QR/Cholesky
                   THCParams%QRThreshReduced, &    ! threshold for the reduced-size grid
-                  THCParams%THC_BlockDim, &       ! block dimension for the on the fly THC/Cholesky
+                  THCParams%BlockDim, &           ! block dimension for the on the fly THC/Cholesky
                   AOBasis, System, &
                   THCParams%LebedevLmin, &        ! minimum Lebedev order of the parent grid
                   THCParams%NRadial)              ! number of radial shells of the parent grid
@@ -507,7 +507,7 @@ contains
 
             ThisImage = this_image()
             call msg("Least squares fitting of Z: LDL**T linear system solver")
-            if (THCParams%THC_QuadraticMemory) then
+            if (THCParams%QuadraticMemory) then
                   call msg("thc_Z will generate full-dimension Cholesky vecs on the fly")
             else
                   call msg("thc_Z will use precomputed full set of Cholesky vectors")
@@ -516,7 +516,7 @@ contains
             NAO = size(Xgp, dim=2)
             NCholesky = Chol2Vecs%NVecs
             allocate(Zgk(NGrid, NCholesky))
-            call thc_XR(Zgk, Rkpq, Xgp, NGrid, AOBasis, THCParams%THC_QuadraticMemory, &
+            call thc_XR(Zgk, Rkpq, Xgp, NGrid, AOBasis, THCParams%QuadraticMemory, &
                   Chol2Vecs, Chol2Params)
             if (NGridReduced < NGrid) then
                   allocate(ZgkReduced(NGridReduced, NCholesky))
