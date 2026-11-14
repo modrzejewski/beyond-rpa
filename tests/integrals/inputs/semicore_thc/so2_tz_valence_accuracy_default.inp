@@ -13,24 +13,27 @@ scf
   xcfunc HF
   eri_algorithm thc
   lindepthresh 1.0E-5
-  thc_qrthresh 1.0E-4
 end
 
 rpa
   TheoryLevel RPA+ph
   !
-  ! The default profile with THC_QRThresh 1.0E-4 and choleskytauthresh
+  ! The default profile with QRThresh post-scf 1.0E-4 and choleskytauthresh
   ! 1.0E-6. δSemicore is a small difference of large correlation
   ! energies, so the THC pivot noise of the correlation stage must be
   ! low, and the Cholesky threshold keeps the Coulomb integrals below
   ! that noise.
   !
   accuracy custom
-  THC_QRThresh 1.0E-4
   choleskytauthresh 1.0E-6
   FrozenOrbitals S 5
   FrozenOrbitals O 1
   PT2
+end
+
+thc
+  QRThresh scf 1.0E-4
+  QRThresh post-scf 1.0E-4
 end
 
 ! PBE0/def2-TZVP equilibrium geometry

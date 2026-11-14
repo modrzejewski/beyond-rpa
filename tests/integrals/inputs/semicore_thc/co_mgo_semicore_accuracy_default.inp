@@ -20,7 +20,6 @@ scf
   xcfunc HF
   eri_algorithm thc
   lindepthresh 1.0E-5
-  thc_qrthresh 1.0E-4
 end
 
 rpa
@@ -34,12 +33,16 @@ rpa
   ! 1.0E-6 it is below 1E-3 kcal/mol at the same cost.
   !
   accuracy custom
-  THC_QRThresh 1.0E-3
   choleskytauthresh 1.0E-6
   FrozenOrbitals C 1
   FrozenOrbitals Mg 1
   FrozenOrbitals O 1
   PT2
+end
+
+thc
+  QRThresh scf 1.0E-4
+  QRThresh post-scf 1.0E-3
 end
 
 xyz
