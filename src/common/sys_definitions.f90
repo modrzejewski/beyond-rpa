@@ -712,11 +712,12 @@ contains
             integer, dimension(:), allocatable :: ZListReal, ZListGhost
             integer, dimension(:), allocatable :: ZCountReal, ZCountGhost
             integer :: NElementsReal, NElementsGhost
-            integer, dimension(KNOWN_ELEMENTS) :: AtomElementMap
-            
+            integer, dimension(:), allocatable :: AtomElementMap
+
             character(:), allocatable :: s1, s2
             integer :: k
 
+            allocate(AtomElementMap(System%NAtoms))
             s1 = ""
             s2 = ""
             if (System%SystemKind == SYS_MOLECULE .or. System%SubsystemKind == SYS_TOTAL) then
