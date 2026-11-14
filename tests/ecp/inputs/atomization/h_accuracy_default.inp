@@ -9,9 +9,12 @@ basis cc-repo/cc-pVTZ
 scf
   xcfunc HF
   eri_algorithm thc
-  thc_qrthresh 1.0E-4
   lindepthresh 5.0E-6
   maxniters 1024
+end
+
+thc
+  QRThresh scf 1.0E-4
 end
 
 xyz

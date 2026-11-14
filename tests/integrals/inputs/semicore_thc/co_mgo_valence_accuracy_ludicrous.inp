@@ -26,10 +26,13 @@ rpa
   FrozenOrbitals C 1
   FrozenOrbitals Mg 5
   FrozenOrbitals O 1
+  PT2
+end
+
+thc
   ! The ludicrous baseline keeps the default THC grid (SG-1),
   ! which limits the accuracy; we upgrade it to medium.
-  THC_BeckeGridKind medium
-  PT2
+  BeckeGridKind medium
 end
 
 xyz

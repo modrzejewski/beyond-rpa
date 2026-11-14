@@ -1117,6 +1117,7 @@ contains
       integer, parameter :: block_SCF = 9
       integer, parameter :: block_basis_assign = 10
       integer, parameter :: block_ecp_assign = 11
+      integer, parameter :: block_THC = 12
 
       XYZDefined = .false.
 
@@ -1198,6 +1199,9 @@ contains
           case ("SCF")
             current_block = block_SCF
             cycle lines
+          case ("THC")
+            current_block = block_THC
+            cycle lines
           case ("BASIS_ASSIGNMENT")
             current_block = block_basis_assign
             cycle lines
@@ -1225,9 +1229,11 @@ contains
          else if (current_block == block_embedding) then
             cycle lines
          else if (current_block == block_RPA) then
-            call read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
+            call read_block_RPA(RPAParams, Chol2Params, line)
          else if (current_block == block_SCF) then
             call read_block_SCF(SCFParams, line)
+         else if (current_block == block_THC) then
+            cycle lines
          else if (current_block == block_basis_assign) then
             call BasisAssign%read_line(line)
          else if (current_block == block_XYZ) then
@@ -1529,10 +1535,15 @@ contains
          end if
       end if
       !
+      ! Read the thc block before the accuracy presets, which
+      ! overwrite the pivot thresholds unless accuracy custom is set.
+      !
+      call THCParams%read_block(filename)
+      !
       ! Configure the internal algorithm and orbital settings based
       ! on the specified TheoryLevel.
       !
-      call rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params)
+      call rpa_SyncWorkflowParams(RPAParams, SCFParams, Chol2Params, THCParams)
 
       if (.not. XYZDefined) then
          call msg("No xyz coordinates specified", MSG_ERROR)
@@ -3138,11 +3149,9 @@ contains
    end subroutine read_block_RhoSpher
 
 
-   subroutine read_block_RPA(RPAParams, SCFParams, Chol2Params, THCParams, line)
+   subroutine read_block_RPA(RPAParams, Chol2Params, line)
       type(TRPAParams), intent(inout)   :: RPAParams
-      type(TSCFParams), intent(inout)   :: SCFParams
       type(TChol2Params), intent(inout) :: Chol2Params
-      type(TTHCParams), intent(inout)   :: THCParams
       character(*), intent(in)          :: Line
 
       character(:), allocatable :: key, val
@@ -3184,53 +3193,13 @@ contains
          read(val, *) m
          RPAParams%MaxNAOMult = m
 
-       case ("THC_QRTHRESH", "THCQRTHRESH")
-         read(val, *) m
-         RPAParams%THC_QRThresh = m
-       case ("THC_PHISQUAREDTHRESH")
-         read(val, *) m
-         THCParams%PhiSquaredThresh = m
-       case ("THC_BLOCKDIM")
+       case ("BLOCKDIM")
          read(val, *) i
-         RPAParams%THC_BlockDim = i
-         THCParams%THC_BlockDim = i
-       case ("THC_LEBEDEVLMIN")
-         read(val, *) i
-         if (i > 0) then
-            THCParams%LebedevLmin = i
-         else
-            call msg("Invalid value of THC_LebedevLmin", MSG_ERROR)
+         if (i <= 0) then
+            call msg("BlockDim must be positive", MSG_ERROR)
             error stop
          end if
-       case ("THC_NRADIAL")
-         read(val, *) i
-         if (i > 0) then
-            THCParams%NRadial = i
-         else
-            call msg("Invalid value of THC_NRadial", MSG_ERROR)
-            error stop
-         end if
-       case ("THC_BECKEGRIDKIND")
-         select case (uppercase(val))
-          case ("SG1", "SG-1")
-            RPAParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
-            THCParams%THC_BeckeGridKind = BECKE_PARAMS_SG1
-          case ("MEDIUM")
-            RPAParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
-            THCParams%THC_BeckeGridKind = BECKE_PARAMS_MEDIUM
-          case ("FINE")
-            RPAParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
-            THCParams%THC_BeckeGridKind = BECKE_PARAMS_FINE
-          case ("XFINE")
-            RPAParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
-            THCParams%THC_BeckeGridKind = BECKE_PARAMS_XFINE
-          case ("THC")
-            RPAParams%THC_BeckeGridKind = BECKE_PARAMS_THC
-            THCParams%THC_BeckeGridKind = BECKE_PARAMS_THC
-          case default
-            call msg("Unknown grid kind", priority=MSG_ERROR)
-            error stop
-         end select
+         RPAParams%BlockDim = i
        case ("T2AUXORBITALS", "T2-AUXILIARY-ORBITALS", "T2AUXILIARYORBITALS", &
           "T2AUXBASIS", "T2-AUXILIARY-BASIS", "T2AUXILIARYBASIS")
 
@@ -3740,9 +3709,6 @@ contains
           case ("EXACT")
             SCFParams%ERI_Algorithm = SCF_ERI_EXACT
          end select
-       case ("THC_QRTHRESH", "THCQRTHRESH")
-         read(val, *) a
-         SCFParams%THC_QRThresh = a
        case ("ASYMPVXCOMEGA")
          read(val, *) a
          if (a > ZERO) then

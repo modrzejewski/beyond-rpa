@@ -35,6 +35,7 @@ In this context, you will need the following additional components:
 * [Setup](docs/01_setup.md)
 * [Input](docs/02_input_structure.md)
 * [Examples](docs/03_examples.md)
+* [Control of Numerical Precision](docs/05_numerical_precision.md)
 * [Literature](docs/04_literature.md)
 
 # Authors

@@ -6,7 +6,6 @@ module gparam
       use h_xcfunc
       use scf_definitions
       use h_io
-      use rpa_definitions
       use periodic, only: KNOWN_ELEMENTS
 
       implicit none

@@ -2150,7 +2150,7 @@ contains
                   THCGrid%Xgp, &
                   THCGrid%Zgk, &
                   THCGrid%ZgkPiU, &
-                  RPAParams%THC_BlockDim, &
+                  RPAParams%BlockDim, &
                   
                   RPAParams%SmallEigenvalCutoffT2, &
                   RPAParams%GuessNVecsT2, &

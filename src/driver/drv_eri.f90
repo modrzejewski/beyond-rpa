@@ -58,17 +58,15 @@ contains
                   ! Two stage THC: the SCF step requires tighter thresholds than RPA.
                   !
                   if (SCFParams%ERI_ALGORITHM == SCF_ERI_THC .and. PostSCF_THC) then
-                        THCParams%QRThresh = SCFParams%THC_QRThresh
-                        THCParams%QRThreshReduced = RPAParams%THC_QRThresh
                         if (THCParams%QRThreshReduced < THCParams%QRThresh) then
-                              call msg("Invalid THC thresholds: SCF_QRThresh > QRThreshReduced", MSG_ERROR)
+                              call msg("Invalid THC thresholds: QRThresh post-scf " // &
+                                    "is tighter than QRThresh scf", MSG_ERROR)
                               error stop
                         end if
                   else if (PostSCF_THC) then
-                        THCParams%QRThresh = RPAParams%THC_QRThresh
+                        THCParams%QRThresh = THCParams%QRThreshReduced
                         THCParams%QRThreshReduced = -ONE
                   else if (SCFParams%ERI_ALGORITHM == SCF_ERI_THC) then
-                        THCParams%QRThresh = SCFParams%THC_QRThresh
                         THCParams%QRThreshReduced = -ONE
                   end if
             end if
@@ -83,16 +81,16 @@ contains
                         ! been requested. The quadratic memory algorithm cannot be used here.
                         ! Build the grid using the existing Rkpq tensor.
                         !
-                        THCParams%THC_QuadraticMemory = .false.
+                        THCParams%QuadraticMemory = .false.
                         call thc_Grid( &
                               THCGrid%Xgp, &
                               THCGrid%NGrid, &
                               THCGrid%NGridReduced, &
-                              THCParams%THC_BeckeGridKind, &
+                              THCParams%BeckeGridKind, &
                               THCParams%PhiSquaredThresh, &
-                              THCParams%QRThresh, &          
+                              THCParams%QRThresh, &
                               THCParams%QRThreshReduced, &
-                              THCParams%THC_BlockDim, &
+                              THCParams%BlockDim, &
                               AOBasis, System, &
                               THCParams%LebedevLmin, &
                               THCParams%NRadial)
@@ -110,7 +108,7 @@ contains
                   ! The THC grid is required, and no part of the workflow demands the
                   ! dense Rkpq tensor. Use the highly efficient quadratic memory algorithm.
                   !
-                  THCParams%THC_QuadraticMemory = .true.
+                  THCParams%QuadraticMemory = .true.
                   call thc_CoulombMatrix_QuadraticMemory(THCGrid, Chol2Vecs, AOBasis, &
                         System, THCParams, Chol2Params)
                   allocate(Rkpq(0, 0, 0)[*])

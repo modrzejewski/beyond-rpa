@@ -28,11 +28,14 @@ rpa
   LocalizedOrbitals boys
   CutoffThreshVabij 0.0
   T2AdaptiveCutoffTargetKcal 0.0005
-  THC_QRThresh 1.0E-5
   CholeskyTauThresh 1.0E-7
   FrozenOrbitals Zn 9
   FrozenOrbitals O 1
   FrozenOrbitals H 0
+end
+
+thc
+  QRThresh post-scf 1.0E-5
 end
 
 xyz
